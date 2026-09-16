@@ -1,5 +1,4 @@
 language: typescript
 tasks:
   dev:
-    command: 'bun run --watch src/index.ts'
-    local: true
+    command: 'bun run --watch src/index.ts'

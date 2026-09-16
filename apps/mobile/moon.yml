@@ -1,5 +1,4 @@
 language: unknown
 tasks:
   dev:
-    command: 'flutter run'
-    local: true
+    command: 'flutter run'
