@@ -1,0 +1,6 @@
+language: typescript
+type: application
+tasks:
+  dev:
+    command: 'bun run dev'
+    local: true
