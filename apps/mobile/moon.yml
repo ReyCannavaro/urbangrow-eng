@@ -1,0 +1,6 @@
+language: unknown # (bisa dikosongin atau unknown karena flutter bukan node/bun)
+type: application
+tasks:
+  dev:
+    command: 'flutter run'
+    local: true
