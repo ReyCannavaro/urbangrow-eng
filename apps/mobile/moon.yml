@@ -1,5 +1,4 @@
-language: unknown # (bisa dikosongin atau unknown karena flutter bukan node/bun)
-type: application
+language: unknown
 tasks:
   dev:
     command: 'flutter run'
