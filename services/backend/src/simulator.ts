@@ -97,28 +97,30 @@ class AquaponicsSimulator {
     }
   }
 
+  private targetOverrides: Partial<SensorReading> = {};
+
   // Smooth random walk with biological correlations
   public stepSimulation() {
     const round = (val: number, decimals: number = 2) =>
       Number(val.toFixed(decimals));
 
-    // Target values depending on anomaly state
-    let targetPH = 7.0;
-    let targetWaterTemp = 24.5;
-    let targetTDS = 540;
+    // Target values depending on anomaly state or manual simulator overrides
+    let targetPH = this.targetOverrides.ph ?? 7.0;
+    let targetWaterTemp = this.targetOverrides.waterTemperature ?? 24.5;
+    let targetTDS = this.targetOverrides.tds ?? 540;
 
     if (this.anomalyMode === "ph_drop") targetPH = 5.85;
     if (this.anomalyMode === "heatwave") targetWaterTemp = 30.2;
     if (this.anomalyMode === "tds_spike") targetTDS = 1120;
 
     // Organic drift towards target with small noise
-    const phDelta = (targetPH - this.state.ph) * 0.15 + (Math.random() - 0.5) * 0.04;
+    const phDelta = (targetPH - this.state.ph) * 0.15 + (Math.random() - 0.5) * 0.03;
     this.state.ph = round(Math.max(4.0, Math.min(10.0, this.state.ph + phDelta)), 2);
 
-    const tempDelta = (targetWaterTemp - this.state.waterTemperature) * 0.1 + (Math.random() - 0.5) * 0.1;
+    const tempDelta = (targetWaterTemp - this.state.waterTemperature) * 0.1 + (Math.random() - 0.5) * 0.08;
     this.state.waterTemperature = round(this.state.waterTemperature + tempDelta, 1);
 
-    const tdsDelta = (targetTDS - this.state.tds) * 0.15 + (Math.random() - 0.5) * 6;
+    const tdsDelta = (targetTDS - this.state.tds) * 0.15 + (Math.random() - 0.5) * 4;
     this.state.tds = Math.round(this.state.tds + tdsDelta);
 
     // Air temperature & humidity
@@ -126,18 +128,26 @@ class AquaponicsSimulator {
     this.state.airTemperature = round(27.0 + (this.state.waterTemperature - 24.0) * 0.4 + airDelta, 1);
     this.state.humidity = round(Math.max(40, Math.min(90, 65.0 - (this.state.airTemperature - 25.0) * 1.5 + (Math.random() - 0.5) * 1.5)), 1);
 
-    // Dissolved oxygen reacts biologically to aerator state
-    const targetDO = this.actuators.aerator.isOn ? 7.4 : 4.4;
-    const doDelta = (targetDO - this.state.dissolvedOxygen) * 0.15 + (Math.random() - 0.5) * 0.05;
+    // Dissolved oxygen reacts biologically to aerator state unless manually overridden
+    let targetDO = this.targetOverrides.dissolvedOxygen ?? (this.actuators.aerator.isOn ? 7.4 : 4.4);
+    const doDelta = (targetDO - this.state.dissolvedOxygen) * 0.15 + (Math.random() - 0.5) * 0.04;
     this.state.dissolvedOxygen = round(Math.max(2.0, Math.min(10.0, this.state.dissolvedOxygen + doDelta)), 2);
 
-    // Light reacts to grow light state
-    const baseLight = this.actuators.growLight.isOn ? 2400 : 550;
-    this.state.lightIntensity = Math.round(baseLight + (Math.random() - 0.5) * 80);
+    // Light reacts to grow light state unless manually overridden
+    if (this.targetOverrides.lightIntensity !== undefined) {
+      this.state.lightIntensity = Math.round(this.targetOverrides.lightIntensity + (Math.random() - 0.5) * 20);
+    } else {
+      const baseLight = this.actuators.growLight.isOn ? 2400 : 550;
+      this.state.lightIntensity = Math.round(baseLight + (Math.random() - 0.5) * 50);
+    }
 
     // Water level
-    const levelDelta = (this.actuators.waterPump.isOn ? 0 : -0.2) + (Math.random() - 0.5) * 0.1;
-    this.state.waterLevel = round(Math.max(60, Math.min(100, this.state.waterLevel + levelDelta)), 1);
+    if (this.targetOverrides.waterLevel !== undefined) {
+      this.state.waterLevel = round(this.targetOverrides.waterLevel + (Math.random() - 0.5) * 0.2, 1);
+    } else {
+      const levelDelta = (this.actuators.waterPump.isOn ? 0 : -0.2) + (Math.random() - 0.5) * 0.1;
+      this.state.waterLevel = round(Math.max(60, Math.min(100, this.state.waterLevel + levelDelta)), 1);
+    }
 
     // Append to circular history buffer (max 40 items)
     const snapshot = {
@@ -214,6 +224,10 @@ class AquaponicsSimulator {
   public overrideSensors(partial: Partial<SensorReading>) {
     this.state = {
       ...this.state,
+      ...partial,
+    };
+    this.targetOverrides = {
+      ...this.targetOverrides,
       ...partial,
     };
     return this.state;
