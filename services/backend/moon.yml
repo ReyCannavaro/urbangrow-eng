@@ -1,4 +1,6 @@
 language: typescript
 tasks:
   dev:
-    command: 'bun run --watch src/index.ts'
+    command: 'bun run --watch src/index.ts'
+  tunnel:
+    command: 'cloudflared tunnel --url http://localhost:3000'
