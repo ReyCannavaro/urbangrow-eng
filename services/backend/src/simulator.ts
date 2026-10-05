@@ -211,6 +211,14 @@ class AquaponicsSimulator {
     return { anomalyMode: this.anomalyMode };
   }
 
+  public overrideSensors(partial: Partial<SensorReading>) {
+    this.state = {
+      ...this.state,
+      ...partial,
+    };
+    return this.state;
+  }
+
   public evaluateAlerts(): SystemAlert[] {
     const alerts: SystemAlert[] = [];
     const now = new Date().toISOString();

@@ -1,0 +1,6 @@
+language: typescript
+tasks:
+  dev:
+    command: 'bun run dev'
+  build:
+    command: 'bun run build'

@@ -79,6 +79,14 @@ export const app = new Elysia()
       }),
     }
   )
+  // 6. Direct sensor override from IoT hardware simulator
+  .post(
+    "/api/simulation/sensor-override",
+    ({ body }) => {
+      const updated = simulator.overrideSensors(body as any);
+      return { success: true, sensors: updated };
+    }
+  )
   .listen({
     port: 3000,
     hostname: "0.0.0.0",

@@ -3,3 +3,4 @@ projects:
   mobile: 'apps/mobile'
   backend: 'services/backend'
   ai-engine: 'services/ai-engine'
+  simulator: 'apps/iot-simulator'
