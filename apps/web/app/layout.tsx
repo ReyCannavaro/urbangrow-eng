@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { TelemetryProvider } from "@/lib/telemetryContext";
+import { AppShell } from "@/components/layout/AppShell";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,9 +15,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "UrbanGrow | Smart Aquaponics AI & IoT Dashboard",
+  title: "UrbanGrow | Smart Aquaponics Ecosystem",
   description:
-    "Autonomous climate-adaptive urban food ecosystem with real-time generative IoT telemetry and intelligent actuator automation.",
+    "Autonomous climate-adaptive urban food ecosystem with real-time IoT telemetry, 4-level vertical aquaponics, and predictive decision intelligence.",
+  icons: {
+    icon: "/urbangrow-logo.png",
+  },
 };
 
 export default function RootLayout({
@@ -26,10 +31,13 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full bg-[#070b12] text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-black">
-        {children}
+      <body className="min-h-full flex flex-col font-sans">
+        <TelemetryProvider>
+          <AppShell>{children}</AppShell>
+        </TelemetryProvider>
       </body>
     </html>
   );
