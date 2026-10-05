@@ -1,64 +1,88 @@
-import { Elysia } from "elysia";
+import { Elysia, t } from "elysia";
+import { cors } from "@elysiajs/cors";
+import { simulator } from "./simulator";
 
-export interface SensorReading {
-  ph: number;
-  tds: number;
-  waterTemperature: number;
-  airTemperature: number;
-  humidity: number;
-  lightIntensity: number;
-}
-
-// Function to generate realistic mock sensor readings for smart aquaponics
-export function generateSensorData() {
-  const round = (val: number, decimals: number = 2) =>
-    Number(val.toFixed(decimals));
-
-  const ph = round(6.5 + Math.random() * 1.0, 2);
-  const tds = Math.round(400 + Math.random() * 400);
-  const waterTemperature = round(22.0 + Math.random() * 6.0, 1);
-  const airTemperature = round(24.0 + Math.random() * 8.0, 1);
-  const humidity = round(60.0 + Math.random() * 25.0, 1);
-  const lightIntensity = Math.round(300 + Math.random() * 1200);
-
-  return {
-    timestamp: new Date().toISOString(),
-    data: {
-      ph,
-      tds,
-      waterTemperature,
-      airTemperature,
-      humidity,
-      lightIntensity,
-    },
-    units: {
-      ph: "pH",
-      tds: "ppm",
-      waterTemperature: "°C",
-      airTemperature: "°C",
-      humidity: "%",
-      lightIntensity: "lux",
-    },
-    system: {
-      status: "online",
-      mode: "mock",
-      source: "ESP32 Simulated Feed",
-    },
-  };
-}
-
-const app = new Elysia()
+export const app = new Elysia()
+  .use(
+    cors({
+      origin: true,
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"],
+    })
+  )
   .get("/", () => ({
     name: "UrbanGrow Backend API",
     version: "1.0.0",
     status: "running",
+    mode: "generative_simulation",
     endpoints: {
-      sensorsCurrent: "/api/sensors/current",
+      current: "/api/sensors/current",
+      history: "/api/sensors/history",
+      alerts: "/api/alerts",
+      toggleActuator: "POST /api/actuators/:id/toggle",
+      simulateAnomaly: "POST /api/simulation/anomaly",
     },
   }))
-  .get("/api/sensors/current", () => generateSensorData())
+  // 1. Current real-time sensor snapshot
+  .get("/api/sensors/current", () => simulator.getSnapshot())
+
+  // 2. Historical sensor data for telemetry trend charts
+  .get("/api/sensors/history", () => ({
+    success: true,
+    count: simulator.getHistory().length,
+    data: simulator.getHistory(),
+  }))
+
+  // 3. Active system alerts
+  .get("/api/alerts", () => ({
+    success: true,
+    alerts: simulator.evaluateAlerts(),
+  }))
+
+  // 4. Actuator toggling (pump, aerator, light, dosing)
+  .post(
+    "/api/actuators/:id/toggle",
+    ({ params: { id }, set }) => {
+      const updated = simulator.toggleActuator(id);
+      if (!updated) {
+        set.status = 404;
+        return { success: false, message: `Actuator '${id}' not found` };
+      }
+      return { success: true, actuator: updated };
+    },
+    {
+      params: t.Object({
+        id: t.String(),
+      }),
+    }
+  )
+
+  // 5. Trigger generative anomaly mode (ph_drop, heatwave, tds_spike, none)
+  .post(
+    "/api/simulation/anomaly",
+    ({ body }) => {
+      const result = simulator.setAnomaly(body.type as any);
+      return {
+        success: true,
+        message: `Simulation mode changed to: ${body.type}`,
+        ...result,
+      };
+    },
+    {
+      body: t.Object({
+        type: t.Union([
+          t.Literal("none"),
+          t.Literal("ph_drop"),
+          t.Literal("heatwave"),
+          t.Literal("tds_spike"),
+        ]),
+      }),
+    }
+  )
   .listen(3000);
 
+export type App = typeof app;
+
 console.log(
-  `🌱 UrbanGrow Backend (Elysia) is running at http://${app.server?.hostname}:${app.server?.port}`
+  `🌱 UrbanGrow Backend (Elysia) running at http://${app.server?.hostname}:${app.server?.port}`
 );
