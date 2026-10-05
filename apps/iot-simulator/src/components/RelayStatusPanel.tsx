@@ -1,6 +1,6 @@
 import React from 'react';
 import type { ActuatorItem } from '../types';
-import { Zap, Waves, Wind, Sun, Power } from 'lucide-react';
+import { Zap, Waves, Wind, Sun, Check, Power } from 'lucide-react';
 
 interface RelayStatusPanelProps {
   actuators: Record<string, ActuatorItem>;
@@ -25,85 +25,100 @@ export const RelayStatusPanel: React.FC<RelayStatusPanelProps> = ({
     }
   };
 
+  const activeCount = Object.values(actuators).filter((a) => a.isOn).length;
+  const totalCount = Object.values(actuators).length;
+
   return (
-    <div className="p-6 rounded-2xl bg-[#111827] border border-[#223048] shadow-lg space-y-4">
-      <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-        <div className="flex items-center gap-2">
-          <Zap className="h-5 w-5 text-yellow-400" />
-          <h2 className="text-sm font-bold tracking-wide text-white uppercase">
-            Relay Actuator Physical Status
-          </h2>
+    <div className="rounded-[28px] bg-[#1E1F24] text-white p-6 shadow-xl space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-white/10">
+        <div>
+          <div className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-[var(--accent-yellow)]" />
+            <h2 className="text-sm font-semibold tracking-tight text-white">
+              Status Fisik Relay Aktuator ESP32
+            </h2>
+          </div>
+          <p className="text-[11px] text-stone-400 mt-0.5">
+            Sinkronisasi dua arah real-time dengan tombol saklar di HP kamu
+          </p>
         </div>
-        <span className="mono text-xs text-slate-400">
-          ESP32 OPTOCOUPLER 4-CHANNEL RELAY MODULE
-        </span>
+
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-mono text-stone-400">Aktuator Aktif:</span>
+          <span className="px-3 py-1 rounded-full bg-[var(--accent-yellow)] text-stone-900 font-mono font-bold text-xs">
+            {activeCount} / {totalCount}
+          </span>
+        </div>
       </div>
 
-      <p className="text-xs text-slate-400">
-        Status saklar di bawah ini sinkron dua arah secara instan dengan aplikasi Flutter di HP kamu:
-      </p>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-1">
         {Object.values(actuators).map((act, idx) => {
           const isOn = act.isOn;
 
           return (
             <div
               key={act.id}
-              className={`p-4 rounded-xl border transition-all flex flex-col justify-between ${
+              onClick={() => onToggleActuator(act.id)}
+              className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
                 isOn
-                  ? 'bg-slate-800/90 border-amber-400/60 shadow-md shadow-amber-500/10'
-                  : 'bg-slate-900/50 border-slate-800/80'
+                  ? 'bg-white/10 border-[var(--accent-yellow)]/60 shadow-sm'
+                  : 'bg-white/5 border-white/10 hover:border-white/20'
               }`}
             >
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="mono text-[10px] text-slate-400 font-bold">
-                    CH-0{idx + 1} // RELAY
+                  <span className="text-[10px] font-mono text-stone-400 font-semibold">
+                    RELAY 0{idx + 1}
                   </span>
-                  {/* Physical LED Indicator */}
+                  {/* Yellow Checkmark Circle (Matching Crextio dark card) */}
                   <div
-                    className={`h-2.5 w-2.5 rounded-full ${
-                      isOn ? 'bg-amber-400 led-active text-amber-400' : 'bg-slate-700'
+                    className={`h-4 w-4 rounded-full flex items-center justify-center transition-colors ${
+                      isOn
+                        ? 'bg-[var(--accent-yellow)] text-stone-900'
+                        : 'border border-white/30'
                     }`}
-                  />
+                  >
+                    {isOn && <Check className="h-2.5 w-2.5 stroke-[3]" />}
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2.5 mt-1">
+                <div className="flex items-center gap-3 mt-1">
                   <div
-                    className={`p-2 rounded-lg ${
-                      isOn ? 'bg-amber-500/20 text-amber-300' : 'bg-slate-800 text-slate-500'
+                    className={`p-2.5 rounded-xl ${
+                      isOn ? 'bg-[var(--accent-yellow)] text-stone-900' : 'bg-white/10 text-stone-400'
                     }`}
                   >
                     {getIcon(act.type)}
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-white leading-snug">{act.name}</h4>
-                    <span className="mono text-[10px] text-slate-400">{act.powerWatts} Watt</span>
+                    <h4 className="text-xs font-semibold text-white leading-snug">{act.name}</h4>
+                    <span className="text-[11px] font-mono text-stone-400">{act.powerWatts} Watt</span>
                   </div>
                 </div>
               </div>
 
-              {/* Toggle Action */}
-              <div className="pt-3 mt-3 border-t border-slate-800/60 flex items-center justify-between">
+              <div className="pt-3 mt-3 border-t border-white/10 flex items-center justify-between">
                 <span
-                  className={`mono text-[10px] font-bold px-2 py-0.5 rounded ${
-                    isOn ? 'bg-amber-500/20 text-amber-300' : 'bg-slate-800 text-slate-500'
+                  className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                    isOn ? 'bg-[var(--accent-yellow)]/20 text-[var(--accent-yellow)]' : 'bg-white/10 text-stone-400'
                   }`}
                 >
-                  {isOn ? 'RELAY CLOSED (ON)' : 'RELAY OPEN (OFF)'}
+                  {isOn ? 'TERHUBUNG (ON)' : 'STANDBY (OFF)'}
                 </span>
 
                 <button
-                  onClick={() => onToggleActuator(act.id)}
-                  className={`h-7 w-7 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleActuator(act.id);
+                  }}
+                  className={`h-6 w-6 rounded-lg flex items-center justify-center transition cursor-pointer ${
                     isOn
-                      ? 'bg-amber-400 text-slate-950 hover:bg-amber-300'
-                      : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+                      ? 'bg-[var(--accent-yellow)] text-stone-900'
+                      : 'bg-white/10 text-stone-400 hover:text-white'
                   }`}
-                  title="Toggle manual dari simulator"
+                  title="Toggle manual"
                 >
-                  <Power className="h-3.5 w-3.5" />
+                  <Power className="h-3 w-3" />
                 </button>
               </div>
             </div>

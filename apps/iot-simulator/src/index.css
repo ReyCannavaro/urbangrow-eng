@@ -1,51 +1,57 @@
+@import "tailwindcss";
+
+/* =========================================================================
+   URBANGROW WARM EDITORIAL BENTO DESIGN SYSTEM (IoT SIMULATOR)
+   Matching apps/web design identity (Buttermilk cream, porcelain cards, charcoal)
+   ========================================================================= */
+
 :root {
-  --bg-space: #090d16;
-  --bg-panel: #111827;
-  --bg-card: #182234;
-  --bg-card-hover: #1f2c42;
-  --border-dim: #223048;
-  --border-bright: #3b82f6;
+  --bg-canvas: #f3efe6;
+  --bg-frame: #faf8f3;
+  --bg-card: #ffffff;
+  --bg-card-subtle: #f7f4ee;
+  --bg-charcoal: #1e1f24;
+  --bg-charcoal-elevated: #282a30;
 
-  --text-main: #f1f5f9;
-  --text-muted: #94a3b8;
-  --text-dim: #64748b;
+  --accent-yellow: #facc15;
+  --accent-yellow-light: #fef08a;
+  --accent-yellow-deep: #d97706;
+  --accent-emerald: #10b981;
+  --accent-cyan: #0ea5e9;
+  --accent-coral: #f43f5e;
 
-  --neon-cyan: #00f0ff;
-  --neon-emerald: #10b981;
-  --neon-amber: #f59e0b;
-  --neon-rose: #f43f5e;
-  --neon-purple: #a855f7;
+  --border-light: rgba(0, 0, 0, 0.08);
+  --border-medium: rgba(0, 0, 0, 0.14);
+  --border-charcoal: rgba(255, 255, 255, 0.1);
 
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  color-scheme: dark;
-}
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+  --text-primary: #191b1f;
+  --text-secondary: #666973;
+  --text-muted: #9598a3;
+  --text-inverse: #f8fafc;
 }
 
 body {
-  background-color: var(--bg-space);
-  color: var(--text-main);
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  letter-spacing: -0.015em;
+  -webkit-font-smoothing: antialiased;
   min-height: 100vh;
-  overflow-x: hidden;
-  background-image: 
-    radial-gradient(circle at 15% 15%, rgba(0, 240, 255, 0.05) 0%, transparent 40%),
-    radial-gradient(circle at 85% 85%, rgba(16, 185, 129, 0.05) 0%, transparent 40%),
-    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px;
+}
+
+/* Warm sunlight ambient gradient effect */
+.sunlit-radial-glow {
+  background: radial-gradient(circle at 95% 15%, rgba(250, 204, 21, 0.22) 0%, rgba(250, 204, 21, 0.06) 35%, transparent 70%);
 }
 
 .mono {
   font-family: 'Fira Code', monospace;
 }
 
-/* Custom Tactical Sliders */
+/* Custom Tactical Warm Bento Sliders */
 input[type=range] {
   -webkit-appearance: none;
+  appearance: none;
   width: 100%;
   background: transparent;
 }
@@ -58,41 +64,27 @@ input[type=range]::-webkit-slider-runnable-track {
   width: 100%;
   height: 8px;
   cursor: pointer;
-  background: #1e293b;
-  border-radius: 999px;
-  border: 1px solid #334155;
+  background: #e7e2d6;
+  border-radius: 9999px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 input[type=range]::-webkit-slider-thumb {
-  height: 20px;
-  width: 20px;
+  height: 22px;
+  width: 22px;
   border-radius: 50%;
-  background: #00f0ff;
+  background: #1e1f24;
   cursor: pointer;
   -webkit-appearance: none;
-  margin-top: -6px;
-  box-shadow: 0 0 10px rgba(0, 240, 255, 0.7);
+  margin-top: -7px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
   transition: transform 0.15s ease, background-color 0.15s ease;
 }
 
 input[type=range]::-webkit-slider-thumb:hover {
   transform: scale(1.18);
-  background: #ffffff;
-}
-
-/* Animated Water Pipe */
-@keyframes flowWater {
-  0% {
-    stroke-dashoffset: 40;
-  }
-  100% {
-    stroke-dashoffset: 0;
-  }
-}
-
-.water-flow-active {
-  stroke-dasharray: 8 6;
-  animation: flowWater 0.8s linear infinite;
+  background: #facc15;
 }
 
 /* Bubbles Effect */
@@ -114,16 +106,7 @@ input[type=range]::-webkit-slider-thumb:hover {
   animation: bubbleFloat 1.2s ease-in-out infinite;
 }
 
-/* LED Pulse Glow */
-@keyframes ledGlow {
-  0%, 100% {
-    box-shadow: 0 0 6px currentColor;
-  }
-  50% {
-    box-shadow: 0 0 16px currentColor;
-  }
-}
-
-.led-active {
-  animation: ledGlow 1.5s ease-in-out infinite;
+/* Smooth Transitions */
+* {
+  border-color: var(--border-light);
 }

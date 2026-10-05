@@ -1,6 +1,5 @@
-import React from 'react';
 import type { ActuatorItem, SensorState } from '../types';
-import { Waves, Wind, Sun, ArrowUp, Fish, Sprout, Layers } from 'lucide-react';
+import { Waves, Wind, Sun, ArrowDown, ArrowUp, Layers } from 'lucide-react';
 
 interface HardwareSchematicProps {
   sensors: SensorState;
@@ -17,208 +16,204 @@ export const HardwareSchematic: React.FC<HardwareSchematicProps> = ({
   const isFeederOn = actuators.feeder?.isOn ?? false;
 
   return (
-    <div className="p-6 rounded-2xl bg-[#111827] border border-[#223048] shadow-lg space-y-6">
-      <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+    <div className="rounded-[28px] bg-white border border-stone-200/80 p-6 shadow-xs space-y-4">
+      <div className="flex items-center justify-between pb-3 border-b border-stone-100">
         <div className="flex items-center gap-2">
-          <Layers className="h-5 w-5 text-cyan-400" />
-          <h2 className="text-sm font-bold tracking-wide text-white uppercase">
+          <Layers className="h-4 w-4 text-emerald-600" />
+          <h2 className="text-sm font-semibold tracking-tight text-stone-900">
             Skematik Fisik 4-Level Modular Aquaponics
           </h2>
         </div>
-        <span className="mono text-xs text-slate-400">
-          AIR FLOW GRAVITY CASCADE // RESIRKULASI TERTUTUP
+        <span className="text-[11px] font-mono text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 font-semibold">
+          ALIRAN GRAVITASI TERTUTUP
         </span>
       </div>
 
-      {/* Main Visual Rack */}
-      <div className="relative grid grid-cols-1 gap-5 max-w-2xl mx-auto py-2">
-        {/* PVC Pipe Return Loop Graphic (Left Vertical Spine) */}
-        <div className="absolute left-[-22px] top-6 bottom-6 w-4 border-l-2 border-dashed border-cyan-500/40 hidden md:block">
-          <div
-            className={`absolute top-1/2 -left-3 -translate-y-1/2 p-1.5 rounded-full ${
-              isPumpOn ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/50' : 'bg-slate-800 text-slate-500'
-            }`}
-            title="Pompa Sirkulasi 12V DC"
-          >
-            <ArrowUp className={`h-3.5 w-3.5 ${isPumpOn ? 'animate-bounce' : ''}`} />
-          </div>
-        </div>
-
+      <div className="space-y-3 py-1">
         {/* LEVEL 4: PAKCOY & GROW LIGHT */}
         <div
-          className={`p-4 rounded-xl border transition-all relative overflow-hidden ${
+          className={`rounded-2xl p-4 border transition-all relative overflow-hidden ${
             isLightOn
-              ? 'bg-purple-950/20 border-purple-500/60 shadow-lg shadow-purple-500/10'
-              : 'bg-slate-900/60 border-slate-800'
+              ? 'bg-purple-50/60 border-purple-300 ring-1 ring-purple-200 shadow-sm'
+              : 'bg-stone-50 border-stone-200/80'
           }`}
         >
-          {/* LED Grow Light Fixture */}
-          <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-800/60">
+          {/* LED Grow Light Status Bar */}
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-stone-200/60">
             <div className="flex items-center gap-2">
-              <Sun className={`h-4 w-4 ${isLightOn ? 'text-amber-300 animate-pulse' : 'text-slate-600'}`} />
-              <span className="mono text-xs font-semibold text-slate-300">
-                LED Grow Light Array (85W PAR Spektrum)
+              <Sun className={`h-4 w-4 ${isLightOn ? 'text-amber-500 animate-pulse' : 'text-stone-400'}`} />
+              <span className="text-xs font-semibold text-stone-700">
+                Lampu LED Grow Light (85W PAR Spektrum)
               </span>
             </div>
             <span
-              className={`mono text-[10px] px-2 py-0.5 rounded font-bold ${
-                isLightOn
-                  ? 'bg-purple-500 text-white shadow-sm shadow-purple-500/50'
-                  : 'bg-slate-800 text-slate-500'
+              className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                isLightOn ? 'bg-purple-100 text-purple-900' : 'bg-stone-200 text-stone-600'
               }`}
             >
-              {isLightOn ? 'ILUMINASI ON' : 'STANDBY OFF'}
+              {isLightOn ? 'ILUMINASI ON' : 'STANDBY'}
             </span>
           </div>
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                <Sprout className="h-5 w-5" />
+              <div className="h-9 w-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-mono font-bold text-xs">
+                L4
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white">Level 4: Sayuran Pakcoy</h3>
-                <p className="text-xs text-slate-400">
-                  Perakaran Renggang • Menghasilkan DO Tertinggi (~{sensors.dissolvedOxygen} mg/L)
+                <h3 className="font-semibold text-xs text-stone-900">Level 4: Sayuran Pakcoy</h3>
+                <p className="text-[11px] text-stone-500 mt-0.5">
+                  Akar Renggang • Menghasilkan DO Tertinggi
                 </p>
               </div>
             </div>
-            <div className="text-right mono text-xs">
-              <div className="text-emerald-400 font-bold">{sensors.lightIntensity} LUX</div>
-              <div className="text-slate-500 text-[10px]">120 Pods</div>
+            <div className="text-right font-mono text-xs">
+              <div className="text-emerald-700 font-bold">{sensors.lightIntensity} LUX</div>
+              <div className="text-stone-400 text-[10px]">120 Pods</div>
             </div>
           </div>
         </div>
 
         {/* Gravity Flow Indicator 1 */}
-        <div className="flex items-center justify-center gap-2 text-[11px] mono text-cyan-400/80">
-          <Waves className={`h-3.5 w-3.5 ${isPumpOn ? 'animate-pulse text-cyan-400' : 'text-slate-600'}`} />
+        <div className="flex items-center justify-center gap-1.5 text-[11px] font-mono text-sky-600">
+          <ArrowDown className={`h-3.5 w-3.5 ${isPumpOn ? 'animate-bounce' : ''}`} />
           <span>Limpahan Gravitasi Air Segar Kaya Oksigen</span>
         </div>
 
         {/* LEVEL 3: IKAN NILA & AERATOR */}
-        <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 relative overflow-hidden">
+        <div className="rounded-2xl p-4 bg-stone-50 border border-stone-200/80 relative overflow-hidden">
           {/* Bubbles animation if aerator is on */}
           {isAeratorOn && (
-            <div className="absolute inset-0 pointer-events-none flex justify-around opacity-40">
-              <span className="bubble text-cyan-300 text-xs">⚪</span>
-              <span className="bubble text-cyan-300 text-xs [animation-delay:0.3s]">⚪</span>
-              <span className="bubble text-cyan-300 text-xs [animation-delay:0.7s]">⚪</span>
-              <span className="bubble text-cyan-300 text-xs [animation-delay:0.5s]">⚪</span>
+            <div className="absolute inset-0 pointer-events-none flex justify-around opacity-30">
+              <span className="bubble text-sky-500 text-xs">⚪</span>
+              <span className="bubble text-sky-500 text-xs [animation-delay:0.3s]">⚪</span>
+              <span className="bubble text-sky-500 text-xs [animation-delay:0.7s]">⚪</span>
+              <span className="bubble text-sky-500 text-xs [animation-delay:0.5s]">⚪</span>
             </div>
           )}
 
-          <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-800/60">
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-stone-200/60">
             <div className="flex items-center gap-2">
-              <Wind className={`h-4 w-4 ${isAeratorOn ? 'text-cyan-400 animate-spin' : 'text-slate-600'}`} />
-              <span className="mono text-xs font-semibold text-slate-300">
-                Aerator DO Booster (18W Dual Port)
+              <Wind className={`h-4 w-4 ${isAeratorOn ? 'text-sky-600 animate-spin' : 'text-stone-400'}`} />
+              <span className="text-xs font-semibold text-stone-700">
+                Aerator Oksigen Nila (18W Dual Port)
               </span>
             </div>
             <span
-              className={`mono text-[10px] px-2 py-0.5 rounded font-bold ${
-                isAeratorOn ? 'bg-cyan-500 text-slate-950' : 'bg-slate-800 text-slate-500'
+              className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                isAeratorOn ? 'bg-sky-100 text-sky-900' : 'bg-stone-200 text-stone-600'
               }`}
             >
-              {isAeratorOn ? 'DIFFUSING O₂' : 'OFF'}
+              {isAeratorOn ? 'AERASI AKTIF' : 'OFF'}
             </span>
           </div>
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
-                <Fish className="h-5 w-5" />
+              <div className="h-9 w-9 rounded-xl bg-sky-100 text-sky-800 flex items-center justify-center font-mono font-bold text-xs">
+                L3
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white">Level 3: Tandon Ikan Nila</h3>
-                <p className="text-xs text-slate-400">
-                  Sensitif Hipoksia (Wajib DO &gt; 5.0 mg/L) • Menghasilkan Limbah Organik
+                <h3 className="font-semibold text-xs text-stone-900">Level 3: Tandon Ikan Nila</h3>
+                <p className="text-[11px] text-stone-500 mt-0.5">
+                  Wajib DO &gt; 5.0 mg/L • Limbah Organik
                 </p>
               </div>
             </div>
-            <div className="text-right mono text-xs">
-              <div className="text-sky-400 font-bold">DO: {sensors.dissolvedOxygen} mg/L</div>
-              <div className="text-slate-500 text-[10px]">27 Ekor Nila</div>
+            <div className="text-right font-mono text-xs">
+              <div className="text-sky-700 font-bold">DO: {sensors.dissolvedOxygen} mg/L</div>
+              <div className="text-stone-400 text-[10px]">27 Ekor Nila</div>
             </div>
           </div>
 
           {/* Feeder Trigger Toast */}
           {isFeederOn && (
-            <div className="mt-3 p-2 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs mono flex items-center justify-between animate-pulse">
-              <span>🌾 Feeder Aktif: Menyebarkan 35g pelet terapung...</span>
+            <div className="mt-2.5 p-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-mono flex items-center justify-between animate-pulse">
+              <span>🌾 Pakan Terdistribusi: 35g pelet terapung keluar...</span>
               <span className="font-bold">DISPENSING</span>
             </div>
           )}
         </div>
 
         {/* Gravity Flow Indicator 2 */}
-        <div className="flex items-center justify-center gap-2 text-[11px] mono text-amber-400/80">
-          <Waves className={`h-3.5 w-3.5 ${isPumpOn ? 'animate-pulse text-amber-400' : 'text-slate-600'}`} />
+        <div className="flex items-center justify-center gap-1.5 text-[11px] font-mono text-amber-600">
+          <ArrowDown className={`h-3.5 w-3.5 ${isPumpOn ? 'animate-bounce' : ''}`} />
           <span>Limpahan Limbah Amonia Menuju Substrat Biofilter</span>
         </div>
 
         {/* LEVEL 2: KANGKUNG BIOFILTER */}
-        <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800">
+        <div className="rounded-2xl p-4 bg-stone-50 border border-stone-200/80">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-                <Sprout className="h-5 w-5" />
+              <div className="h-9 w-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-mono font-bold text-xs">
+                L2
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white">Level 2: Biofilter Sayuran Kangkung</h3>
-                <p className="text-xs text-slate-400">
-                  Perakaran Masif • Pengurai Nitrifikasi (Amonia $\rightarrow$ Nitrat)
+                <h3 className="font-semibold text-xs text-stone-900">Level 2: Biofilter Sayuran Kangkung</h3>
+                <p className="text-[11px] text-stone-500 mt-0.5">
+                  Perakaran Masif • Pengurai Nitrifikasi Organik
                 </p>
               </div>
             </div>
-            <div className="text-right mono text-xs">
-              <div className="text-amber-400 font-bold">TDS: {sensors.tds} ppm</div>
-              <div className="text-slate-500 text-[10px]">100 Pods</div>
+            <div className="text-right font-mono text-xs">
+              <div className="text-amber-800 font-bold">TDS: {sensors.tds} ppm</div>
+              <div className="text-stone-400 text-[10px]">100 Pods</div>
             </div>
           </div>
         </div>
 
         {/* Gravity Flow Indicator 3 */}
-        <div className="flex items-center justify-center gap-2 text-[11px] mono text-cyan-400/80">
-          <Waves className={`h-3.5 w-3.5 ${isPumpOn ? 'animate-pulse text-cyan-400' : 'text-slate-600'}`} />
-          <span>Air Terfilter Mengalir ke Tandon Sump Dasar</span>
+        <div className="flex items-center justify-center gap-1.5 text-[11px] font-mono text-stone-500">
+          <ArrowDown className={`h-3.5 w-3.5 ${isPumpOn ? 'animate-bounce' : ''}`} />
+          <span>Air Terfilter Menuju Tandon Sump Dasar</span>
         </div>
 
         {/* LEVEL 1: LELE & POMPA RESIRKULASI */}
-        <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800">
-          <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-800/60">
+        <div className="rounded-2xl p-4 bg-stone-50 border border-stone-200/80">
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-stone-200/60">
             <div className="flex items-center gap-2">
-              <Waves className={`h-4 w-4 ${isPumpOn ? 'text-cyan-400 animate-pulse' : 'text-slate-600'}`} />
-              <span className="mono text-xs font-semibold text-slate-300">
-                Submersible Pump 12V DC (45W Lift)
+              <Waves className={`h-4 w-4 ${isPumpOn ? 'text-emerald-600 animate-pulse' : 'text-stone-400'}`} />
+              <span className="text-xs font-semibold text-stone-700">
+                Pompa Sirkulasi 12V DC (45W)
               </span>
             </div>
             <span
-              className={`mono text-[10px] px-2 py-0.5 rounded font-bold ${
-                isPumpOn ? 'bg-emerald-500 text-slate-950' : 'bg-rose-500 text-white'
+              className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                isPumpOn ? 'bg-emerald-100 text-emerald-900' : 'bg-rose-100 text-rose-900'
               }`}
             >
-              {isPumpOn ? 'RESIRKULASI ON' : 'PUMP STOP'}
+              {isPumpOn ? 'RESIRKULASI ON' : 'PUMP OFF'}
             </span>
           </div>
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-slate-700/30 border border-slate-600/30 flex items-center justify-center text-slate-300">
-                <Fish className="h-5 w-5" />
+              <div className="h-9 w-9 rounded-xl bg-stone-200 text-stone-800 flex items-center justify-center font-mono font-bold text-xs">
+                L1
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white">Level 1: Tandon Sump Ikan Lele</h3>
-                <p className="text-xs text-slate-400">
-                  Organ Arboresen • Toleran DO Rendah • Muara Pompa Sirkulasi
+                <h3 className="font-semibold text-xs text-stone-900">Level 1: Tandon Sump Ikan Lele</h3>
+                <p className="text-[11px] text-stone-500 mt-0.5">
+                  Organ Arboresen • Toleran O₂ Rendah • Muara Pompa
                 </p>
               </div>
             </div>
-            <div className="text-right mono text-xs">
-              <div className="text-cyan-400 font-bold">Level: {sensors.waterLevel}%</div>
-              <div className="text-slate-500 text-[10px]">27 Ekor Lele</div>
+            <div className="text-right font-mono text-xs">
+              <div className="text-stone-700 font-bold">Level: {sensors.waterLevel}%</div>
+              <div className="text-stone-400 text-[10px]">27 Ekor Lele</div>
             </div>
           </div>
+        </div>
+
+        {/* Closed-loop Pipe Return Lift */}
+        <div className="rounded-2xl bg-[#1E1F24] text-white p-3.5 flex items-center justify-between text-xs font-mono shadow-xs">
+          <div className="flex items-center gap-2 text-cyan-300">
+            <ArrowUp className={`h-4 w-4 ${isPumpOn ? 'animate-bounce' : ''}`} />
+            <span className="text-[11px]">PIPA PVC RESIRKULASI TERTUTUP (SUBMERSIBLE 12V)</span>
+          </div>
+          <span className="text-[10px] text-stone-400 font-semibold">
+            STATUS: {isPumpOn ? 'BEROPERASI' : 'STANDBY'}
+          </span>
         </div>
       </div>
     </div>
