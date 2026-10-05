@@ -1,0 +1,231 @@
+Rancang Bangun UrbanGrow Smart Aquaponic Berbasis IoT dan AI untuk Sistem Pangan Perkotaan Adaptif terhadap Perubahan Iklim: Growing Resilience Through Intelligent Technology
+REGU MAWAR
+Gabriella Fajar Setiwan
+Marcellina Septya Safira
+Reyjuno Al Cannavaro
+SMK TELKOM SIDOARJO
+KABUPATEN SIDOARJO
+TAHUN AJARAN 2026/2027
+DAFTAR ISI
+DAFTAR ISI2
+DAFTAR LAMPIRAN3
+Deskripsi Singkat Ide4
+1. Latar Belakang5
+2. Tujuan dan Manfaat Ide6
+2.1. Tujuan6
+2.2. Manfaat7
+3. Batasan dan Sasaran Pengguna8
+3.1. Batasan8
+3.2. Sasaran Pengguna9
+4. Analisis9
+4.1. Analisis Kebutuhan Sistem (System Requirements Analysis)9
+4.1.1 Kebutuhan Perangkat Keras (Hardware)9
+4.1.2 Kebutuhan Perangkat Lunak dan Kecerdasan Buatan (Software & AI)10
+4.1.3 Kebutuhan Ekologis dan Biologis11
+4.2. Analisis Komponen Berbasis Bukti (Evidence-Based Component Analysis)11
+4.3. Analisis Ekologis dan Pasangan Biologis (Scientific Biological Pairing)12
+4.4. Analisis Kerangka Konseptual dan Kecerdasan Buatan (Conceptual & AI Analysis)14
+4.5. Analisis Komparasi dan Kebaruan (Research Gap & Novelty Analysis)15
+4.6. Analisis Dampak dan Keberlanjutan (Impact & Sustainability Analysis)18
+5. Implementasi dan Cara Kerja19
+5.1. Implementasi Fisik dan Perangkat Keras (Hardware Implementation)19
+5.2. Implementasi Ekosistem Akuaponik Bertingkat (4-Level Aquaponic System)20
+5.3. Cara Kerja Akuisisi Data dan Kendali Aktuator (Data Acquisition & Actuator Control)21
+5.4. Cara Kerja AI Prediktif dan Analisis Historis (Predictive AI & Historical Analytics)22
+6. Desain23
+6.1. Arsitektur Perangkat Keras (Hardware Architecture)23
+6.2. Arsitektur Perangkat Lunak (Software Architecture)23
+6.3. Arsitektur Kecerdasan Buatan (AI Predictive Framework)24
+6.4. Representasi Antarmuka Pengguna (User Interface Representation)25
+Daftar Pustaka26
+LAMPIRAN27
+DAFTAR LAMPIRAN
+Lampiran 1. Diagram Alur28
+Lampiran 2. Diagram Sistem29
+Lampiran 3. Implementasi UrbanGrow30
+Lampiran 4. Kartu Pelajar31
+Deskripsi Singkat Ide
+UrbanGrow merupakan Climate Adaptive Urban Food Ecosystem berbasis Internet of Things (IoT) dan Artificial Intelligence (AI) yang dirancang untuk membantu rumah tangga perkotaan meningkatkan ketahanan pangan sekaligus beradaptasi terhadap perubahan iklim. Inovasi ini merespons keterbatasan lahan, kebutuhan efisiensi air, dan ketergantungan terhadap rantai distribusi pangan. Berbeda dari smart farming yang umumnya hanya berfokus pada pemantauan, UrbanGrow dikembangkan sebagai ekosistem pangan rumah tangga yang adaptif dan berbasis data. UrbanGrow mengintegrasikan sistem akuaponik, sensor IoT, AI, dan Historical Analytics Dashboard. Akuaponik membudidayakan ikan dan tanaman dalam siklus resirkulasi air, sementara sensor yang terhubung dengan ESP32 memantau pH, TDS, suhu, kelembapan, intensitas cahaya, dan ketinggian air sebagai dasar analisis historis.
+Pembeda utama UrbanGrow adalah Climate Adaptive Predictive AI yang mengolah data historis untuk menghasilkan prediksi pertumbuhan tanaman, estimasi waktu panen, prediksi kualitas air, peringatan dini, dan rekomendasi adaptif. Hasilnya ditampilkan melalui dashboard dalam bentuk data real-time, tren historis, prediksi, dan rekomendasi sehingga pengelolaan dapat dilakukan secara lebih prediktif dan antisipatif.
+Seluruh komponen dirancang berdasarkan prinsip Evidence-Based Climate Adaptive Design, dengan pemilihan teknologi, metode budidaya, ikan, tanaman, sensor, dan sumber energi berdasarkan fungsi serta bukti ilmiah terkait adaptasi perubahan iklim. Produksi pangan di rumah, resirkulasi air, dan pengurangan ketergantungan terhadap rantai distribusi yang panjang juga berpotensi mendukung mitigasi perubahan iklim. Dengan demikian, UrbanGrow mentransformasi smart farming dari sistem yang sekadar memantau menjadi ekosistem pangan adaptif yang mampu memantau, mempelajari, memprediksi, dan membantu pengguna mengambil keputusan berbasis data.
+Latar Belakang
+Paradigma global dalam menangani perubahan iklim telah mengalami pergeseran. Jika sebelumnya perhatian lebih banyak difokuskan pada mitigasi untuk menurunkan emisi gas rumah kaca, kini lembaga internasional seperti Intergovernmental Panel on Climate Change (IPCC, 2023) menegaskan bahwa adaptasi menjadi kebutuhan yang tidak kalah mendesak. Pemanasan global dan anomali cuaca ekstrem telah mengganggu produktivitas pertanian dan perikanan serta mengancam stabilitas sistem pangan dunia. Oleh karena itu, diperlukan infrastruktur produksi pangan yang mampu bertahan terhadap tekanan lingkungan. 
+Tantangan tersebut semakin kompleks di wilayah perkotaan (urban) yang mengalami penyusutan lahan produktif, krisis air bersih, dan ketergantungan tinggi terhadap pasokan pangan dari luar daerah. Rantai distribusi yang panjang tidak hanya memicu ketidakstabilan harga, tetapi juga meningkatkan jejak karbon transportasi pangan (food miles). Merespons hal tersebut, IPCC dan Food and Agriculture Organization (FAO) mendorong pertanian perkotaan (urban agriculture) terintegrasi, salah satunya akuaponik, sebagai opsi adaptasi yang menjanjikan. Akuaponik mengintegrasikan budidaya ikan dan tanaman melalui sirkulasi air tertutup, sehingga mampu menghemat penggunaan air secara signifikan sekaligus menekan penggunaan pupuk sintetis (Okomoda et al., 2023). 
+Di era digitalisasi, Internet of Things (IoT) telah banyak diterapkan pada pertanian untuk mengatasi keterbatasan lahan. Namun, masih terdapat research gap. Tinjauan Subeesh et al. (2025) menunjukkan bahwa penelitian IoT pada pertanian tanpa media tanah mayoritas masih berfokus pada pemantauan (monitoring) dan otomasi dasar secara real-time. Sistem tersebut cenderung reaktif karena pengguna hanya merespons kondisi yang sedang terjadi, padahal data historis sensor seperti pH, TDS, suhu, dan intensitas cahaya dapat diolah menggunakan Artificial Intelligence (AI) untuk membangun kemampuan analitik prediktif (predictive analytics). 
+Untuk menjawab urgensi adaptasi iklim sekaligus mengisi research gap tersebut, proposal ini menggagas UrbanGrow: Smart Aquaponic Berbasis IoT dan AI untuk Sistem Pangan Perkotaan Adaptif terhadap Perubahan Iklim: Growing Resilience Through Intelligent Technology. Berbeda dari smart farming konvensional, UrbanGrow dirancang menggunakan kerangka Evidence-Based Climate Adaptive Design (ECAD), dengan setiap komponen—mulai dari perangkat IoT, hingga pemilihan pasangan biologis ikan dan tanaman—ditentukan berdasarkan literatur ilmiah terkait kemampuannya menghadapi perubahan iklim. UrbanGrow diharapkan membantu masyarakat perkotaan memproduksi pangan sehat secara mandiri dan efisien, sekaligus berkontribusi pada mitigasi iklim (Climate Positive) melalui pemendekan rantai distribusi pangan dan pengurangan penggunaan energi fosil. 
+Tujuan dan Manfaat Ide
+Tujuan
+UrbanGrow dikembangkan sebagai sistem akuaponik rumah tangga yang adaptif terhadap perubahan lingkungan dan berbasis data. Tujuan pengembangan UrbanGrow meliputi: 
+Merancang sistem akuaponik rumah tangga berbasis Climate Adaptive Design yang sesuai dengan kondisi lingkungan dan kebutuhan ikan serta tanaman. 
+Mengintegrasikan IoT dan AI untuk memantau, menganalisis, dan mendukung pengambilan keputusan dalam budidaya. 
+Meningkatkan efisiensi penggunaan air dan nutrisi melalui sistem akuaponik dengan siklus resirkulasi. 
+Mendukung kemandirian pangan rumah tangga perkotaan melalui budidaya ikan dan tanaman pada lahan terbatas. 
+Mengurangi dampak lingkungan dari produksi dan distribusi pangan melalui resirkulasi air, dan produksi pangan lokal. 
+Mengembangkan AI berbasis data sensor untuk memprediksi pertumbuhan tanaman, waktu panen, serta memberikan peringatan dan rekomendasi perawatan. 
+Manfaat
+Penerapan UrbanGrow diharapkan memberikan manfaat bagi rumah tangga, lingkungan, serta pengembangan teknologi pertanian perkotaan.
+Manfaat bagi Rumah Tangga
+Menyediakan alternatif  sumber pangan segar berupa sayuran dan ikan yang dapat diproduksi secara mandiri.
+Memudahkan pemantauan dan pengelolaan akuaponik melalui dashboard dan rekomendasi berbasis AI. 
+Membantu pengguna tanpa pengetahuan khusus dalam mengelola sistem budidaya. 
+Meningkatkan pemahaman keluarga mengenai produksi pangan dan adaptasi terhadap perubahan iklim. 
+Manfaat bagi Lingkungan
+Mengurangi food miles dan potensi emisi dari transportasi pangan melalui produksi di tingkat rumah tangga. 
+Menghemat air melalui sistem akuaponik dengan siklus resirkulasi. 
+Mengurangi kebutuhan pupuk sintetis melalui pemanfaatan nutrisi dari hasil metabolisme ikan. 
+Manfaat bagi Pengembangan Teknologi dan Ilmu Pengetahuan
+Menjadi contoh integrasi IoT dan AI pada soilless agriculture untuk analisis dan prediksi pertumbuhan tanaman. 
+Menjadi dasar penerapan Evidence-Based Climate Adaptive Design pada produksi pangan skala rumah tangga. 
+Menyediakan data historis untuk pengembangan model prediksi dan penelitian pertanian perkotaan berbasis AI. 
+Membuka peluang penerapan UrbanGrow pada skala komunitas untuk mendukung ketahanan pangan perkotaan. 
+Batasan dan Sasaran Pengguna
+Batasan
+Pengembangan UrbanGrow difokuskan pada penerapan sistem akuaponik cerdas skala rumah tangga perkotaan dengan ruang lingkup sebagai berikut: 
+Skala Sistem: Ditujukan untuk rumah tangga perkotaan dengan lahan terbatas, bukan untuk pertanian komersial atau industri. 
+Metode Budidaya: Menggunakan akuaponik yang mengintegrasikan ikan air tawar dan tanaman dalam sistem resirkulasi air. 
+Parameter Pemantauan: Meliputi pH, TDS, suhu air, suhu udara, kelembapan, dan intensitas cahaya sebagai dasar pemantauan dan analisis AI. 
+Fungsi AI: Mengolah data historis untuk prediksi pertumbuhan, estimasi waktu panen, peringatan dini, dan rekomendasi perawatan, tanpa berfokus pada deteksi penyakit berbasis citra. 
+Cakupan Pengembangan: Berfokus pada perangkat IoT, sistem akuaponik, pengolahan data, dan AI. Fitur seperti marketplace, pengelolaan komunitas, dan ekonomi sirkular masih menjadi pengembangan lanjutan. 
+Sasaran Pengguna
+UrbanGrow ditujukan bagi pengguna yang ingin menerapkan produksi pangan rumah tangga berbasis IoT dan AI, meliputi: 
+Rumah tangga perkotaan, dengan lahan terbatas seperti halaman kecil, balkon, atau rooftop untuk memproduksi sebagian kebutuhan pangan secara mandiri. 
+Komunitas urban farming, yang membutuhkan sistem pemantauan akuaponik yang lebih terukur. 
+Pengelola kawasan hunian, seperti perumahan dan apartemen untuk mendukung ketahanan pangan bersama. 
+Institusi pendidikan, seperti sekolah, perguruan tinggi, dan komunitas pembelajaran sebagai media praktik IoT, AI, akuaponik, dan adaptasi perubahan iklim. 
+Analisis
+Analisis Kebutuhan Sistem (System Requirements Analysis) 
+UrbanGrow dirancang sebagai ekosistem cerdas yang mengintegrasikan perangkat keras, perangkat lunak, AI, serta komponen biologis. Kebutuhan sistem dibagi menjadi tiga pilar utama untuk mendukung penerapan Evidence-Based Climate Adaptive Design (ECAD).  
+Kebutuhan Perangkat Keras (Hardware)
+Untuk mendukung akuisisi data dan otomasi lingkungan, kebutuhan perangkat keras UrbanGrow meliputi: 
+Unit Akuisisi Data (Sensor): Sensor pH dan TDS sebagai parameter kualitas air, dilengkapi sensor suhu air, suhu udara dan kelembapan (DHT22), intensitas cahaya (LDR), serta water level. 
+Unit Kendali dan Transmisi: ESP32 sebagai pusat akuisisi data dan IoT gateway untuk mengirimkan data ke penyimpanan cloud melalui jaringan nirkabel. 
+Unit Aktuator: Pompa air untuk sirkulasi, aerator untuk menjaga oksigen terlarut (DO), serta LED Grow Light terprogram untuk mendukung pertumbuhan tanaman pada kondisi minim cahaya.  
+Kebutuhan Perangkat Lunak dan Kecerdasan Buatan (Software & AI) 
+Sebagai pembeda utama dari smart farming konvensional, kapabilitas prediktif UrbanGrow sangat bergantung pada pemenuhan arsitektur perangkat lunak berikut: 
+Pangkalan Data Historis (Time-Series Database): Sistem penyimpanan time-series berbasis cloud maupun lokal untuk merekam data sensor secara berkelanjutan. 
+Modul Predictive Analytics (AI): Algoritma machine learning seperti regresi, ensemble, atau time-series untuk mengolah data historis menjadi prediksi pertumbuhan tanaman, estimasi waktu panen, dan rekomendasi perawatan adaptif.  
+Antarmuka Pengguna (Historical Analytics Dashboard): Dashboard berbasis web atau perangkat bergerak untuk menampilkan data real-time, tren historis, peringatan dini (early warning), serta Climate Adaptation Score sebagai dasar pengambilan keputusan.  
+Kebutuhan Ekologis dan Biologis 
+Karena UrbanGrow merupakan ekosistem kehidupan biologis yang bersimbiosis, spesifikasi ekologis yang dibutuhkan meliputi: 
+Infrastruktur Akuaponik Closed-Loop: Terdiri atas tandon ikan, grow bed, biofilter, dan sistem perpipaan resirkulasi untuk menjaga efisiensi penggunaan air.  
+Komoditas Biologis Tepat Guna: Menggunakan ikan air tawar yang toleran terhadap fluktuasi lingkungan, seperti lele atau nila, serta sayuran bernilai gizi dengan masa panen relatif singkat, seperti kangkung atau pakcoy. Keseimbangan antara limbah organik ikan dan kebutuhan nutrisi tanaman menjadi dasar keberlangsungan sistem.  
+Analisis Komponen Berbasis Bukti (Evidence-Based Component Analysis) 
+Implementasi UrbanGrow menerapkan prinsip Evidence-Based Climate Adaptive Design (ECAD), yaitu setiap komponen dipilih berdasarkan fungsi dan bukti ilmiah yang relevan dengan kebutuhan adaptasi perubahan iklim.  Berikut adalah penjabaran analisis pemilihan komponen utama pada sistem: 
+Sistem Resirkulasi Akuaponik (Closed-Loop Aquaponics) Krisis air dan kekeringan panjang (heatwave) merupakan dampak nyata perubahan iklim di perkotaan. Akuaponik dipilih untuk menghadapi keterbatasan air dan risiko kekeringan dengan menerapkan sirkulasi air tertutup yang lebih hemat dibandingkan budidaya konvensional (Okomoda et al., 2023). Limbah organik ikan juga dimanfaatkan sebagai nutrisi tanaman sehingga mengurangi kebutuhan pupuk sintetis.  
+Sensor Lingkungan dan Kualitas Air (pH & TDS) Sensor pH, TDS, serta sensor lingkungan digunakan untuk memantau kondisi air dan lingkungan yang dapat berubah akibat anomali cuaca. Data yang dikumpulkan secara konsisten menjadi dasar pemantauan dan deteksi dini terhadap kondisi yang berpotensi mengganggu budidaya. 
+Pencahayaan Presisi (LED Grow Light) LED Grow Light digunakan untuk mengatasi keterbatasan dan perubahan intensitas cahaya, terutama pada hunian perkotaan dengan akses sinar matahari terbatas. Teknologi LED memungkinkan pemberian spektrum cahaya yang mendukung fotosintesis dengan penggunaan energi yang efisien. 
+Kecerdasan Buatan Adaptif (Climate Adaptive AI) AI dipilih untuk mengatasi keterbatasan sistem IoT yang hanya berfungsi sebagai monitoring. Berdasarkan Subeesh et al. (2025), data historis sensor dapat dikembangkan menjadi predictive analytics untuk menghasilkan prediksi pertumbuhan dan panen, adaptive recommendation, serta Climate Adaptation Score sebagai pendukung keputusan pengguna dalam menghadapi perubahan kondisi lingkungan. 
+Analisis Ekologis dan Pasangan Biologis (Scientific Biological Pairing) 
+Salah satu pembeda UrbanGrow adalah penerapan Scientific Biological Pairing, yaitu pemilihan pasangan ikan dan tanaman berdasarkan kesesuaian kebutuhan oksigen terlarut (DO), karakteristik akar, serta kebutuhan nutrisi rumah tangga dengan mengacu pada standar WHO dan FAO. 
+Berdasarkan parameter tersebut, UrbanGrow merumuskan dua model pasangan biologis utama:
+Model Pasangan 1: Ikan Lele (Clarias sp.) dan Kangkung (Ipomoea aquatica) Pasangan ini dirancang untuk kondisi lingkungan yang fluktuatif atau memiliki keterbatasan aerasi. Secara biologis, ikan lele memiliki tingkat toleransi yang sangat tinggi terhadap kondisi Oksigen Terlarut (DO) yang rendah. Di sisi lain, kangkung memiliki sistem perakaran yang sangat rapat dan masif, yang secara alami dapat mengurangi kadar oksigen dalam sirkulasi air. Oleh karena itu, penggabungan keduanya menciptakan simbiosis yang sangat cocok dan stabil secara ekologis, di mana karakteristik akar kangkung tidak akan membahayakan kelangsungan hidup ikan lele. Kangkung juga dipilih karena siklus panennya yang pendek, serta kaya akan Vitamin A, Vitamin C, dan zat besi.    
+Model Pasangan 2: Ikan Nila (Oreochromis niloticus) dan Pakcoy (Brassica rapa subsp. chinensis) Model ini dirancang untuk sistem dengan kualitas sirkulasi dan aerasi air yang lebih optimal. Berbeda dengan lele, ikan nila membutuhkan tingkat Oksigen Terlarut (DO) yang jauh lebih tinggi untuk tumbuh optimal. Untuk menyeimbangkan kebutuhan tersebut, pakcoy dipilih sebagai pasangan biologis karena tanaman ini memiliki struktur akar yang lebih renggang (less dense). Karakteristik perakaran pakcoy memungkinkan sirkulasi oksigen di dalam air tetap berjalan dengan baik, sehingga kualitas air tetap stabil untuk mendukung kehidupan ikan nila. Dari segi gizi, pakcoy sangat padat mikronutrien, meliputi Vitamin K, Folat, Kalsium, dan Antioksidan tinggi.   
+Desain Ekosistem Sirkular dan Nutrisi (Circular Ecosystem & Nutrition Design) lebih dari sekadar kesesuaian biologis, kedua pasangan di atas mengusung konsep Zero Waste dalam siklus akuaponik. Limbah organik dari metabolisme ikan diurai oleh bakteri menjadi nutrisi esensial bagi tanaman. Selanjutnya, tanaman menyerap nutrisi tersebut, yang secara bersamaan bertindak sebagai filter biologis yang menjernihkan air untuk dikembalikan ke habitat ikan, menciptakan ekosistem sirkular yang hemat air dan bebas pencemaran. 
+Desain ini juga merujuk pada prinsip Sustainable Healthy Diets yang didorong oleh World Health Organization (WHO) dan Food and Agriculture Organization (FAO). UrbanGrow memungkinkan rumah tangga mengakses sumber makronutrien (protein berkualitas rendah jejak karbon dari ikan) sekaligus mikronutrien (vitamin dan mineral dari sayuran) secara mandiri dan berkelanjutan dari satu ekosistem yang sama.  
+Analisis Kerangka Konseptual dan Kecerdasan Buatan (Conceptual & AI Analysis) 
+Secara konseptual, UrbanGrow dirancang bukan sekadar sebagai alat otomasi, tetapi sebagai Decision Support System bagi rumah tangga perkotaan. Sistem ini mengubah pendekatan smart farming yang reaktif menjadi lebih prediktif dan antisipatif melalui Climate Adaptive Predictive AI. 
+Sistem IoT umumnya logika sederhana, seperti menyalakan pompa ketika suhu meningkat, sehingga baru merespons setelah perubahan terjadi. UrbanGrow menggunakan Predictive Analytics untuk mengenali pola perubahan lingkungan dari data historis dan memberikan peringatan serta rekomendasi sebelum kondisi budidaya mencapai tingkat kritis.  
+Alur Pemrosesan Kecerdasan Buatan (AI Processing Pipeline) bekerja menjadi tiga tahapan analitik: 
+Akuisisi Data Historis (Historical Data Ingestion): Data pH, TDS, suhu, kelembapan, dan intensitas cahaya dikumpulkan secara kontinu dan disimpan sebagai data time-series.  
+Mesin Analitik Prediktif (Predictive Analytics Engine): Algoritma machine learning menganalisis pola dan hubungan antar parameter untuk memahami perubahan kondisi ekosistem budidaya.  
+Luaran Berbasis Tindakan (Actionable Output): Hasil analisis menghasilkan prediksi pertumbuhan tanaman, estimasi waktu panen, peringatan dini (early warning), dan rekomendasi adaptif.  
+Hasil analisis AI disajikan melalui Historical Analytics Dashboard yang tidak hanya menampilkan data real-time, tetapi juga tren historis dan Climate Adaptation Score. Dashboard membantu pengguna memahami pola sistem pangan dan mengambil keputusan berbasis data sekaligus meningkatkan literasi adaptasi iklim di tingkat rumah tangga.  
+Analisis Komparasi dan Kebaruan (Research Gap & Novelty Analysis) 
+Pengembangan UrbanGrow tidak dilakukan dari ruang hampa, melainkan bertolak dari evaluasi kritis terhadap keterbatasan sistem pertanian perkotaan cerdas yang ada saat ini. Untuk mengidentifikasi posisi UrbanGrow (positioning), dilakukan analisis komparasi terhadap lima rumpun penelitian utama yang relevan, sebagaimana dirangkum pada Tabel 4.1. 
+Tabel 4.1 Analisis Komparasi dan Celah Penelitian (Research Gap) 
+Rumpun Teknologi Saat Ini 
+Fokus Utama Teknologi 
+Keterbatasan (Research Gap) 
+Solusi Inovasi UrbanGrow 
+Smart Farming (IoT) 
+Pemantauan kondisi secara real-time. 
+Terjebak pada fungsi pemantauan dasar dan otomasi (reaktif); tidak memanfaatkan data historis untuk dianalisis lebih lanjut. 
+Menggunakan AI Predictive Analytics untuk mengolah data historis menjadi prediksi dan rekomendasi proaktif. 
+Smart Aquaponic 
+Optimalisasi budidaya ikan dan sayuran secara tertutup. 
+Fokus sebatas efisiensi produksi pangan; mengabaikan aspek ketahanan adaptasi perubahan iklim (climate adaptation). 
+Seluruh komponen dipilih menggunakan kerangka Evidence-Based Climate Adaptive Design (ECAD). 
+Vertical Farming 
+Efisiensi tata ruang lahan perkotaan. 
+Optimalisasi tata ruang belum secara langsung menjawab kebutuhan sistem pangan yang mampu beradaptasi terhadap perubahan kondisi lingkungan.
+Mengintegrasikan vertical farming, IoT, AI dan Akuaponik untuk menciptakan sistem pangan yang adaptif, efesien, dan dapat diterapkan pada lahan terbatas.
+AI Agriculture 
+Deteksi hama dan prediksi panen berbasis visual citra (kamera). 
+Belum banyak mengolah data sensor lingkungan (pH, TDS, suhu) berderet waktu (time-series) untuk sistem akuaponik. 
+Mengolah data deret waktu sensor kualitas air untuk menghitung Climate Adaptation Score & Early Warning. 
+Berdasarkan analisis komparasi tersebut, UrbanGrow merumuskan tiga unsur kebaruan (novelty) utama yang belum banyak dieksplorasi oleh penelitian sebelumnya: 
+Pendekatan Desain Adaptif Berbasis Bukti (ECAD Framework): UrbanGrow menerapkan prinsip bahwa pemilihan perangkat keras, perangkat lunak, hingga pasangan ikan dan tanaman didasarkan pada bukti ilmiah yang relevan dengan kemampuan adaptasi terhadap perubahan iklim. 
+Climate Adaptive Predictive AI: UrbanGrow tidak hanya memantau kondisi seperti pH atau suhu secara real-time, tetapi mengolah data historis untuk memprediksi kondisi yang berpotensi kritis serta menghasilkan peringatan dan rekomendasi adaptif sebelum masalah terjadi. 
+Historical Analytics Dashboard: UrbanGrow merombak antarmuka pemantauan tradisional menjadi dasbor keputusan komprehensif, di mana pengguna disajikan grafik tren historis, estimasi waktu panen, serta skor kemandirian pangan, mengubah peran pengguna dari sekadar pemantau menjadi pengambil keputusan yang melek data (data-driven decision maker).
+Analisis Dampak dan Keberlanjutan (Impact & Sustainability Analysis) 
+UrbanGrow dirancang sebagai teknologi tepat guna yang dapat memberikan dampak pada aspek lingkungan, sosial, ekonomi, serta mendukung pengembangan ketahanan pangan perkotaan secara berkelanjutan. UrbanGrow dievaluasi melalui tiga dimensi utama dan visi integrasi perkotaan, yaitu: 
+Dampak Lingkungan: Climate Positive dan Efisiensi Sumber Daya Penerapan, Sistem akuaponik menggunakan resirkulasi air sehingga dapat mengurangi kebutuhan air dibandingkan budidaya konvensional. Limbah ikan dimanfaatkan sebagai sumber nutrisi tanaman sehingga mengurangi kebutuhan pupuk sintetis. Pemanfaatan produksi pangan di dekat konsumen juga berpotensi mengurangi penggunaan energi konvensional dan food miles, sehingga mendukung upaya mitigasi perubahan iklim. 
+Dampak Sosial: Ketahanan Pangan dan Edukasi Rumah Tangga Pada dimensi sosial, UrbanGrow membantu rumah tangga memperoleh ikan dan sayuran secara mandiri sehingga dapat meningkatkan Household Food Resilience. Penggunaan Historical Analytics Dashboard juga membantu pengguna memahami kondisi budidaya melalui data dan meningkatkan kesadaran terhadap pentingnya adaptasi perubahan iklim. 
+Dampak Ekonomi: Kemandirian dan Reduksi Pengeluaran Secara ekonomi, Produksi ikan dan sayuran secara mandiri berpotensi mengurangi sebagian pengeluaran pangan rumah tangga. Pada skala komunitas, surplus hasil panen dapat dikembangkan menjadi sumber nilai ekonomi melalui distribusi atau marketplace lokal. 
+Proyeksi Keberlanjutan Menuju Smart Green City Keberlanjutan UrbanGrow dirancang agar dapat dikembangkan dari skala rumah tangga menuju komunitas. Data dari beberapa unit dapat dikembangkan menjadi basis informasi Community Food Resilience yang memuat kondisi lingkungan, produksi, dan efisiensi sumber daya. Dalam jangka panjang, data tersebut berpotensi mendukung perencanaan ketahanan pangan dan lingkungan pada tingkat perkotaan menuju konsep Smart Green City. 
+Implementasi dan Cara Kerja
+Implementasi Fisik dan Perangkat Keras (Hardware Implementation) 
+Berdasarkan arsitektur sistem UrbanGrow, perangkat keras dirancang dalam empat subsistem terintegrasi untuk menjaga stabilitas dan efisiensi operasional.  Implementasi ini dipadatkan ke dalam empat subsistem terintegrasi: 
+Manajemen Catu Daya Ganda (Dual Power): Sistem ditenagai oleh Adaptor utama (12V DC) dan Baterai cadangan (12V 7Ah) bersistem sekring untuk memitigasi risiko pemadaman listrik kota. Sebuah modul DC-DC Step Down digunakan untuk memisahkan distribusi arus tinggi untuk aktuator (12V) dan arus rendah untuk sensor/mikrokontroler (5V).
+Pemrosesan Utama & Konektivitas (Core & Cloud): ESP32 DevKit V1 berfungsi sebagai pusat kendali untuk membaca sensor dan mengirimkan data time-series ke cloud server melalui Wi-Fi. 
+Modul Akuisisi Data (Sensor Input): Enam sensor digunakan untuk memantau kondisi sistem, meliputi: 
+Sensor Kualitas Air: Modul pH dan TDS untuk membaca tingkat keasaman dan kepekatan nutrisi air.
+Sensor Suhu & Cuaca: DS18B20 (Suhu Air) dan DHT22 (Suhu & Kelembapan Udara).
+Sensor Fisik: LDR (Intensitas Cahaya) dan Water Level (Ketinggian batas air).
+Sistem Aktuator Berbasis Relay: ESP32 mengendalikan modul relay 4-channel untuk mengoperasikan pompa air, aerator, automatic feeder, dan LED Grow Light sesuai kebutuhan sistem. 
+Implementasi Ekosistem Akuaponik Bertingkat (4-Level Aquaponic System) 
+Untuk mengatasi keterbatasan lahan di area perkotaan, infrastruktur fisik UrbanGrow diimplementasikan dalam bentuk rak modular vertikal bersusun empat tingkat (4-Level System). Desain tata letak ini tidak disusun secara sembarangan, melainkan diatur berdasarkan gravitasi aliran air dan prinsip Scientific Biological Pairing yang didukung oleh pemantauan AI Oxygen Management.
+Aliran resirkulasi air bergerak dari tingkat tertinggi menuju tingkat terendah dengan tata letak ekologis sebagai berikut:
+Level 4 (Puncak) - Sayuran Pakcoy: Air bernutrisi pertama kali dipompa ke tingkat ini. Pakcoy ditempatkan di posisi teratas karena memiliki karakteristik akar yang renggang (less dense), sehingga laju air dan kadar Oksigen Terlarut (DO) tidak terhambat saat melewati media tanam ini.
+Level 3 - Ikan Nila: Menerima limpahan air langsung dari Level 4. Ikan Nila (Tilapia) mutlak membutuhkan kadar DO yang tinggi untuk tumbuh optimal dan tidak mudah stres. Posisi ini menjamin Nila mendapatkan suplai air dengan kualitas oksigen terbaik sebelum dikonsumsi oleh tingkatan di bawahnya.
+Level 2 - Sayuran Kangkung: Air yang membawa limbah organik dari ikan Nila turun ke tingkat ini. Kangkung memiliki sistem perakaran yang sangat rapat dan masif. Akar ini bertindak sebagai biofilter alami yang sangat kuat untuk menyerap amonia, namun di sisi lain secara drastis menurunkan kadar oksigen dalam aliran air.
+Level 1 (Dasar) - Ikan Lele: Tingkat terakhir yang menjadi muara air sebelum dipompa kembali. Air pada titik ini memiliki kadar DO yang paling rendah akibat kerapatan akar kangkung di atasnya. Namun, ikan Lele (Clarias sp.) ditempatkan di sini karena karakteristik biologisnya yang sangat toleran dan tetap mampu tumbuh optimal pada lingkungan minim oksigen.
+Keempat level ini dipantau secara ketat oleh sensor. Apabila sistem kecerdasan buatan (Predictive AI) mendeteksi anomali misalnya suhu air meningkat yang memicu penyusutan DO dengan cepat maka mikrokontroler akan secara otomatis mengaktifkan Aktuator Aerator untuk menginjeksi oksigen tambahan, menjaga agar Ikan Nila di Level 3 tidak mengalami gagal napas. 
+Cara Kerja Akuisisi Data dan Kendali Aktuator (Data Acquisition & Actuator Control) 
+Sistem operasional UrbanGrow bekerja dalam continuous loop yang dimulai dari inisialisasi ESP32, sinkronisasi waktu melalui NTP, dan koneksi ke database. Setelah terhubung, sistem menjalankan tahapan berikut: 
+Akuisisi Data Paralel (Monitoring Alur A): ESP32 membaca enam parameter sensor, yaitu pH, TDS, suhu air, suhu dan kelembapan udara, serta intensitas cahaya. Setiap data diberi timestamp sebelum dikirim ke cloud database sebagai data time-series. 
+Evaluasi Parameter Threshold (Threshold Checking): Data real-time dibandingkan dengan nilai batas (set point) yang telah ditentukan untuk mengklasifikasikan kondisi sistem menjadi tiga tingkatan: Normal (Hijau), Warning (Kuning), atau Critical (Merah).
+Kendali Aktuator Otonom (Feedback Loop Alur E): Ketika kondisi Warning atau Critical terdeteksi, ESP32 mengaktifkan aktuator sesuai kebutuhan melalui relay. Misalnya, peningkatan suhu air dapat memicu aerator untuk membantu menjaga kadar oksigen terlarut. 
+Sistem Notifikasi dan Peringatan (Alert System): Kondisi anomali dan tindakan sistem dikirim ke Digital Ecosystem Dashboard sehingga pengguna tetap mengetahui kondisi sistem meskipun aktuator bekerja secara otomatis. 
+Cara Kerja AI Prediktif dan Analisis Historis (Predictive AI & Historical Analytics) 
+Pembeda utama UrbanGrow adalah kemampuannya mengolah data historis untuk memprediksi kondisi ekosistem, bukan hanya merespons kondisi saat ini. Proses AI terdiri atas empat siklus analitik utama: 
+Ekstraksi Data Historis (Alur B - Historical Analytics): Data time-series pH, TDS, suhu, dan intensitas cahaya dari cloud database diolah dan digunakan sebagai dasar analisis serta input model AI. 
+Eksekusi Prediksi dan Rekomendasi (Alur C - Predictive Engine): Model AI menganalisis data historis dan terbaru untuk menghasilkan prediksi pertumbuhan tanaman, estimasi waktu dan hasil panen, prediksi kualitas air, peringatan dini, serta rekomendasi adaptif. 
+Sirkuit Pembelajaran Mandiri (Alur F - Feedback Loop & Learning): Hasil prediksi dibandingkan dengan data aktual yang baru direkam. Jika akurasi model menurun akibat perubahan musim atau kondisi ekstrem, model dapat dilatih kembali menggunakan data terbaru untuk meningkatkan akurasi prediksi. 
+Sinkronisasi Ekosistem Digital (Digital Ecosystem Dashboard): Seluruh hasil analisis, prediksi, dan peringatan ditampilkan melalui Digital Ecosystem Dashboard pada perangkat pengguna sehingga informasi dapat dipahami dan digunakan sebagai dasar pengambilan keputusan. 
+Desain
+Arsitektur Perangkat Keras (Hardware Architecture) 
+Arsitektur perangkat keras UrbanGrow menggunakan topologi terpusat dengan ESP32 sebagai pusat kendali dan dirancang untuk beroperasi secara stabil selama 24 jam. Arsitektur perangkat keras terdiri atas  empat blok fungsional utama: 
+Blok Sumber Daya (Power Management Block): Adaptor dan baterai cadangan 12V DC diproses melalui DC-DC Step Down menjadi jalur 12V untuk aktuator dan 5V untuk ESP32 serta sensor. Pemisahan daya membantu menjaga kestabilan pembacaan sensor. 
+Blok Pemrosesan Sentral (Central Processing Block): ESP32 Devkit V1 menangani pembacaan sensor, kendali aktuator, dan koneksi Wi-Fi menuju cloud server. GPIO analog digunakan untuk sensor pH dan TDS, sedangkan GPIO digital untuk sensor lainnya. 
+Blok Akuisisi Data (Data Acquisition Block): Sensor memantau pH, TDS, suhu air, suhu dan kelembapan udara, intensitas cahaya, serta ketinggian air dengan common ground untuk mengurangi gangguan pembacaan. 
+Blok Penggerak (Driver & Actuator Block): Relay 4-channel menghubungkan sinyal 3.3V ESP32 dengan aktuator 12V, yaitu pompa, aerator, automatic feeder, dan LED grow light, sekaligus membantu melindungi mikrokontroler dari gangguan arus balik. 
+Arsitektur Perangkat Lunak (Software Architecture) 
+Untuk menjamin skalabilitas, keamanan data, dan kemudahan pemeliharaan (maintainability), erangkat lunak UrbanGrow menggunakan Layered Architecture yang terdiri atas empat lapisan utama: 
+Data Acquisition & Edge Layer: ESP32 membaca sensor, memberikan timestamp, menjalankan otomasi dasar, lalu mengirim data berformat JSON melalui MQTT atau HTTP menuju cloud server. 
+Data Storage Layer: Cloud database menyimpan data sensor secara historis dalam format time-series untuk mendukung analisis dan prediksi. 
+AI Processing Layer: Data historis diproses menggunakan machine learning untuk menghasilkan prediksi pertumbuhan, estimasi panen, peringatan dini, dan rekomendasi adaptif. 
+Presentation Layer: Historical Analytics Dashboard berbasis web/mobile menampilkan data real-time, tren historis, hasil prediksi, dan notifikasi dalam bentuk yang mudah dipahami. 
+Arsitektur Kecerdasan Buatan (AI Predictive Framework) 
+AI UrbanGrow menggunakan time-series data dari pH, TDS, suhu, kelembapan, dan intensitas cahaya melalui empat tahapan  terstruktur: 
+Data Input Layer: Mengambil data historis sensor dari cloud database. 
+Data Pre-Processing: Membersihkan outlier, melakukan normalisasi, dan menyelaraskan data berdasarkan waktu. 
+Machine Learning Engine: Data diproses menggunakan model regresi/ensemble seperti Random Forest atau XGBoost dan pemodelan time-series untuk mempelajari hubungan parameter lingkungan dengan pertumbuhan tanaman dan kondisi ikan. Model dapat diperbarui menggunakan data historis terbaru. 
+Predictive Output Layer: Menghasilkan prediksi pertumbuhan tanaman, estimasi waktu panen, prediksi kualitas air, peringatan dini, rekomendasi adaptif, dan Climate Adaptation Score. 
+Representasi Antarmuka Pengguna (User Interface Representation) 
+Antarmuka pengguna (UI) UrbanGrow menggunakan pendekatan User-Centered Design dan berfungsi sebagai Decision Support Dashboard yang mengubah data teknis menjadi informasi yang mudah dipahami. Antarmuka terdiri atas empat modul  visual utama:
+Modul Ecosystem Overview: Menampilkan kondisi real-time suhu, pH, TDS, kelembapan, water level, dan status stabilitas ekosistem. 
+Modul Smart Aquaponics Control Center: Menampilkan status pompa, aerator, dan grow light, serta menyediakan manual override melalui perangkat pengguna. 
+Modul Historical Analytics: Menampilkan grafik historis harian, mingguan, atau bulanan untuk membantu pengguna melihat hubungan antara perubahan lingkungan dan kondisi budidaya. 
+Modul AI Predictive Analytics: Menampilkan estimasi panen, prediksi pertumbuhan, early warning, dan rekomendasi adaptif yang dapat digunakan sebagai dasar pengambilan keputusan. 
+Daftar Pustaka
+Food and Agriculture Organization of the United Nations. (2016). Climate change and food security: Risks and responses. FAO.
+Intergovernmental Panel on Climate Change. (2019). Climate change and land: An IPCC special report on climate change, desertification, land degradation, sustainable land management, food security, and greenhouse gas fluxes in terrestrial ecosystems (Chapter 5: Food Security). IPCC.
+Intergovernmental Panel on Climate Change. (2022). Climate change 2022: Impacts, adaptation and vulnerability. Contribution of Working Group II to the Sixth Assessment Report of the Intergovernmental Panel on Climate Change (Chapter 5: Food, Fibre and Other Ecosystem Products). Cambridge University Press.
+Okomoda, V. T., Oladimeji, S. A., Solomon, S. G., Olufeagba, S. O., Ogah, S. I., & Ikhwanuddin, M. (2023). Aquaponics production system: A review of historical perspective, opportunities, and challenges of its adoption. Food Science & Nutrition, 11(3), 1157–1165. https://doi.org/10.1002/fsn3.3154
+Subeesh, A., Chauhan, N., & Kushwaha, N. L. (2025). Integrating IoT with machine learning and deep learning models for precision soil-less agriculture: A review. Artificial Intelligence for Engineering, 1(2), 137–164. https://doi.org/10.1049/aie2.70005
+LAMPIRAN
+Lampiran 1. Diagram Alur
+Lampiran 2. Diagram Sistem
+Lampiran 3. Implementasi UrbanGrow
+Lampiran 4. Kartu Pelajar
