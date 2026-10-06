@@ -102,7 +102,7 @@ export const app = new Elysia()
     }
     const apkFile = Bun.file(apkPath);
     set.headers["Content-Type"] = "application/vnd.android.package-archive";
-    set.headers["Content-Disposition"] = 'attachment; filename="UrbanGrow-v1.0.2.apk"';
+    set.headers["Content-Disposition"] = 'attachment; filename="UrbanGrow-v1.0.3.apk"';
     return apkFile;
   })
   .listen({

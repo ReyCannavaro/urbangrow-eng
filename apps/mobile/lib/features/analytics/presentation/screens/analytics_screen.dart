@@ -1,8 +1,8 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/theme/app_theme.dart';
-import '../../../telemetry/presentation/telemetry_notifier.dart';
+import 'package:mobile/core/theme/app_theme.dart';
+import 'package:mobile/features/telemetry/presentation/telemetry_notifier.dart';
 
 class AnalyticsScreen extends ConsumerStatefulWidget {
   const AnalyticsScreen({super.key});
@@ -12,168 +12,106 @@ class AnalyticsScreen extends ConsumerStatefulWidget {
 }
 
 class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
-  int _selectedMetricIndex = 0;
+  int _selectedIdx = 0;
 
   final List<Map<String, dynamic>> _metrics = [
     {
       'id': 'ph',
       'label': 'Kadar pH',
       'unit': 'pH',
-      'color': AppTheme.accentEmerald,
+      'color': AppTheme.leafGreen,
       'target': '6.5 - 7.5',
-      'base': 6.95,
-      'variance': 0.15,
+      'base': 7.0,
+      'variance': 0.12,
     },
     {
       'id': 'temp',
       'label': 'Suhu Air',
       'unit': '°C',
-      'color': AppTheme.accentCyan,
-      'target': '24.0 - 28.0°C',
+      'color': AppTheme.aquaticCyan,
+      'target': '24.0 - 28.0',
       'base': 24.5,
-      'variance': 0.8,
+      'variance': 0.6,
     },
     {
       'id': 'do',
       'label': 'Oksigen (DO)',
       'unit': 'mg/L',
-      'color': AppTheme.accentIndigo,
-      'target': '> 5.0 mg/L',
+      'color': const Color(0xFF6366F1),
+      'target': '> 5.0',
       'base': 7.4,
-      'variance': 0.35,
+      'variance': 0.3,
     },
     {
       'id': 'tds',
-      'label': 'TDS Nutrisi',
+      'label': 'Nutrisi TDS',
       'unit': 'ppm',
-      'color': AppTheme.accentYellowDeep,
-      'target': '500 - 800 ppm',
+      'color': AppTheme.bioAmber,
+      'target': '500 - 800',
       'base': 540.0,
-      'variance': 25.0,
+      'variance': 20.0,
     },
   ];
 
   @override
   Widget build(BuildContext context) {
     final telemetry = ref.watch(telemetryNotifierProvider);
-    final metric = _metrics[_selectedMetricIndex];
-    final color = metric['color'] as Color;
+    final selected = _metrics[_selectedIdx];
+    final color = selected['color'] as Color;
 
     return Scaffold(
       backgroundColor: AppTheme.canvas,
       body: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Page Title Header
-            _buildHeaderCard(),
+            // 1. Water Quality Index (WQI) Score Banner
+            _buildWQIScoreHeader(),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
 
-            // WQI Water Quality Index Score Bento Card
-            _buildWQIScoreCard(),
-
-            const SizedBox(height: 20),
-
-            // Interactive Trend Chart Card
-            _buildInteractiveTrendCard(telemetry, metric, color),
+            // 2. Interactive Telemetry Trend Chart Card
+            _buildInteractiveSplineCard(telemetry, selected, color),
 
             const SizedBox(height: 20),
 
-            // Bio-Equilibrium & Symbiosis Stats
-            _buildBioEquilibriumCard(),
+            // 3. Nitrogen Closed-Loop Efficiency Indicator
+            _buildNitrogenEfficiencyCard(),
 
             const SizedBox(height: 20),
 
-            // 24-Hour Statistical Summary Table
-            _buildStatsTableCard(telemetry),
+            // 4. 24-Hour Statistical Range
+            _buildStatisticalRange(telemetry),
 
-            const SizedBox(height: 80),
+            const SizedBox(height: 90),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeaderCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: AppTheme.borderLight),
-        boxShadow: AppTheme.cardShadow,
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppTheme.accentCyan.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.auto_graph_rounded,
-              color: AppTheme.accentCyan,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Analitik & Tren Telemetri',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  'Data Logging Real-Time • Water Quality Index (WQI)',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWQIScoreCard() {
+  Widget _buildWQIScoreHeader() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppTheme.charcoal,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(26),
         border: Border.all(color: AppTheme.borderDark),
-        boxShadow: AppTheme.softShadow,
+        boxShadow: AppTheme.floatingPillShadow,
       ),
       child: Row(
         children: [
           // Circular WQI Score Badge
           Container(
-            width: 80,
-            height: 80,
+            width: 76,
+            height: 76,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: AppTheme.charcoalSoft,
-              border: Border.all(
-                color: AppTheme.accentEmerald.withValues(alpha: 0.5),
-                width: 3,
-              ),
+              border: Border.all(color: AppTheme.leafGreenLight, width: 2.5),
             ),
             child: const Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -181,60 +119,51 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 Text(
                   '94',
                   style: TextStyle(
-                    fontSize: 28,
+                    fontSize: 26,
                     fontWeight: FontWeight.w900,
-                    color: Colors.white,
                     fontFamily: 'monospace',
+                    color: Colors.white,
                   ),
                 ),
                 Text(
                   '/ 100',
                   style: TextStyle(
                     fontSize: 9.5,
-                    color: AppTheme.accentEmerald,
                     fontWeight: FontWeight.bold,
+                    fontFamily: 'monospace',
+                    color: AppTheme.leafGreenLight,
                   ),
                 ),
               ],
             ),
           ),
           const SizedBox(width: 18),
-          Expanded(
+          const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppTheme.accentEmerald.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: const Text(
-                        'GRADE A+ OPTIMAL',
-                        style: TextStyle(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'monospace',
-                          color: AppTheme.accentEmerald,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Indeks Kualitas Air Prima',
+                Text(
+                  'WATER QUALITY INDEX',
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'monospace',
+                    letterSpacing: 1.0,
+                    color: AppTheme.leafGreenLight,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Kualitas Air Prima',
+                  style: TextStyle(
+                    fontSize: 17,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Sinergi mikroba biofilter, aerasi DO, dan buffering pH stabil tanpa intervensi kimia.',
+                SizedBox(height: 2),
+                Text(
+                  'Siklus nitrifikasi dan aerasi menjaga parameter tetap dalam toleransi biologis.',
                   style: TextStyle(
                     fontSize: 11,
                     color: AppTheme.textMuted,
@@ -249,9 +178,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
-  Widget _buildInteractiveTrendCard(
+  Widget _buildInteractiveSplineCard(
     dynamic telemetry,
-    Map<String, dynamic> metric,
+    Map<String, dynamic> selected,
     Color color,
   ) {
     return Container(
@@ -259,40 +188,37 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(26),
         border: Border.all(color: AppTheme.borderLight),
-        boxShadow: AppTheme.cardShadow,
+        boxShadow: AppTheme.softShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Metric Selector Tabs
+          // Segmented Tabs
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
               children: List.generate(_metrics.length, (idx) {
-                final isSelected = _selectedMetricIndex == idx;
+                final isCurrent = _selectedIdx == idx;
                 final m = _metrics[idx];
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: InkWell(
-                    onTap: () => setState(() => _selectedMetricIndex = idx),
+                    onTap: () => setState(() => _selectedIdx = idx),
                     borderRadius: BorderRadius.circular(999),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppTheme.charcoal : AppTheme.canvas,
+                        color: isCurrent ? AppTheme.charcoal : AppTheme.canvas,
                         borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                          color: isSelected ? AppTheme.charcoal : AppTheme.borderLight,
-                        ),
                       ),
                       child: Text(
                         m['label'],
                         style: TextStyle(
-                          fontSize: 11.5,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: isSelected ? Colors.white : AppTheme.textSecondary,
+                          color: isCurrent ? Colors.white : AppTheme.textSecondary,
                         ),
                       ),
                     ),
@@ -304,7 +230,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
           const SizedBox(height: 20),
 
-          // Current Value & Target
+          // Current Value Callout
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -315,19 +241,20 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 textBaseline: TextBaseline.alphabetic,
                 children: [
                   Text(
-                    _getCurrentValueString(telemetry, metric['id']),
+                    _getValueString(telemetry, selected['id']),
                     style: const TextStyle(
-                      fontSize: 32,
+                      fontSize: 36,
                       fontWeight: FontWeight.w900,
                       fontFamily: 'monospace',
+                      letterSpacing: -1.2,
                       color: AppTheme.textPrimary,
                     ),
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    metric['unit'],
+                    selected['unit'],
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 15,
                       fontWeight: FontWeight.bold,
                       color: color,
                     ),
@@ -338,7 +265,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    'Rentang Ideal: ${metric['target']}',
+                    'Target: ${selected['target']} ${selected['unit']}',
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -346,35 +273,31 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     ),
                   ),
                   const Text(
-                    '24 Jam Terakhir • 30 Data Points',
-                    style: TextStyle(
-                      fontSize: 9.5,
-                      color: AppTheme.textMuted,
-                    ),
+                    '24 Jam Terakhir',
+                    style: TextStyle(fontSize: 10, color: AppTheme.textMuted),
                   ),
                 ],
               ),
             ],
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
 
-          // Custom Painted Chart
+          // Smooth Custom Spline Chart
           SizedBox(
             height: 140,
             width: double.infinity,
             child: CustomPaint(
-              painter: _TelemetrySplineChartPainter(
+              painter: _SplineChartPainter(
                 lineColor: color,
-                baseValue: (metric['base'] as num).toDouble(),
-                variance: (metric['variance'] as num).toDouble(),
+                baseValue: (selected['base'] as num).toDouble(),
+                variance: (selected['variance'] as num).toDouble(),
               ),
             ),
           ),
 
           const SizedBox(height: 12),
 
-          // Time axis markers
           const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -389,7 +312,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
-  String _getCurrentValueString(dynamic telemetry, String id) {
+  String _getValueString(dynamic telemetry, String id) {
     switch (id) {
       case 'ph':
         return telemetry.sensors.ph.toStringAsFixed(2);
@@ -404,43 +327,50 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     }
   }
 
-  Widget _buildBioEquilibriumCard() {
+  Widget _buildNitrogenEfficiencyCard() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppTheme.borderLight),
-        boxShadow: AppTheme.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(Icons.hub_rounded, color: AppTheme.charcoal, size: 18),
-              SizedBox(width: 8),
               Text(
-                'KESEIMBANGAN BIOLOGIS & BIO-FILTER',
+                'EFISIENSI BIOFILTER NITROGEN',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 10.5,
                   fontWeight: FontWeight.bold,
                   fontFamily: 'monospace',
-                  letterSpacing: 0.8,
-                  color: AppTheme.textPrimary,
+                  letterSpacing: 1.0,
+                  color: AppTheme.textMuted,
+                ),
+              ),
+              Text(
+                'CLOSED LOOP',
+                style: TextStyle(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'monospace',
+                  color: AppTheme.leafGreen,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           Row(
             children: [
-              _buildBioItem('Konversi Amonia', '96.4%', 'Sangat Efisien', AppTheme.accentEmerald),
+              _buildMetricChip('96.4%', 'Konversi Amonia', AppTheme.leafGreen),
               const SizedBox(width: 8),
-              _buildBioItem('Rasio Tanaman:Ikan', '1.4 : 1', 'Seimbang', AppTheme.accentCyan),
+              _buildMetricChip('1.4 : 1', 'Rasio Sayur/Ikan', AppTheme.aquaticCyan),
               const SizedBox(width: 8),
-              _buildBioItem('Debit Bio-Sirkulasi', '250 L/jam', 'Stabil', AppTheme.accentYellowDeep),
+              _buildMetricChip('250 L/h', 'Debit Sirkulasi', AppTheme.bioAmber),
             ],
           ),
         ],
@@ -448,38 +378,31 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
-  Widget _buildBioItem(String label, String value, String status, Color color) {
+  Widget _buildMetricChip(String value, String label, Color color) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AppTheme.cardBg,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppTheme.borderLight),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
-            const SizedBox(height: 4),
             Text(
               value,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
                 fontFamily: 'monospace',
-                color: AppTheme.textPrimary,
+                color: color,
               ),
             ),
             const SizedBox(height: 2),
             Text(
-              status,
-              style: TextStyle(
-                fontSize: 9.5,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'monospace',
-                color: color,
-              ),
+              label,
+              style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
             ),
           ],
         ),
@@ -487,76 +410,70 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
-  Widget _buildStatsTableCard(dynamic telemetry) {
+  Widget _buildStatisticalRange(dynamic telemetry) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppTheme.borderLight),
-        boxShadow: AppTheme.cardShadow,
+        boxShadow: AppTheme.softShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
-            children: [
-              Icon(Icons.table_chart_rounded, color: AppTheme.charcoal, size: 18),
-              SizedBox(width: 8),
-              Text(
-                'RINGKASAN STATISTIK 24 JAM',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'monospace',
-                  letterSpacing: 0.8,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-            ],
+          const Text(
+            'STATISTIK 24 JAM TERAKHIR',
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.bold,
+              fontFamily: 'monospace',
+              letterSpacing: 1.0,
+              color: AppTheme.textMuted,
+            ),
           ),
           const SizedBox(height: 12),
-          _buildTableRow('Kadar pH', '6.85', '7.12', telemetry.sensors.ph.toStringAsFixed(2), 'Stabil'),
+          _buildStatRow('Kadar pH', '6.88', '7.12', telemetry.sensors.ph.toStringAsFixed(2)),
           const Divider(height: 16),
-          _buildTableRow('Suhu Air', '23.8°C', '25.6°C', '${telemetry.sensors.waterTemperature.toStringAsFixed(1)}°C', 'Ideal'),
+          _buildStatRow('Suhu Air', '23.8°C', '25.4°C', '${telemetry.sensors.waterTemperature.toStringAsFixed(1)}°C'),
           const Divider(height: 16),
-          _buildTableRow('Oksigen DO', '6.90 mg/L', '7.85 mg/L', '${telemetry.sensors.dissolvedOxygen.toStringAsFixed(2)} mg/L', 'Optimal'),
+          _buildStatRow('Oksigen DO', '6.95 mg/L', '7.80 mg/L', '${telemetry.sensors.dissolvedOxygen.toStringAsFixed(2)} mg/L'),
           const Divider(height: 16),
-          _buildTableRow('TDS Nutrisi', '520 ppm', '565 ppm', '${telemetry.sensors.tds} ppm', 'Cukup'),
+          _buildStatRow('TDS Nutrisi', '525 ppm', '560 ppm', '${telemetry.sensors.tds} ppm'),
         ],
       ),
     );
   }
 
-  Widget _buildTableRow(String param, String min, String max, String avg, String status) {
+  Widget _buildStatRow(String label, String min, String max, String current) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         SizedBox(
           width: 90,
           child: Text(
-            param,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+            label,
+            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
           ),
         ),
-        Text('Min: $min', style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
-        Text('Max: $max', style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
+        Text('Min: $min', style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+        Text('Max: $max', style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
         Text(
-          'Kini: $avg',
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'monospace', color: AppTheme.charcoal),
+          'Kini: $current',
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, fontFamily: 'monospace', color: AppTheme.charcoal),
         ),
       ],
     );
   }
 }
 
-class _TelemetrySplineChartPainter extends CustomPainter {
+class _SplineChartPainter extends CustomPainter {
   final Color lineColor;
   final double baseValue;
   final double variance;
 
-  _TelemetrySplineChartPainter({
+  _SplineChartPainter({
     required this.lineColor,
     required this.baseValue,
     required this.variance,
@@ -567,9 +484,9 @@ class _TelemetrySplineChartPainter extends CustomPainter {
     final width = size.width;
     final height = size.height;
 
-    // Draw horizontal grid lines
+    // Horizontal guideline
     final gridPaint = Paint()
-      ..color = AppTheme.borderLight.withValues(alpha: 0.8)
+      ..color = AppTheme.borderLight
       ..strokeWidth = 1.0;
 
     for (int i = 1; i <= 3; i++) {
@@ -577,32 +494,26 @@ class _TelemetrySplineChartPainter extends CustomPainter {
       canvas.drawLine(Offset(0, y), Offset(width, y), gridPaint);
     }
 
-    // Generate smooth mock points based on baseValue & variance
     final points = <Offset>[];
-    const pointCount = 14;
-    final random = Random(42); // fixed seed for stable visual shape
+    const count = 16;
+    final random = Random(101);
 
-    for (int i = 0; i < pointCount; i++) {
-      final x = (width / (pointCount - 1)) * i;
-      // organic wave shape
-      final wave = sin(i * 0.7) * 0.5 + (random.nextDouble() - 0.5) * 0.6;
-      final normalizedY = (0.5 + wave * 0.35).clamp(0.1, 0.9);
-      final y = height * normalizedY;
-      points.add(Offset(x, y));
+    for (int i = 0; i < count; i++) {
+      final x = (width / (count - 1)) * i;
+      final wave = sin(i * 0.6) * 0.4 + (random.nextDouble() - 0.5) * 0.5;
+      final normY = (0.5 + wave * 0.35).clamp(0.12, 0.88);
+      points.add(Offset(x, height * normY));
     }
 
-    // Path creation
-    final path = Path();
-    path.moveTo(points[0].dx, points[0].dy);
-
+    final path = Path()..moveTo(points[0].dx, points[0].dy);
     for (int i = 0; i < points.length - 1; i++) {
       final p0 = points[i];
       final p1 = points[i + 1];
-      final controlX = (p0.dx + p1.dx) / 2;
-      path.cubicTo(controlX, p0.dy, controlX, p1.dy, p1.dx, p1.dy);
+      final cx = (p0.dx + p1.dx) / 2;
+      path.cubicTo(cx, p0.dy, cx, p1.dy, p1.dx, p1.dy);
     }
 
-    // Gradient fill under the spline curve
+    // Gradient fill
     final fillPath = Path.from(path)
       ..lineTo(width, height)
       ..lineTo(0, height)
@@ -613,33 +524,30 @@ class _TelemetrySplineChartPainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          lineColor.withValues(alpha: 0.25),
+          lineColor.withValues(alpha: 0.22),
           lineColor.withValues(alpha: 0.0),
         ],
       ).createShader(Rect.fromLTWH(0, 0, width, height));
 
     canvas.drawPath(fillPath, fillPaint);
 
-    // Stroke line
+    // Stroke
     final strokePaint = Paint()
       ..color = lineColor
-      ..strokeWidth = 2.5
+      ..strokeWidth = 2.4
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
     canvas.drawPath(path, strokePaint);
 
-    // Latest point indicator dot
-    final lastPoint = points.last;
-    final dotPaint = Paint()..color = lineColor;
-    final whitePaint = Paint()..color = Colors.white;
-
-    canvas.drawCircle(lastPoint, 6, dotPaint);
-    canvas.drawCircle(lastPoint, 3, whitePaint);
+    // Current point dot
+    final last = points.last;
+    canvas.drawCircle(last, 6, Paint()..color = lineColor);
+    canvas.drawCircle(last, 3, Paint()..color = Colors.white);
   }
 
   @override
-  bool shouldRepaint(covariant _TelemetrySplineChartPainter oldDelegate) {
+  bool shouldRepaint(covariant _SplineChartPainter oldDelegate) {
     return oldDelegate.lineColor != lineColor;
   }
 }

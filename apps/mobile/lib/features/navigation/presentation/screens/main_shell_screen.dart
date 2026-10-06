@@ -4,8 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../telemetry/presentation/telemetry_notifier.dart';
 import '../widgets/universal_header.dart';
-import '../../../dashboard/presentation/screens/dashboard_screen.dart';
-import '../../../ecosystem/presentation/screens/ecosystem_screen.dart';
+import '../../../tower/presentation/screens/tower_screen.dart';
 import '../../../controls/presentation/screens/controls_screen.dart';
 import '../../../analytics/presentation/screens/analytics_screen.dart';
 import '../../../agribot/presentation/screens/agribot_screen.dart';
@@ -21,8 +20,7 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = const [
-    DashboardScreen(),
-    EcosystemScreen(),
+    TowerScreen(),
     ControlsScreen(),
     AnalyticsScreen(),
     AgriBotScreen(),
@@ -30,12 +28,7 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
 
   final List<Map<String, dynamic>> _navItems = const [
     {
-      'label': 'Beranda',
-      'icon': Icons.grid_view_rounded,
-      'activeIcon': Icons.grid_view_rounded,
-    },
-    {
-      'label': 'Ekosistem',
+      'label': 'Menara',
       'icon': Icons.layers_outlined,
       'activeIcon': Icons.layers_rounded,
     },
@@ -45,9 +38,9 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
       'activeIcon': Icons.toggle_on_rounded,
     },
     {
-      'label': 'Analitik',
-      'icon': Icons.auto_graph_outlined,
-      'activeIcon': Icons.auto_graph_rounded,
+      'label': 'Metrik',
+      'icon': Icons.show_chart_rounded,
+      'activeIcon': Icons.show_chart_rounded,
     },
     {
       'label': 'AgriBot',

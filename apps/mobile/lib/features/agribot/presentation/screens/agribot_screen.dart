@@ -178,7 +178,7 @@ class _AgriBotScreenState extends ConsumerState<AgriBotScreen> {
 
           // Bottom Input Field
           Container(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 85),
             decoration: BoxDecoration(
               color: AppTheme.cardBg,
               border: Border(top: BorderSide(color: AppTheme.borderLight)),

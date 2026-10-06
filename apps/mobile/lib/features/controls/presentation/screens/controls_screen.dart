@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/theme/app_theme.dart';
-import '../../../telemetry/presentation/telemetry_notifier.dart';
+import 'package:mobile/core/theme/app_theme.dart';
+import 'package:mobile/features/telemetry/presentation/telemetry_notifier.dart';
 
 class ControlsScreen extends ConsumerWidget {
   const ControlsScreen({super.key});
@@ -23,48 +23,43 @@ class ControlsScreen extends ConsumerWidget {
       backgroundColor: AppTheme.canvas,
       body: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Page Title Header
-            _buildHeaderCard(),
+            // 1. Industrial Power Watt Meter Header
+            _buildPowerMeterInstrument(totalWatts, dailyKWh),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
 
-            // Big Power Wattage Gauge Bento Card
-            _buildPowerBentoCard(totalWatts, dailyKWh),
-
-            const SizedBox(height: 20),
-
-            // Relay Controls Section Label
+            // 2. Section Header: Relay Hardware Hub
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  '4-CHANNEL OPTOCOUPLER RELAY HUB',
+                  'PANEL SAKLAR RELAY FISIK (OPTOCOUPLER)',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 10.5,
                     fontWeight: FontWeight.bold,
                     fontFamily: 'monospace',
-                    letterSpacing: 1.0,
+                    letterSpacing: 1.1,
                     color: AppTheme.textMuted,
                   ),
                 ),
                 Text(
-                  'ESP32 GPIO ACTIVE',
-                  style: TextStyle(
-                    fontSize: 9.5,
+                  '${telemetry.actuators.values.where((a) => a.isOn).length} AKTIF',
+                  style: const TextStyle(
+                    fontSize: 10,
                     fontWeight: FontWeight.bold,
                     fontFamily: 'monospace',
-                    color: AppTheme.accentEmeraldDark,
+                    color: AppTheme.leafGreen,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
 
-            // List of Actuators
+            // 3. Tactile Hardware Switch Cards
             ...telemetry.actuators.entries.map((entry) {
               final id = entry.key;
               final act = entry.value;
@@ -74,99 +69,43 @@ class ControlsScreen extends ConsumerWidget {
                   id: id,
                   code: _getRelayCode(id),
                   name: act.name,
-                  voltage: '12V DC',
                   powerWatts: act.powerWatts,
                   isOn: act.isOn,
-                  icon: _getActuatorIcon(id),
                   accentColor: _getActuatorColor(id),
                   onToggle: () {
-                    HapticFeedback.mediumImpact();
+                    HapticFeedback.heavyImpact();
                     notifier.toggleActuator(id);
                   },
                 ),
               );
             }),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
-            // Automated Schedule Timers
-            _buildScheduleTimersCard(),
+            // 4. Clean Schedule Timers Block
+            _buildScheduleTimetable(),
 
             const SizedBox(height: 16),
 
-            // Emergency Safety Lock
-            _buildEmergencyLockCard(context),
+            // 5. Emergency Kill Switch
+            _buildEmergencyKillSwitch(context),
 
-            const SizedBox(height: 80),
+            const SizedBox(height: 90),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeaderCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: AppTheme.borderLight),
-        boxShadow: AppTheme.cardShadow,
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppTheme.accentYellow.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.toggle_on_rounded,
-              color: AppTheme.accentYellowDeep,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Pusat Kontrol Aktuator',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  'ESP32 DevKit V1 • Relay Switching & Smart Power',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPowerBentoCard(int totalWatts, String dailyKWh) {
+  Widget _buildPowerMeterInstrument(int totalWatts, String dailyKWh) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppTheme.charcoal,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(26),
         border: Border.all(color: AppTheme.borderDark),
-        boxShadow: AppTheme.softShadow,
+        boxShadow: AppTheme.floatingPillShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -176,33 +115,33 @@ class ControlsScreen extends ConsumerWidget {
             children: [
               const Row(
                 children: [
-                  Icon(Icons.bolt_rounded, color: AppTheme.accentYellow, size: 20),
+                  Icon(Icons.bolt_rounded, color: AppTheme.bioAmberLight, size: 18),
                   SizedBox(width: 6),
                   Text(
-                    'KONSUMSI DAYA AKTUAL',
+                    'TOTAL DAYA AKTUAL',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 10.5,
                       fontWeight: FontWeight.bold,
                       fontFamily: 'monospace',
-                      letterSpacing: 0.8,
+                      letterSpacing: 1.1,
                       color: AppTheme.textLight,
                     ),
                   ),
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: AppTheme.accentEmerald.withValues(alpha: 0.2),
+                  color: AppTheme.leafGreen.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: const Text(
-                  'HYBRID SOLAR ACTIVE',
+                  '12V DC HYBRID',
                   style: TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.bold,
                     fontFamily: 'monospace',
-                    color: AppTheme.accentEmerald,
+                    color: AppTheme.leafGreenLight,
                   ),
                 ),
               ),
@@ -216,20 +155,21 @@ class ControlsScreen extends ConsumerWidget {
               Text(
                 totalWatts.toString(),
                 style: const TextStyle(
-                  fontSize: 48,
+                  fontSize: 52,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: -1.5,
+                  letterSpacing: -2.0,
                   color: Colors.white,
                   fontFamily: 'monospace',
                 ),
               ),
               const SizedBox(width: 6),
               const Text(
-                'Watt',
+                'WATT',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: AppTheme.accentYellow,
+                  fontFamily: 'monospace',
+                  color: AppTheme.bioAmberLight,
                 ),
               ),
               const Spacer(),
@@ -237,16 +177,16 @@ class ControlsScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '$dailyKWh kWh/hari',
+                    '$dailyKWh kWh / hari',
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 15,
                       fontWeight: FontWeight.bold,
                       fontFamily: 'monospace',
                       color: Colors.white,
                     ),
                   ),
                   const Text(
-                    'Estimasi Beban Listrik',
+                    'Estimasi Konsumsi Harian',
                     style: TextStyle(
                       fontSize: 10,
                       color: AppTheme.textMuted,
@@ -255,17 +195,6 @@ class ControlsScreen extends ConsumerWidget {
                 ],
               ),
             ],
-          ),
-          const SizedBox(height: 14),
-          // Progress load bar (max 250W)
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: (totalWatts / 250).clamp(0.05, 1.0),
-              minHeight: 6,
-              backgroundColor: AppTheme.charcoalSoft,
-              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.accentYellow),
-            ),
           ),
         ],
       ),
@@ -276,10 +205,8 @@ class ControlsScreen extends ConsumerWidget {
     required String id,
     required String code,
     required String name,
-    required String voltage,
     required int powerWatts,
     required bool isOn,
-    required IconData icon,
     required Color accentColor,
     required VoidCallback onToggle,
   }) {
@@ -287,69 +214,44 @@ class ControlsScreen extends ConsumerWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: isOn ? accentColor.withValues(alpha: 0.5) : AppTheme.borderLight,
-          width: isOn ? 1.5 : 1.0,
+          color: isOn ? accentColor.withValues(alpha: 0.6) : AppTheme.borderLight,
+          width: isOn ? 1.6 : 1.0,
         ),
-        boxShadow: AppTheme.cardShadow,
+        boxShadow: AppTheme.softShadow,
       ),
       child: Row(
         children: [
+          // Code Box
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
-              color: isOn
-                  ? accentColor.withValues(alpha: 0.15)
-                  : AppTheme.canvas,
-              borderRadius: BorderRadius.circular(18),
+              color: isOn ? accentColor.withValues(alpha: 0.12) : AppTheme.canvas,
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
-              icon,
-              color: isOn ? accentColor : AppTheme.textMuted,
-              size: 24,
+            child: Text(
+              code,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'monospace',
+                color: isOn ? accentColor : AppTheme.textSecondary,
+              ),
             ),
           ),
           const SizedBox(width: 14),
+
+          // Name and Wattage
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppTheme.canvas,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: AppTheme.borderLight),
-                      ),
-                      child: Text(
-                        code,
-                        style: const TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'monospace',
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '$voltage • ${powerWatts}W',
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: AppTheme.textMuted,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 3),
                 Text(
                   name,
                   style: const TextStyle(
                     fontSize: 14,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w800,
                     color: AppTheme.textPrimary,
                   ),
                   maxLines: 1,
@@ -357,21 +259,19 @@ class ControlsScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  isOn ? 'STATUS: AKTIF BERJALAN' : 'STATUS: MATI (STANDBY)',
-                  style: TextStyle(
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'monospace',
-                    color: isOn ? AppTheme.accentEmeraldDark : AppTheme.textMuted,
+                  'Beban: ${powerWatts}W • Catu 12V',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.textSecondary,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          // Custom Switch
+
+          // Tactile Mechanical Toggle Switch
           Transform.scale(
-            scale: 0.9,
+            scale: 0.95,
             child: Switch.adaptive(
               value: isOn,
               activeThumbColor: accentColor,
@@ -386,174 +286,134 @@ class ControlsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildScheduleTimersCard() {
+  Widget _buildScheduleTimetable() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppTheme.borderLight),
-        boxShadow: AppTheme.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
-            children: [
-              Icon(Icons.schedule_rounded, color: AppTheme.charcoal, size: 18),
-              SizedBox(width: 8),
-              Text(
-                'JADWAL OTOMASI TIMER',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'monospace',
-                  letterSpacing: 0.8,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-            ],
+          const Text(
+            'JADWAL OTOMASI PERANGKAT',
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.bold,
+              fontFamily: 'monospace',
+              letterSpacing: 1.0,
+              color: AppTheme.textMuted,
+            ),
           ),
           const SizedBox(height: 12),
-          _buildScheduleItem(
-            'Feeder Pakan Ikan',
-            'Pukul 07:00 & 16:30 WIB (2x / hari)',
-            'Porsi 35 gram otomatis',
-            Icons.fastfood_rounded,
-          ),
+          _buildScheduleRow('Feeder Ikan', '07:00 & 16:30 WIB', 'Porsi 35g', AppTheme.leafGreen),
           const Divider(height: 18),
-          _buildScheduleItem(
-            'LED Grow Light',
-            '18:00 - 06:00 WIB (Fotoperiode 12 Jam)',
-            'Mendukung spektrum fotosintesis Pakcoy',
-            Icons.light_mode_rounded,
-          ),
+          _buildScheduleRow('LED Grow Light', '18:00 - 06:00 WIB', '12 Jam PPFD', AppTheme.bioAmber),
           const Divider(height: 18),
-          _buildScheduleItem(
-            'Sirkulasi Pompa Air',
-            '24 Jam Berkelanjutan (Continuous)',
-            'Resirkulasi air tertutup biofilter',
-            Icons.water_drop_rounded,
-          ),
+          _buildScheduleRow('Pompa Sirkulasi', '24 Jam Non-Stop', 'Closed-Loop', AppTheme.aquaticCyan),
         ],
       ),
     );
   }
 
-  Widget _buildScheduleItem(String title, String time, String desc, IconData icon) {
+  Widget _buildScheduleRow(String title, String time, String note, Color color) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Icon(icon, size: 18, color: AppTheme.textSecondary),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppTheme.canvas,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text(
-                      'OTOMATIS',
-                      style: TextStyle(
-                        fontSize: 8.5,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'monospace',
-                        color: AppTheme.accentEmeraldDark,
-                      ),
-                    ),
-                  ),
-                ],
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textPrimary,
               ),
-              Text(
-                time,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.textSecondary,
-                ),
-              ),
-              Text(
-                desc,
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: AppTheme.textMuted,
-                ),
-              ),
-            ],
+            ),
+            Text(
+              time,
+              style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+            ),
+          ],
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            note,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              fontFamily: 'monospace',
+              color: color,
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildEmergencyLockCard(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.accentCoral.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.accentCoral.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.warning_amber_rounded, color: AppTheme.accentCoral, size: 24),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Emergency Stop Lock',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.accentCoral,
-                  ),
-                ),
-                Text(
-                  'Matikan seluruh relay seketika saat perawatan darurat',
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    color: AppTheme.textSecondary,
-                  ),
-                ),
-              ],
-            ),
+  Widget _buildEmergencyKillSwitch(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        HapticFeedback.heavyImpact();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Sistem pengaman relay standby.'),
+            backgroundColor: AppTheme.charcoal,
           ),
-          OutlinedButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Sistem pengaman darurat dalam status siap siaga.'),
-                  backgroundColor: AppTheme.charcoal,
-                ),
-              );
-            },
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppTheme.accentCoral,
-              side: const BorderSide(color: AppTheme.accentCoral),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        );
+      },
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppTheme.alertCoral.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppTheme.alertCoral.withValues(alpha: 0.3)),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.power_settings_new_rounded, color: AppTheme.alertCoral, size: 22),
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Emergency Safety Lock',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.alertCoral,
+                    ),
+                  ),
+                  Text(
+                    'Matikan seluruh aktuator seketika saat perbaikan kolam',
+                    style: TextStyle(fontSize: 10.5, color: AppTheme.textSecondary),
+                  ),
+                ],
+              ),
             ),
-            child: const Text('STANDBY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-          ),
-        ],
+            Text(
+              'STANDBY',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'monospace',
+                color: AppTheme.alertCoral,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -561,45 +421,30 @@ class ControlsScreen extends ConsumerWidget {
   String _getRelayCode(String id) {
     switch (id) {
       case 'waterPump':
-        return 'RELAY-01';
+        return 'REL-01';
       case 'aerator':
-        return 'RELAY-02';
+        return 'REL-02';
       case 'growLight':
-        return 'RELAY-03';
+        return 'REL-03';
       case 'feeder':
-        return 'RELAY-04';
+        return 'REL-04';
       default:
-        return 'RELAY-05';
-    }
-  }
-
-  IconData _getActuatorIcon(String id) {
-    switch (id) {
-      case 'waterPump':
-        return Icons.water_drop_rounded;
-      case 'aerator':
-        return Icons.air_rounded;
-      case 'growLight':
-        return Icons.lightbulb_rounded;
-      case 'feeder':
-        return Icons.fastfood_rounded;
-      default:
-        return Icons.science_rounded;
+        return 'REL-05';
     }
   }
 
   Color _getActuatorColor(String id) {
     switch (id) {
       case 'waterPump':
-        return AppTheme.accentCyan;
+        return AppTheme.aquaticCyan;
       case 'aerator':
-        return AppTheme.accentEmerald;
+        return AppTheme.leafGreen;
       case 'growLight':
-        return AppTheme.accentYellowDeep;
+        return AppTheme.bioAmber;
       case 'feeder':
-        return AppTheme.accentIndigo;
+        return const Color(0xFF6366F1);
       default:
-        return AppTheme.accentCoral;
+        return AppTheme.alertCoral;
     }
   }
 }
