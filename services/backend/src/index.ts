@@ -93,16 +93,16 @@ export const app = new Elysia()
     const { existsSync } = require("fs");
     const apkPath = resolve(
       import.meta.dir,
-      "../../../apps/mobile/build/app/outputs/flutter-apk/UrbanGrow-v1.0.1.apk"
+      "../../../apps/mobile/build/app/outputs/flutter-apk/app-release.apk"
     );
     console.log("APK request! Resolved path:", apkPath, "Exists:", existsSync(apkPath));
     if (!existsSync(apkPath)) {
       set.status = 404;
-      return "APK file not found on disk";
+      return "APK file not found on disk. Build in progress.";
     }
     const apkFile = Bun.file(apkPath);
     set.headers["Content-Type"] = "application/vnd.android.package-archive";
-    set.headers["Content-Disposition"] = 'attachment; filename="UrbanGrow-v1.0.1.apk"';
+    set.headers["Content-Disposition"] = 'attachment; filename="UrbanGrow-v1.0.2.apk"';
     return apkFile;
   })
   .listen({

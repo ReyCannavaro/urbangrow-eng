@@ -1,7 +1,7 @@
 class ApiConfig {
   /// Base URL can be injected via --dart-define=API_URL=https://...
   /// Default set to the active Cloudflare Tunnel
-  static const String _defaultUrl = 'https://sprint-invite-element-against.trycloudflare.com';
+  static const String _defaultUrl = 'https://tremendous-finger-live-chance.trycloudflare.com';
   
   static String get baseUrl => const String.fromEnvironment('API_URL', defaultValue: _defaultUrl);
 
