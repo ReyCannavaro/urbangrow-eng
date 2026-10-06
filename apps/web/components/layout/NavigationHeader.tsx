@@ -65,16 +65,16 @@ export function NavigationHeader() {
       <div className="flex items-center gap-2">
         {/* Backend Connectivity Status Pill */}
         <div
-          title={backendConnected ? "ElysiaJS Backend Active on Port 3000" : "Simulated Generative Feed Active"}
+          title={backendConnected ? "ElysiaJS Backend Terhubung (Port 3000)" : "Menghubungkan ke Backend..."}
           className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[var(--border-medium)] bg-white text-[11px] font-mono font-medium shadow-sm"
         >
           <span
             className={`h-2 w-2 rounded-full ${
-              backendConnected ? "bg-[var(--accent-emerald)]" : "bg-[var(--accent-yellow-deep)] animate-pulse"
+              backendConnected ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" : "bg-amber-400 animate-pulse"
             }`}
           />
-          <span className="text-[var(--text-secondary)]">
-            {backendConnected ? "Elysia :3000" : "Simulated"}
+          <span className={backendConnected ? "text-emerald-800 font-bold" : "text-[var(--text-secondary)]"}>
+            {backendConnected ? "Elysia :3000 (Live)" : "Menghubungkan..."}
           </span>
         </div>
 

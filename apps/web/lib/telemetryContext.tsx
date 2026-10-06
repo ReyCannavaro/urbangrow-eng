@@ -16,7 +16,11 @@ interface TelemetryContextType {
   anomalyMode: string;
 }
 
-const BACKEND_BASE = "http://localhost:3000";
+const API_ENDPOINTS = [
+  "", // 1. Next.js proxy rewrite (same-origin /api/...)
+  "http://localhost:3000", // 2. Direct backend localhost
+  "https://tremendous-finger-live-chance.trycloudflare.com", // 3. Cloudflare tunnel fallback
+];
 
 const TelemetryContext = createContext<TelemetryContextType | undefined>(undefined);
 
@@ -103,7 +107,7 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
   const [anomalyMode, setAnomalyMode] = useState<string>("none");
   const [feedActive, setFeedActive] = useState<boolean>(false);
 
-  // Client-side organic drift simulation fallback
+  // Client-side organic drift simulation fallback when backend is unreachable
   const stepSimulation = useCallback(() => {
     setSensors((prev) => {
       let targetPH = 6.98;
@@ -154,39 +158,102 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
 
   // Sync with Elysia backend
   const fetchTelemetry = useCallback(async () => {
-    try {
-      const res = await fetch(`${BACKEND_BASE}/api/sensors/current`, {
-        cache: "no-store",
-        signal: AbortSignal.timeout(2000),
-      });
+    let connected = false;
 
-      if (res.ok) {
-        const json = await res.json();
-        setBackendConnected(true);
-        if (json.sensors) setSensors(json.sensors);
-        if (json.actuators) setActuators((prev) => ({ ...prev, ...json.actuators }));
-        if (json.system?.anomalyMode) setAnomalyMode(json.system.anomalyMode);
-        return;
+    for (const base of API_ENDPOINTS) {
+      try {
+        const res = await fetch(`${base}/api/sensors/current`, {
+          cache: "no-store",
+          signal: AbortSignal.timeout(2000),
+        });
+
+        if (res.ok) {
+          const json = await res.json();
+          connected = true;
+          setBackendConnected(true);
+
+          if (json.sensors) {
+            setSensors(json.sensors);
+            // Append incoming live reading to history for real-time spline graphs
+            setHistory((prevH) => [
+              ...prevH.slice(-35),
+              {
+                timestamp: json.timestamp || new Date().toISOString(),
+                sensors: json.sensors,
+                actuators: Object.fromEntries(
+                  Object.entries(json.actuators || {}).map(([k, v]: [string, any]) => [k, v.isOn])
+                ),
+              },
+            ]);
+          }
+
+          if (json.actuators) {
+            setActuators((prev) => {
+              const updated = { ...prev };
+              Object.entries(json.actuators).forEach(([id, act]: [string, any]) => {
+                updated[id] = {
+                  id,
+                  name: act.name || updated[id]?.name || id,
+                  code: act.code || updated[id]?.code || (id === "waterPump" ? "RELAY-01" : id === "aerator" ? "RELAY-02" : id === "growLight" ? "RELAY-03" : id === "feeder" ? "RELAY-04" : "RELAY-05"),
+                  type: act.type || updated[id]?.type || "pump",
+                  isOn: act.isOn,
+                  powerWatts: act.powerWatts || updated[id]?.powerWatts || 20,
+                  voltage: act.voltage || updated[id]?.voltage || "12V DC",
+                };
+              });
+              return updated;
+            });
+          }
+
+          if (json.alerts && Array.isArray(json.alerts) && json.alerts.length > 0) {
+            setAlerts(json.alerts.map((a: any) => ({
+              id: a.id || `alt-${Date.now()}`,
+              title: a.metric ? `Peringatan ${a.metric.toUpperCase()}` : "Alert Sistem",
+              message: a.message,
+              time: new Date(a.timestamp || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+              severity: a.severity || "warning",
+              isResolved: a.isResolved ?? false,
+            })));
+          }
+
+          if (json.system?.anomalyMode) {
+            setAnomalyMode(json.system.anomalyMode);
+          }
+
+          break; // Successfully fetched from this endpoint
+        }
+      } catch {
+        // try next endpoint
       }
-    } catch {
-      setBackendConnected(false);
     }
-    stepSimulation();
+
+    if (!connected) {
+      setBackendConnected(false);
+      stepSimulation();
+    }
   }, [stepSimulation]);
 
   // Initial history load
   useEffect(() => {
     async function loadInit() {
-      try {
-        const res = await fetch(`${BACKEND_BASE}/api/sensors/history`, { signal: AbortSignal.timeout(2000) });
-        if (res.ok) {
-          const json = await res.json();
-          if (json.data && json.data.length > 0) {
-            setHistory(json.data);
-            return;
+      let loaded = false;
+      for (const base of API_ENDPOINTS) {
+        try {
+          const res = await fetch(`${base}/api/sensors/history`, { signal: AbortSignal.timeout(2000) });
+          if (res.ok) {
+            const json = await res.json();
+            if (json.data && json.data.length > 0) {
+              setHistory(json.data);
+              loaded = true;
+              break;
+            }
           }
+        } catch {
+          // try next
         }
-      } catch {
+      }
+
+      if (!loaded) {
         const starter: HistorySample[] = [];
         const baseNow = Date.now();
         for (let i = 20; i >= 0; i--) {
@@ -213,57 +280,77 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetchTelemetry();
-    const interval = setInterval(fetchTelemetry, 2000);
+    const interval = setInterval(fetchTelemetry, 1500);
     return () => clearInterval(interval);
   }, [fetchTelemetry]);
 
   const toggleActuator = async (id: string) => {
-    const target = actuators[id];
-    const newState = !target.isOn;
-    setActuators((prev) => ({
-      ...prev,
-      [id]: { ...prev[id], isOn: newState },
-    }));
+    // 1. Optimistic UI update
+    setActuators((prev) => {
+      if (!prev[id]) return prev;
+      return {
+        ...prev,
+        [id]: { ...prev[id], isOn: !prev[id].isOn },
+      };
+    });
 
-    if (backendConnected) {
+    // 2. Dispatch network toggle to backend
+    for (const base of API_ENDPOINTS) {
       try {
-        await fetch(`${BACKEND_BASE}/api/actuators/${id}/toggle`, {
+        const res = await fetch(`${base}/api/actuators/${id}/toggle`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          signal: AbortSignal.timeout(2000),
         });
-      } catch (err) {
-        console.error(err);
+        if (res.ok) break;
+      } catch {
+        // try next
       }
     }
   };
 
-  const dispenseFeed = () => {
+  const dispenseFeed = async () => {
     setFeedActive(true);
     setAlerts((prev) => [
       {
         id: `feed-${Date.now()}`,
         title: "Pemberian Pakan Manual",
         message: "35g pelet bernutrisi tinggi didistribusikan ke kolam Nila & Lele.",
-        time: "Baru saja",
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         severity: "info",
         isResolved: true,
       },
       ...prev,
     ]);
+
+    for (const base of API_ENDPOINTS) {
+      try {
+        const res = await fetch(`${base}/api/feed/dispense`, {
+          method: "POST",
+          signal: AbortSignal.timeout(2000),
+        });
+        if (res.ok) break;
+      } catch {
+        // try next
+      }
+    }
+
     setTimeout(() => setFeedActive(false), 2500);
   };
 
   const setAnomaly = async (type: string) => {
     setAnomalyMode(type);
-    if (backendConnected) {
+    for (const base of API_ENDPOINTS) {
       try {
-        await fetch(`${BACKEND_BASE}/api/simulation/anomaly`, {
+        const res = await fetch(`${base}/api/simulation/anomaly`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ type }),
+          signal: AbortSignal.timeout(2000),
         });
-      } catch (err) {
-        console.error(err);
+        if (res.ok) break;
+      } catch {
+        // try next
       }
     }
   };

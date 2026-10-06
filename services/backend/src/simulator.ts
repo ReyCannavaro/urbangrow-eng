@@ -12,10 +12,12 @@ export interface SensorReading {
 export interface ActuatorState {
   id: string;
   name: string;
-  type: "pump" | "aerator" | "light" | "dosing";
+  code?: string;
+  type: "pump" | "aerator" | "light" | "feeder" | "dosing" | string;
   isOn: boolean;
   mode: "auto" | "manual";
   powerWatts: number;
+  voltage?: string;
 }
 
 export interface SystemAlert {
@@ -45,34 +47,52 @@ class AquaponicsSimulator {
     waterPump: {
       id: "waterPump",
       name: "Submersible Pump 12V",
+      code: "RELAY-01",
       type: "pump",
       isOn: true,
       mode: "auto",
       powerWatts: 45,
+      voltage: "12V DC",
     },
     aerator: {
       id: "aerator",
       name: "Dual-Port Air Pump",
+      code: "RELAY-02",
       type: "aerator",
       isOn: true,
       mode: "auto",
       powerWatts: 18,
+      voltage: "12V DC",
     },
     growLight: {
       id: "growLight",
       name: "Full-Spectrum LED Bar",
+      code: "RELAY-03",
       type: "light",
       isOn: false,
       mode: "auto",
       powerWatts: 85,
+      voltage: "12V DC",
+    },
+    feeder: {
+      id: "feeder",
+      name: "Feeder Otomatis Terjadwal",
+      code: "RELAY-04",
+      type: "feeder",
+      isOn: true,
+      mode: "auto",
+      powerWatts: 12,
+      voltage: "12V DC",
     },
     dosingPump: {
       id: "dosingPump",
       name: "pH Buffer Dosing Pump",
+      code: "RELAY-05",
       type: "dosing",
       isOn: false,
       mode: "auto",
       powerWatts: 12,
+      voltage: "12V DC",
     },
   };
 

@@ -87,7 +87,15 @@ export const app = new Elysia()
       return { success: true, sensors: updated };
     }
   )
-  // 7. Direct APK download for mobile testing
+  // 7. Manual feed dispense
+  .post("/api/feed/dispense", () => {
+    simulator.toggleActuator("feeder");
+    setTimeout(() => {
+      simulator.toggleActuator("feeder");
+    }, 3000);
+    return { success: true, message: "Pakan berhasil didistribusikan (35g pelet)" };
+  })
+  // 8. Direct APK download for mobile testing
   .get("/download/urbangrow.apk", ({ set }) => {
     const { resolve } = require("path");
     const { existsSync } = require("fs");
