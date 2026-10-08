@@ -30,7 +30,7 @@ class TelemetryNotifier extends Notifier<TelemetrySnapshot> {
     _timer?.cancel();
     // initial fetch
     Future.microtask(() => fetchLatest());
-    _timer = Timer.periodic(const Duration(seconds: 2), (_) {
+    _timer = Timer.periodic(const Duration(seconds: 4), (_) {
       fetchLatest();
     });
   }

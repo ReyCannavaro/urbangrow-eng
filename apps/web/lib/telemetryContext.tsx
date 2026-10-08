@@ -118,19 +118,19 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
       if (anomalyMode === "heatwave") targetTemp = 30.2;
       if (anomalyMode === "tds_spike") targetTDS = 1120;
 
-      const ph = Number((prev.ph + (targetPH - prev.ph) * 0.12 + (Math.random() - 0.5) * 0.03).toFixed(2));
-      const waterTemperature = Number((prev.waterTemperature + (targetTemp - prev.waterTemperature) * 0.08 + (Math.random() - 0.5) * 0.08).toFixed(1));
-      const tds = Math.round(prev.tds + (targetTDS - prev.tds) * 0.12 + (Math.random() - 0.5) * 5);
-      const airTemperature = Number((27.0 + (waterTemperature - 24.0) * 0.35 + (Math.random() - 0.5) * 0.15).toFixed(1));
-      const humidity = Number((65.0 - (airTemperature - 25.0) * 1.2 + (Math.random() - 0.5) * 1.2).toFixed(1));
+      const ph = Number((prev.ph + (targetPH - prev.ph) * 0.03 + (Math.random() - 0.5) * 0.005).toFixed(2));
+      const waterTemperature = Number((prev.waterTemperature + (targetTemp - prev.waterTemperature) * 0.02 + (Math.random() - 0.5) * 0.012).toFixed(1));
+      const tds = Math.round(prev.tds + (targetTDS - prev.tds) * 0.03 + (Math.random() - 0.5) * 0.8);
+      const airTemperature = Number((27.0 + (waterTemperature - 24.0) * 0.35 + (Math.random() - 0.5) * 0.04).toFixed(1));
+      const humidity = Number((65.0 - (airTemperature - 25.0) * 1.2 + (Math.random() - 0.5) * 0.3).toFixed(1));
 
       const isAeratorOn = actuators.aerator?.isOn ?? true;
       const targetDO = isAeratorOn ? 7.35 : 4.4;
-      const dissolvedOxygen = Number(Math.max(2.0, Math.min(9.5, prev.dissolvedOxygen + (targetDO - prev.dissolvedOxygen) * 0.12 + (Math.random() - 0.5) * 0.04)).toFixed(2));
+      const dissolvedOxygen = Number(Math.max(2.0, Math.min(9.5, prev.dissolvedOxygen + (targetDO - prev.dissolvedOxygen) * 0.04 + (Math.random() - 0.5) * 0.008)).toFixed(2));
 
       const isLightOn = actuators.growLight?.isOn ?? false;
       const baseLight = isLightOn ? 2450 : 620;
-      const lightIntensity = Math.round(baseLight + (Math.random() - 0.5) * 50);
+      const lightIntensity = Math.round(baseLight + (Math.random() - 0.5) * 8);
 
       const newSample: SensorData = {
         ph,
@@ -280,7 +280,7 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetchTelemetry();
-    const interval = setInterval(fetchTelemetry, 1500);
+    const interval = setInterval(fetchTelemetry, 4000);
     return () => clearInterval(interval);
   }, [fetchTelemetry]);
 

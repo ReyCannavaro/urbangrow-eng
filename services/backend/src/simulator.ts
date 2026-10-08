@@ -117,10 +117,12 @@ class AquaponicsSimulator {
     }
   }
 
+  private lastStepTimestamp: number = 0;
+  private readonly STEP_INTERVAL_MS = 4000; // Cadence: step physical simulation at most once every 4 seconds
   private targetOverrides: Partial<SensorReading> = {};
 
   // Smooth random walk with biological correlations
-  public stepSimulation() {
+  public stepSimulation(force: boolean = false) {
     const round = (val: number, decimals: number = 2) =>
       Number(val.toFixed(decimals));
 
@@ -133,39 +135,39 @@ class AquaponicsSimulator {
     if (this.anomalyMode === "heatwave") targetWaterTemp = 30.2;
     if (this.anomalyMode === "tds_spike") targetTDS = 1120;
 
-    // Organic drift towards target with small noise
-    const phDelta = (targetPH - this.state.ph) * 0.15 + (Math.random() - 0.5) * 0.03;
+    // Organic drift towards target with calmed, realistic noise (aqueous thermal & chemical buffer)
+    const phDelta = (targetPH - this.state.ph) * 0.03 + (Math.random() - 0.5) * 0.005;
     this.state.ph = round(Math.max(4.0, Math.min(10.0, this.state.ph + phDelta)), 2);
 
-    const tempDelta = (targetWaterTemp - this.state.waterTemperature) * 0.1 + (Math.random() - 0.5) * 0.08;
+    const tempDelta = (targetWaterTemp - this.state.waterTemperature) * 0.02 + (Math.random() - 0.5) * 0.012;
     this.state.waterTemperature = round(this.state.waterTemperature + tempDelta, 1);
 
-    const tdsDelta = (targetTDS - this.state.tds) * 0.15 + (Math.random() - 0.5) * 4;
+    const tdsDelta = (targetTDS - this.state.tds) * 0.03 + (Math.random() - 0.5) * 0.8;
     this.state.tds = Math.round(this.state.tds + tdsDelta);
 
     // Air temperature & humidity
-    const airDelta = (Math.random() - 0.5) * 0.2;
-    this.state.airTemperature = round(27.0 + (this.state.waterTemperature - 24.0) * 0.4 + airDelta, 1);
-    this.state.humidity = round(Math.max(40, Math.min(90, 65.0 - (this.state.airTemperature - 25.0) * 1.5 + (Math.random() - 0.5) * 1.5)), 1);
+    const airDelta = (Math.random() - 0.5) * 0.04;
+    this.state.airTemperature = round(27.0 + (this.state.waterTemperature - 24.0) * 0.35 + airDelta, 1);
+    this.state.humidity = round(Math.max(40, Math.min(90, 65.0 - (this.state.airTemperature - 25.0) * 1.2 + (Math.random() - 0.5) * 0.3)), 1);
 
     // Dissolved oxygen reacts biologically to aerator state unless manually overridden
     let targetDO = this.targetOverrides.dissolvedOxygen ?? (this.actuators.aerator.isOn ? 7.4 : 4.4);
-    const doDelta = (targetDO - this.state.dissolvedOxygen) * 0.15 + (Math.random() - 0.5) * 0.04;
+    const doDelta = (targetDO - this.state.dissolvedOxygen) * 0.04 + (Math.random() - 0.5) * 0.008;
     this.state.dissolvedOxygen = round(Math.max(2.0, Math.min(10.0, this.state.dissolvedOxygen + doDelta)), 2);
 
     // Light reacts to grow light state unless manually overridden
     if (this.targetOverrides.lightIntensity !== undefined) {
-      this.state.lightIntensity = Math.round(this.targetOverrides.lightIntensity + (Math.random() - 0.5) * 20);
+      this.state.lightIntensity = Math.round(this.targetOverrides.lightIntensity + (Math.random() - 0.5) * 5);
     } else {
       const baseLight = this.actuators.growLight.isOn ? 2400 : 550;
-      this.state.lightIntensity = Math.round(baseLight + (Math.random() - 0.5) * 50);
+      this.state.lightIntensity = Math.round(baseLight + (Math.random() - 0.5) * 8);
     }
 
     // Water level
     if (this.targetOverrides.waterLevel !== undefined) {
-      this.state.waterLevel = round(this.targetOverrides.waterLevel + (Math.random() - 0.5) * 0.2, 1);
+      this.state.waterLevel = round(this.targetOverrides.waterLevel + (Math.random() - 0.5) * 0.05, 1);
     } else {
-      const levelDelta = (this.actuators.waterPump.isOn ? 0 : -0.2) + (Math.random() - 0.5) * 0.1;
+      const levelDelta = (this.actuators.waterPump.isOn ? 0 : -0.05) + (Math.random() - 0.5) * 0.02;
       this.state.waterLevel = round(Math.max(60, Math.min(100, this.state.waterLevel + levelDelta)), 1);
     }
 
@@ -182,7 +184,11 @@ class AquaponicsSimulator {
   }
 
   public getSnapshot() {
-    this.stepSimulation();
+    const now = Date.now();
+    if (now - this.lastStepTimestamp >= this.STEP_INTERVAL_MS) {
+      this.stepSimulation();
+      this.lastStepTimestamp = now;
+    }
     const alerts = this.evaluateAlerts();
 
     return {

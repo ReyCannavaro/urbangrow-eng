@@ -83,7 +83,7 @@ export function useTelemetrySync() {
 
   useEffect(() => {
     fetchCurrent();
-    const interval = setInterval(fetchCurrent, 1500);
+    const interval = setInterval(fetchCurrent, 4000);
     return () => clearInterval(interval);
   }, [fetchCurrent]);
 

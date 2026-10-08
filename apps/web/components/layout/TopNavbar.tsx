@@ -9,7 +9,7 @@ export function TopNavbar() {
   const { backendConnected, alerts } = useTelemetry();
 
   return (
-    <header className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-[#E5E7EB]">
+    <header className="bg-white rounded-[24px] border border-[#E5E7EB] p-4 sm:px-6 sm:py-3.5 shadow-xs mb-6 flex flex-wrap items-center justify-between gap-4">
       {/* Search Input Bar (Matching Donezo Pill with Shortcut Badge) */}
       <div className="flex-1 max-w-md relative">
         <div className="relative flex items-center">

@@ -82,15 +82,19 @@ export function RelayActuatorsCard() {
                 </div>
               </div>
 
-              {/* Toggle State Pill (Matching Donezo clean checkboxes) */}
+              {/* Tactile Toggle Switch (Nyala / Mati) */}
               <div
-                className={`h-5 w-5 rounded-full flex items-center justify-center border transition-colors ${
+                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${
                   isOn
-                    ? "bg-[#165B39] border-[#165B39] text-white"
-                    : "border-[#D1D5DB] bg-white"
+                    ? "bg-[#165B39] shadow-[0_0_8px_rgba(22,91,57,0.25)]"
+                    : "bg-[#E5E7EB] border border-[#D1D5DB]"
                 }`}
               >
-                {isOn && <Check className="h-3 w-3 stroke-[3]" />}
+                <span
+                  className={`inline-block h-4.5 w-4.5 transform rounded-full bg-white shadow-sm transition-transform duration-200 ease-in-out ${
+                    isOn ? "translate-x-5.5" : "translate-x-1"
+                  }`}
+                />
               </div>
             </div>
           );

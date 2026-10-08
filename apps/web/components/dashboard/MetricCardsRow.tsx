@@ -8,6 +8,37 @@ import { useTelemetry } from "@/lib/telemetryContext";
 export function MetricCardsRow() {
   const { sensors } = useTelemetry();
 
+  // Dynamic WQI score with graceful stability
+  const wqiScore = Math.max(
+    50,
+    Math.min(
+      98,
+      Math.round(
+        100 -
+          Math.abs((sensors.ph ?? 7.0) - 7.0) * 16 -
+          Math.max(0, 6.5 - (sensors.dissolvedOxygen ?? 7.2)) * 8 -
+          Math.abs((sensors.waterTemperature ?? 24.5) - 24.5) * 2.5
+      )
+    )
+  );
+
+  const formattedTemp =
+    typeof sensors.waterTemperature === "number"
+      ? sensors.waterTemperature.toFixed(1)
+      : sensors.waterTemperature;
+  const formattedDO =
+    typeof sensors.dissolvedOxygen === "number"
+      ? sensors.dissolvedOxygen.toFixed(2)
+      : sensors.dissolvedOxygen;
+  const formattedPH =
+    typeof sensors.ph === "number"
+      ? sensors.ph.toFixed(2)
+      : sensors.ph;
+  const formattedTDS =
+    typeof sensors.tds === "number"
+      ? Math.round(sensors.tds)
+      : sensors.tds;
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* 1. THE INVERTED HERO ANCHOR CARD (Matching Total Projects 24 in Donezo) */}
@@ -26,8 +57,8 @@ export function MetricCardsRow() {
         </div>
 
         <div>
-          <div className="text-4xl font-bold tracking-tight num-tabular text-white">
-            94<span className="text-xl font-normal text-white/80">%</span>
+          <div className="text-4xl font-bold tracking-tight num-tabular text-white transition-all duration-300">
+            {wqiScore}<span className="text-xl font-normal text-white/80">%</span>
           </div>
           <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/15 text-[10px] font-mono text-white/90">
             <TrendingUp className="h-3 w-3 text-[#68C194]" />
@@ -52,8 +83,8 @@ export function MetricCardsRow() {
         </div>
 
         <div>
-          <div className="text-4xl font-bold tracking-tight num-tabular text-[#111827]">
-            {sensors.waterTemperature}
+          <div className="text-4xl font-bold tracking-tight num-tabular text-[#111827] transition-all duration-300">
+            {formattedTemp}
             <span className="text-xl font-normal text-[#9CA3AF]">°C</span>
           </div>
           <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#DCFCE7] text-[10px] font-medium text-[#166534]">
@@ -79,8 +110,8 @@ export function MetricCardsRow() {
         </div>
 
         <div>
-          <div className="text-4xl font-bold tracking-tight num-tabular text-[#111827]">
-            {sensors.dissolvedOxygen}
+          <div className="text-4xl font-bold tracking-tight num-tabular text-[#111827] transition-all duration-300">
+            {formattedDO}
             <span className="text-base font-normal text-[#9CA3AF] ml-1">mg/L</span>
           </div>
           <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#DCFCE7] text-[10px] font-medium text-[#166534]">
@@ -106,12 +137,12 @@ export function MetricCardsRow() {
         </div>
 
         <div>
-          <div className="text-4xl font-bold tracking-tight num-tabular text-[#111827]">
-            {sensors.ph}
+          <div className="text-4xl font-bold tracking-tight num-tabular text-[#111827] transition-all duration-300">
+            {formattedPH}
             <span className="text-base font-normal text-[#9CA3AF] ml-1">pH</span>
           </div>
           <div className="mt-2 text-[10px] text-[#4B5563] font-mono">
-            TDS <span className="font-bold text-[#111827]">{sensors.tds} ppm</span> • Buffer Stabil
+            TDS <span className="font-bold text-[#111827]">{formattedTDS} ppm</span> • Buffer Stabil
           </div>
         </div>
       </div>
