@@ -27,23 +27,30 @@ export function TopNavbar() {
 
       {/* Right Action Icons & User Profile */}
       <div className="flex items-center gap-3">
-        {/* Live Backend Connection Indicator */}
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#E5E7EB] bg-white text-[11px] font-mono shadow-2xs">
+        {/* Connection & Sync Status Indicator */}
+        <div
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#E5E7EB] bg-white text-xs font-medium shadow-2xs transition-colors"
+          title={
+            backendConnected
+              ? "Sistem terhubung dan tersinkronisasi dengan backend"
+              : "Menghubungkan ke backend..."
+          }
+        >
           <span
             className={`h-2 w-2 rounded-full ${
               backendConnected
-                ? "bg-[#165B39] shadow-[0_0_8px_rgba(22,91,57,0.6)] animate-pulse"
-                : "bg-amber-400 animate-pulse"
+                ? "bg-[#165B39]"
+                : "bg-amber-500 animate-pulse"
             }`}
           />
           <span
             className={
               backendConnected
-                ? "text-[#165B39] font-bold"
-                : "text-[#9CA3AF]"
+                ? "text-[#165B39] font-semibold"
+                : "text-amber-600 font-medium"
             }
           >
-            {backendConnected ? "Live 1.5s • Elysia :3000" : "Menghubungkan..."}
+            {backendConnected ? "Tersinkron" : "Menghubungkan..."}
           </span>
         </div>
 
