@@ -304,7 +304,7 @@ class _AgriBotScreenState extends ConsumerState<AgriBotScreen> {
         ),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isUser ? AppTheme.charcoal : Colors.white,
+          color: isUser ? AppTheme.pinePrimary : Colors.white,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(20),
             topRight: const Radius.circular(20),
@@ -312,7 +312,7 @@ class _AgriBotScreenState extends ConsumerState<AgriBotScreen> {
             bottomRight: Radius.circular(isUser ? 6 : 20),
           ),
           border: Border.all(
-            color: isUser ? AppTheme.charcoal : AppTheme.borderLight,
+            color: isUser ? AppTheme.pinePrimary : AppTheme.borderLight,
           ),
           boxShadow: AppTheme.cardShadow,
         ),
@@ -329,7 +329,7 @@ class _AgriBotScreenState extends ConsumerState<AgriBotScreen> {
                     height: 6,
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppTheme.accentEmerald,
+                      color: AppTheme.pinePrimary,
                     ),
                   ),
                   const SizedBox(width: 6),
@@ -340,7 +340,7 @@ class _AgriBotScreenState extends ConsumerState<AgriBotScreen> {
                       fontWeight: FontWeight.bold,
                       fontFamily: 'monospace',
                       letterSpacing: 0.8,
-                      color: AppTheme.accentEmeraldDark,
+                      color: AppTheme.mintText,
                     ),
                   ),
                 ],
@@ -387,7 +387,7 @@ class _AgriBotScreenState extends ConsumerState<AgriBotScreen> {
               height: 12,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: AppTheme.charcoal,
+                color: AppTheme.pinePrimary,
               ),
             ),
             SizedBox(width: 8),

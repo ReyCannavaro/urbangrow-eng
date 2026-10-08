@@ -121,7 +121,7 @@ class _SplashScreenState extends State<SplashScreen>
                               fontWeight: FontWeight.bold,
                               letterSpacing: 1.4,
                               fontFamily: 'monospace',
-                              color: AppTheme.charcoal,
+                              color: AppTheme.pinePrimary,
                             ),
                           ),
                         ),
@@ -142,7 +142,7 @@ class _SplashScreenState extends State<SplashScreen>
                         height: 22,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.2,
-                          color: AppTheme.charcoal,
+                          color: AppTheme.pinePrimary,
                         ),
                       ),
                       const SizedBox(height: 16),

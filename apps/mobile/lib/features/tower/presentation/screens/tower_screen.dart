@@ -17,7 +17,7 @@ class TowerScreen extends ConsumerWidget {
       backgroundColor: AppTheme.canvas,
       body: RefreshIndicator(
         onRefresh: () async => notifier.fetchLatest(),
-        color: AppTheme.charcoal,
+        color: AppTheme.pinePrimary,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
@@ -34,12 +34,12 @@ class TowerScreen extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    'MENARA KASKADE 4-LEVEL',
+                    'KASKADE 4-BARIS & KOLAM BERSEKAT',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 10.5,
                       fontWeight: FontWeight.bold,
                       fontFamily: 'monospace',
-                      letterSpacing: 1.2,
+                      letterSpacing: 1.1,
                       color: AppTheme.textMuted,
                     ),
                   ),
@@ -52,75 +52,75 @@ class TowerScreen extends ConsumerWidget {
                       fontWeight: FontWeight.bold,
                       fontFamily: 'monospace',
                       color: telemetry.actuators['waterPump']?.isOn == true
-                          ? AppTheme.leafGreen
-                          : AppTheme.alertCoral,
+                          ? AppTheme.statusOptimal
+                          : AppTheme.statusAlert,
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
 
-              // 3. The 4 Interactive Cascade Tiers
+              // 3. The 4 Interactive Cascade Tiers (Physical Hardware Twin)
               _buildTierCard(
                 context,
                 levelNumber: '4',
-                name: 'PAKCOY CANOPY',
-                spec: 'Hidroponik NFT • 120 Netpot',
-                accentColor: AppTheme.leafGreen,
+                name: 'BARIS 1 & 2: PAKCOY CANOPY',
+                spec: 'Hidroponik Atas • 60 Netpot Pakcoy',
+                accentColor: AppTheme.pinePrimary,
                 icon: Icons.eco_rounded,
-                primaryStat: 'H-10',
+                primaryStat: 'H-7',
                 statLabel: 'Est. Panen',
                 statusText: 'Daun Segar • Penyerapan Nitrat Optimal',
-                details: 'Nutrient Film Technique (NFT). Menyerap nitrat hasil biofilter sebagai nutrisi alami daun tanpa pupuk sintetis.',
+                details: 'Air kolam dipompa dari dasar ke 2 baris teratas Pakcoy untuk menyerap nitrat ramah tanaman hasil nitrifikasi.',
               ),
 
-              _buildFlowConduit(label: 'Tetesan Nutrisi Air Kolam (1.8 L/min)'),
+              _buildFlowConduit(label: 'Aliran Gravitasi ke Baris Kangkung (1.8 L/min)'),
 
               _buildTierCard(
                 context,
                 levelNumber: '3',
-                name: 'KOLAM NILA MERAH',
-                spec: 'Biofloc Tank • 85 Ekor (~14.2 kg)',
-                accentColor: AppTheme.aquaticCyan,
-                icon: Icons.set_meal_rounded,
-                primaryStat: telemetry.sensors.dissolvedOxygen.toStringAsFixed(1),
-                statLabel: 'mg/L DO',
-                statusText: telemetry.sensors.dissolvedOxygen >= 5.0
-                    ? 'Kondisi Prima • Nafsu Makan Aktif'
-                    : 'Waspada Hipoksia',
-                details: 'Ikan Nila aktif mengonsumsi pakan terapung dan menghasilkan amonia alami sebagai bahan baku pupuk bagi kangkung & pakcoy.',
+                name: 'BARIS 3 & 4: KANGKUNG BIOFILTER',
+                spec: 'Hidroponik Tengah • Substrat Hydroton',
+                accentColor: AppTheme.accentAmber,
+                icon: Icons.grass_rounded,
+                primaryStat: '94.2%',
+                statLabel: 'Konversi',
+                statusText: 'Koloni Nitrosomonas & Nitrobacter Aktif',
+                details: '2 baris Kangkung berfungsi sebagai biofilter biologis kedua sebelum air gravitasi turun ke kolam bersekat di bawah.',
               ),
 
-              _buildFlowConduit(label: 'Air Bio-Overflow ke Substrat'),
+              _buildFlowConduit(label: 'Gravitasi Mengalirkan Air Bersih ke Kolam Bersekat'),
 
               _buildTierCard(
                 context,
                 levelNumber: '2',
-                name: 'KANGKUNG BIOFILTER',
-                spec: 'Ebb & Flow • Substrat Hydroton',
-                accentColor: AppTheme.bioAmber,
-                icon: Icons.grass_rounded,
-                primaryStat: '96.4%',
-                statLabel: 'Konversi',
-                statusText: 'Koloni Nitrosomonas & Nitrobacter Aktif',
-                details: 'Pori-pori media hydroton menjadi habitat jutaan bakteri pengurai yang memecah amonia berbahaya menjadi nitrat bermanfaat.',
+                name: 'KOLAM SEKAT 1: IKAN NILA MERAH',
+                spec: 'Bak Kolam Sekat Kiri • 85 Ekor Nila',
+                accentColor: AppTheme.accentCyan,
+                icon: Icons.set_meal_rounded,
+                primaryStat: telemetry.sensors.dissolvedOxygen.toStringAsFixed(1),
+                statLabel: 'mg/L DO',
+                statusText: telemetry.sensors.dissolvedOxygen >= 5.0
+                    ? 'Kondisi Prima • Aerator Venturi Aktif'
+                    : 'Waspada Hipoksia',
+                details: 'Ikan Nila aktif mengonsumsi pakan pelet dan menghasilkan amonia metabolik yang diproses bakteri nitrifikasi.',
               ),
 
-              _buildFlowConduit(label: 'Air Jernih Teralirkan ke Sump'),
+              _buildFlowConduit(label: 'Sirkulasi Sekat Kolam & Filter Padatan'),
 
               _buildTierCard(
                 context,
                 levelNumber: '1',
-                name: 'SUMP PUMP & LELE',
-                spec: 'Filter Padatan • 120 Ekor Lele',
-                accentColor: AppTheme.sumpSlate,
+                name: 'KOLAM SEKAT 2: LELE & POMPA 12V',
+                spec: 'Bak Kolam Sekat Kanan • 120 Ekor Lele',
+                accentColor: AppTheme.textSecondary,
                 icon: Icons.water_rounded,
                 primaryStat: '${telemetry.sensors.waterLevel.toStringAsFixed(0)}%',
-                statLabel: 'Tangki Sump',
+                statLabel: 'Level Air',
                 statusText: telemetry.actuators['waterPump']?.isOn == true
-                    ? 'Pompa Mendorong Air Kembali ke L4'
+                    ? 'Pompa Mengangkat Air ke Baris 1 Pakcoy'
                     : 'Pompa Mati (Standby)',
-                details: 'Tangki paling dasar untuk mengendapkan kotoran padat. Pompa submersible 12V 45W mengangkat air bersih kembali ke Level 4.',
+                details: 'Sekat pengendap kotoran padat dengan ikan lele toleran. Pompa DC 12V 45W mengangkat air bersih kembali ke baris teratas.',
               ),
 
               const SizedBox(height: 24),
@@ -141,7 +141,7 @@ class TowerScreen extends ConsumerWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppTheme.borderLight),
         boxShadow: AppTheme.softShadow,
@@ -152,15 +152,21 @@ class TowerScreen extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'STATUS VITAL AIR SAAT INI',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'monospace',
-                  letterSpacing: 1.0,
-                  color: AppTheme.textMuted,
-                ),
+              const Row(
+                children: [
+                  Icon(Icons.monitor_heart_rounded, color: AppTheme.pinePrimary, size: 16),
+                  SizedBox(width: 6),
+                  Text(
+                    'STATUS VITAL AIR SAAT INI',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'monospace',
+                      letterSpacing: 1.0,
+                      color: AppTheme.textMuted,
+                    ),
+                  ),
+                ],
               ),
               Row(
                 children: [
@@ -170,7 +176,7 @@ class TowerScreen extends ConsumerWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: telemetry.sensors.ph >= 6.5 && telemetry.sensors.ph <= 7.5
-                          ? AppTheme.leafGreen
+                          ? AppTheme.mintText
                           : AppTheme.alertCoral,
                     ),
                   ),
@@ -184,7 +190,7 @@ class TowerScreen extends ConsumerWidget {
                       fontWeight: FontWeight.bold,
                       fontFamily: 'monospace',
                       color: telemetry.sensors.ph >= 6.5 && telemetry.sensors.ph <= 7.5
-                          ? AppTheme.leafGreen
+                          ? AppTheme.mintText
                           : AppTheme.alertCoral,
                     ),
                   ),
@@ -201,7 +207,7 @@ class TowerScreen extends ConsumerWidget {
                 value: telemetry.sensors.ph.toStringAsFixed(2),
                 unit: 'pH',
                 label: 'Keasaman',
-                accentColor: AppTheme.leafGreen,
+                accentColor: AppTheme.pinePrimary,
               ),
               _buildHUDDivider(),
               _buildHUDItem(
@@ -388,7 +394,7 @@ class TowerScreen extends ConsumerWidget {
                       fontSize: 14,
                       fontWeight: FontWeight.w900,
                       fontFamily: 'monospace',
-                      color: AppTheme.charcoal,
+                      color: AppTheme.pinePrimary,
                     ),
                   ),
                   Text(
@@ -436,12 +442,12 @@ class TowerScreen extends ConsumerWidget {
   Widget _buildFeedTrigger(dynamic telemetry, dynamic notifier, BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppTheme.charcoal,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppTheme.borderDark),
-        boxShadow: AppTheme.floatingPillShadow,
+        border: Border.all(color: AppTheme.borderLight),
+        boxShadow: AppTheme.softShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -449,20 +455,26 @@ class TowerScreen extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'KONTROL DISPENSER PAKAN IKAN',
-                style: TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'monospace',
-                  letterSpacing: 1.0,
-                  color: AppTheme.textLight,
-                ),
+              const Row(
+                children: [
+                  Icon(Icons.fastfood_rounded, color: AppTheme.pinePrimary, size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'DISPENSER PAKAN IKAN',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'monospace',
+                      letterSpacing: 1.0,
+                      color: AppTheme.textMuted,
+                    ),
+                  ),
+                ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: AppTheme.leafGreen.withValues(alpha: 0.2),
+                  color: AppTheme.mintWash,
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: const Text(
@@ -471,7 +483,7 @@ class TowerScreen extends ConsumerWidget {
                     fontSize: 9,
                     fontWeight: FontWeight.bold,
                     fontFamily: 'monospace',
-                    color: AppTheme.leafGreenLight,
+                    color: AppTheme.mintText,
                   ),
                 ),
               ),
@@ -492,8 +504,15 @@ class TowerScreen extends ConsumerWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     decoration: BoxDecoration(
-                      color: AppTheme.leafGreen,
+                      color: AppTheme.pinePrimary,
                       borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.pinePrimary.withValues(alpha: 0.25),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
                     child: Center(
                       child: telemetry.isFeedDispensing
@@ -522,7 +541,7 @@ class TowerScreen extends ConsumerWidget {
                           : const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.fastfood_rounded, color: Colors.white, size: 18),
+                                Icon(Icons.touch_app_rounded, color: Colors.white, size: 18),
                                 SizedBox(width: 8),
                                 Text(
                                   'Beri Pakan Sekarang',
@@ -554,13 +573,13 @@ class TowerScreen extends ConsumerWidget {
                 child: Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: AppTheme.charcoalSoft,
+                    color: AppTheme.canvas,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppTheme.charcoalMuted),
+                    border: Border.all(color: AppTheme.borderMedium),
                   ),
                   child: const Icon(
                     Icons.tune_rounded,
-                    color: Colors.white,
+                    color: AppTheme.pinePrimary,
                     size: 20,
                   ),
                 ),
@@ -657,7 +676,7 @@ class TowerScreen extends ConsumerWidget {
               child: OutlinedButton(
                 onPressed: () => Navigator.pop(context),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.charcoal,
+                  foregroundColor: AppTheme.pinePrimary,
                   side: const BorderSide(color: AppTheme.borderMedium),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),

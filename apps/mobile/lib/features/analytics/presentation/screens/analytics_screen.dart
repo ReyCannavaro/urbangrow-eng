@@ -19,7 +19,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
       'id': 'ph',
       'label': 'Kadar pH',
       'unit': 'pH',
-      'color': AppTheme.leafGreen,
+      'color': AppTheme.pinePrimary,
       'target': '6.5 - 7.5',
       'base': 7.0,
       'variance': 0.12,
@@ -63,24 +63,24 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
       backgroundColor: AppTheme.canvas,
       body: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Water Quality Index (WQI) Score Banner
-            _buildWQIScoreHeader(),
+            // 1. Water Quality Index (WQI) Score Hero Banner
+            _buildWQIScoreHero(),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             // 2. Interactive Telemetry Trend Chart Card
             _buildInteractiveSplineCard(telemetry, selected, color),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             // 3. Nitrogen Closed-Loop Efficiency Indicator
             _buildNitrogenEfficiencyCard(),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             // 4. 24-Hour Statistical Range
             _buildStatisticalRange(telemetry),
@@ -92,26 +92,31 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
-  Widget _buildWQIScoreHeader() {
+  Widget _buildWQIScoreHero() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: AppTheme.charcoal,
+        color: AppTheme.pinePrimary,
         borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: AppTheme.borderDark),
-        boxShadow: AppTheme.floatingPillShadow,
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.pinePrimary.withValues(alpha: 0.28),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Row(
         children: [
           // Circular WQI Score Badge
           Container(
-            width: 76,
-            height: 76,
+            width: 74,
+            height: 74,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppTheme.charcoalSoft,
-              border: Border.all(color: AppTheme.leafGreenLight, width: 2.5),
+              color: Colors.white.withValues(alpha: 0.12),
+              border: Border.all(color: AppTheme.sageMint, width: 2.5),
             ),
             child: const Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -131,29 +136,42 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     fontSize: 9.5,
                     fontWeight: FontWeight.bold,
                     fontFamily: 'monospace',
-                    color: AppTheme.leafGreenLight,
+                    color: AppTheme.sageMint,
                   ),
                 ),
               ],
             ),
           ),
           const SizedBox(width: 18),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'WATER QUALITY INDEX',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'monospace',
-                    letterSpacing: 1.0,
-                    color: AppTheme.leafGreenLight,
-                  ),
+                Row(
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppTheme.sageMint,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'WATER QUALITY INDEX',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'monospace',
+                        letterSpacing: 1.0,
+                        color: AppTheme.sageMint,
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(height: 4),
-                Text(
+                const SizedBox(height: 4),
+                const Text(
                   'Kualitas Air Prima',
                   style: TextStyle(
                     fontSize: 17,
@@ -161,12 +179,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     color: Colors.white,
                   ),
                 ),
-                SizedBox(height: 2),
+                const SizedBox(height: 2),
                 Text(
-                  'Siklus nitrifikasi dan aerasi menjaga parameter tetap dalam toleransi biologis.',
+                  'Siklus nitrifikasi dan aerasi kaskade menjaga parameter dalam toleransi biologis.',
                   style: TextStyle(
                     fontSize: 11,
-                    color: AppTheme.textMuted,
+                    color: Colors.white.withValues(alpha: 0.8),
                     height: 1.35,
                   ),
                 ),
@@ -188,7 +206,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppTheme.borderLight),
         boxShadow: AppTheme.softShadow,
       ),
@@ -207,11 +225,15 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   child: InkWell(
                     onTap: () => setState(() => _selectedIdx = idx),
                     borderRadius: BorderRadius.circular(999),
-                    child: Container(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                       decoration: BoxDecoration(
-                        color: isCurrent ? AppTheme.charcoal : AppTheme.canvas,
+                        color: isCurrent ? AppTheme.pinePrimary : AppTheme.canvas,
                         borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: isCurrent ? AppTheme.pinePrimary : AppTheme.borderLight,
+                        ),
                       ),
                       child: Text(
                         m['label'],
@@ -256,7 +278,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
-                      color: color,
+                      color: color == AppTheme.pinePrimary ? AppTheme.mintText : color,
                     ),
                   ),
                 ],
@@ -304,7 +326,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               Text('24 Jam Lalu', style: TextStyle(fontSize: 10, color: AppTheme.textMuted)),
               Text('12 Jam Lalu', style: TextStyle(fontSize: 10, color: AppTheme.textMuted)),
               Text('6 Jam Lalu', style: TextStyle(fontSize: 10, color: AppTheme.textMuted)),
-              Text('Sekarang', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.charcoal)),
+              Text('Sekarang', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.pinePrimary)),
             ],
           ),
         ],
@@ -332,45 +354,59 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppTheme.borderLight),
+        boxShadow: AppTheme.softShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'EFISIENSI BIOFILTER NITROGEN',
-                style: TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'monospace',
-                  letterSpacing: 1.0,
-                  color: AppTheme.textMuted,
-                ),
+              const Row(
+                children: [
+                  Icon(Icons.recycling_rounded, color: AppTheme.pinePrimary, size: 16),
+                  SizedBox(width: 8),
+                  Text(
+                    'EFISIENSI BIOFILTER NITROGEN',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'monospace',
+                      letterSpacing: 1.0,
+                      color: AppTheme.textMuted,
+                    ),
+                  ),
+                ],
               ),
-              Text(
-                'CLOSED LOOP',
-                style: TextStyle(
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'monospace',
-                  color: AppTheme.leafGreen,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppTheme.mintWash,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: const Text(
+                  'CLOSED LOOP',
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'monospace',
+                    color: AppTheme.mintText,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Row(
             children: [
-              _buildMetricChip('96.4%', 'Konversi Amonia', AppTheme.leafGreen),
+              _buildMetricChip('96.4%', 'Konversi Amonia', AppTheme.pinePrimary, AppTheme.mintWash),
               const SizedBox(width: 8),
-              _buildMetricChip('1.4 : 1', 'Rasio Sayur/Ikan', AppTheme.aquaticCyan),
+              _buildMetricChip('1.4 : 1', 'Rasio Sayur/Ikan', AppTheme.aquaticCyan, Color(0xFFE0F2FE)),
               const SizedBox(width: 8),
-              _buildMetricChip('250 L/h', 'Debit Sirkulasi', AppTheme.bioAmber),
+              _buildMetricChip('250 L/h', 'Debit Sirkulasi', AppTheme.bioAmber, Color(0xFFFEF3C7)),
             ],
           ),
         ],
@@ -378,14 +414,14 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
-  Widget _buildMetricChip(String value, String label, Color color) {
+  Widget _buildMetricChip(String value, String label, Color color, Color bg) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: bg,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.borderLight),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -435,11 +471,11 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           ),
           const SizedBox(height: 12),
           _buildStatRow('Kadar pH', '6.88', '7.12', telemetry.sensors.ph.toStringAsFixed(2)),
-          const Divider(height: 16),
+          const Divider(height: 16, color: AppTheme.borderLight),
           _buildStatRow('Suhu Air', '23.8°C', '25.4°C', '${telemetry.sensors.waterTemperature.toStringAsFixed(1)}°C'),
-          const Divider(height: 16),
+          const Divider(height: 16, color: AppTheme.borderLight),
           _buildStatRow('Oksigen DO', '6.95 mg/L', '7.80 mg/L', '${telemetry.sensors.dissolvedOxygen.toStringAsFixed(2)} mg/L'),
-          const Divider(height: 16),
+          const Divider(height: 16, color: AppTheme.borderLight),
           _buildStatRow('TDS Nutrisi', '525 ppm', '560 ppm', '${telemetry.sensors.tds} ppm'),
         ],
       ),
@@ -461,7 +497,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         Text('Max: $max', style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
         Text(
           'Kini: $current',
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, fontFamily: 'monospace', color: AppTheme.charcoal),
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, fontFamily: 'monospace', color: AppTheme.pinePrimary),
         ),
       ],
     );
@@ -484,7 +520,7 @@ class _SplineChartPainter extends CustomPainter {
     final width = size.width;
     final height = size.height;
 
-    // Horizontal guideline
+    // Horizontal guidelines
     final gridPaint = Paint()
       ..color = AppTheme.borderLight
       ..strokeWidth = 1.0;
@@ -524,7 +560,7 @@ class _SplineChartPainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          lineColor.withValues(alpha: 0.22),
+          lineColor.withValues(alpha: 0.25),
           lineColor.withValues(alpha: 0.0),
         ],
       ).createShader(Rect.fromLTWH(0, 0, width, height));

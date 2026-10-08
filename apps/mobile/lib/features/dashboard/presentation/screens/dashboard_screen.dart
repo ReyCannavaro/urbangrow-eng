@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../telemetry/presentation/telemetry_notifier.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   final VoidCallback? onOpenTowerTab;
   final VoidCallback? onOpenControlsTab;
 
@@ -16,61 +16,101 @@ class DashboardScreen extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  int _runtimeSeconds = 5048; // Baseline 01:24:08
+
+  @override
+  void initState() {
+    super.initState();
+    // Increment digital runtime clock every second
+    Future.doWhile(() async {
+      await Future.delayed(const Duration(seconds: 1));
+      if (!mounted) return false;
+      setState(() => _runtimeSeconds++);
+      return true;
+    });
+  }
+
+  String _formatTimer(int totalSec) {
+    final hrs = (totalSec ~/ 3600).toString().padLeft(2, '0');
+    final mins = ((totalSec % 3600) ~/ 60).toString().padLeft(2, '0');
+    final secs = (totalSec % 60).toString().padLeft(2, '0');
+    return '$hrs:$mins:$secs';
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final telemetry = ref.watch(telemetryNotifierProvider);
     final notifier = ref.read(telemetryNotifierProvider.notifier);
 
     final activeActuators = telemetry.actuators.values.where((a) => a.isOn).length;
     final totalActuators = telemetry.actuators.length;
+    final totalWatts = telemetry.actuators.values.fold<int>(
+      0,
+      (sum, a) => sum + (a.isOn ? a.powerWatts : 0),
+    );
+
+    // Dynamic WQI Score calculation (matching Web Dashboard)
+    final wqiScore = (100 -
+            ((telemetry.sensors.ph - 7.0).abs() * 16) -
+            (math.max(0.0, 6.5 - telemetry.sensors.dissolvedOxygen) * 8) -
+            ((telemetry.sensors.waterTemperature - 24.5).abs() * 2.5))
+        .clamp(50.0, 98.0)
+        .round();
 
     return Scaffold(
       backgroundColor: AppTheme.canvas,
       body: RefreshIndicator(
         onRefresh: () async => notifier.fetchLatest(),
-        color: AppTheme.charcoal,
+        color: AppTheme.pinePrimary,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Hero Greeting & Multi-Segment Growth Stage Progress Bar
-              _buildHeroWelcomeSection(),
+              // 1. Welcome Header (Donezo Console Headline)
+              _buildGreetingHeader(),
 
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
 
-              // 2. Bento Card 1: Photographic Ecosystem Hero Card
-              _buildPhotographicHeroCard(context),
+              // 2. Donezo 2x2 Bento Metric Grid (Pine Hero Inverted + 3 White Cards)
+              _buildBentoMetricGrid(telemetry, wqiScore),
 
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
 
-              // 3. Bento Card 2: Lollipop Parameter Chart (pH & TDS)
-              _buildLollipopChartCard(telemetry.sensors.ph, telemetry.sensors.tds),
+              // 3. Cycle Analytics Capsule Bar Chart (Donezo Row 2, Card 1)
+              _buildCycleAnalyticsCard(telemetry.sensors.ph),
 
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
 
-              // 4. Bento Card 3: 270° Sunlit Butter Yellow Arc Dial Gauge (Suhu & DO)
-              _buildDialGaugeCard(
-                telemetry.sensors.waterTemperature,
-                telemetry.sensors.dissolvedOxygen,
-              ),
+              // 4. Reminders & Feed Action Card (Donezo Row 2, Card 2)
+              _buildRemindersCard(telemetry, notifier),
 
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
 
-              // 5. Bento Card 4: Matte Charcoal Task & Automation Panel
-              _buildDarkTaskPanel(
-                telemetry,
-                notifier,
-                activeActuators,
-                totalActuators,
-              ),
+              // 5. Relay Actuators Bento Card with Donezo Sliding Toggles
+              _buildRelayActuatorsCard(telemetry, notifier, activeActuators, totalActuators),
 
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
 
-              // 6. Quick Feed Dispenser Pill
-              _buildQuickFeedPill(telemetry, notifier),
+              // 6. Biological Pairs List (ECAD Pasangan Biologis)
+              _buildBiologicalPairsCard(),
 
-              const SizedBox(height: 90),
+              const SizedBox(height: 16),
+
+              // 7. Semicircular Biofilter Donut Card (Donezo Row 3, Card 2)
+              _buildBiofilterDonutCard(),
+
+              const SizedBox(height: 16),
+
+              // 8. Dark Wave Hardware Edge Time Tracker Card (Donezo Row 3, Card 3)
+              _buildHardwareEdgeTrackerCard(totalWatts),
+
+              const SizedBox(height: 96),
             ],
           ),
         ),
@@ -79,401 +119,246 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   // =========================================================================
-  // SECTION 1: HERO WELCOME & MULTI-SEGMENT PROGRESS BAR
+  // 1. GREETING HEADLINE
   // =========================================================================
-  Widget _buildHeroWelcomeSection() {
+  Widget _buildGreetingHeader() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Greeting Headline
-        RichText(
-          text: const TextSpan(
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w300,
-              letterSpacing: -0.6,
-              color: AppTheme.textPrimary,
-              fontFamily: 'Inter',
-            ),
-            children: [
-              TextSpan(text: 'Welcome in, '),
-              TextSpan(
-                text: 'Urban Farm 01',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'Sistem Akuaponik Kaskade 4-Level • ECAD v2.0 Active',
-          style: TextStyle(
-            fontSize: 12,
-            color: AppTheme.textSecondary,
-          ),
-        ),
-
-        const SizedBox(height: 14),
-
-        // Multi-Segment Stage Progress Bar (Matching Crextio reference in DESIGN.md)
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: AppTheme.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppTheme.borderLight),
-            boxShadow: AppTheme.cardShadow,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Stage Labels
-              const Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Pembibitan', style: TextStyle(fontSize: 10, color: AppTheme.textSecondary, fontWeight: FontWeight.w500)),
-                  Text('Vegetatif', style: TextStyle(fontSize: 10, color: AppTheme.textSecondary, fontWeight: FontWeight.w500)),
-                  Text('Pembesaran', style: TextStyle(fontSize: 10, color: AppTheme.textSecondary, fontWeight: FontWeight.w500)),
-                  Text('Panen', style: TextStyle(fontSize: 10, color: AppTheme.textSecondary, fontWeight: FontWeight.w500)),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              // Segmented Bar Row
-              Row(
-                children: [
-                  // Stage 1: Charcoal Pill
-                  Container(
-                    height: 26,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.charcoal,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    alignment: Alignment.center,
-                    child: const Text(
-                      '15%',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'monospace',
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-
-                  // Stage 2: Sunlit Butter Yellow Pill (Active)
-                  Expanded(
-                    flex: 25,
-                    child: Container(
-                      height: 26,
-                      decoration: BoxDecoration(
-                        color: AppTheme.accentYellow,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      alignment: Alignment.center,
-                      child: const Text(
-                        '25%',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          fontFamily: 'monospace',
-                          color: AppTheme.charcoal,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-
-                  // Stage 3: Hatched Diagonal Bar
-                  Expanded(
-                    flex: 45,
-                    child: Container(
-                      height: 26,
-                      decoration: BoxDecoration(
-                        color: AppTheme.canvas,
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: AppTheme.borderMedium, style: BorderStyle.solid),
-                      ),
-                      alignment: Alignment.center,
-                      child: const Text(
-                        '50%',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'monospace',
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-
-                  // Stage 4: Light Outlined Pill
-                  Container(
-                    height: 26,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: AppTheme.borderMedium),
-                    ),
-                    alignment: Alignment.center,
-                    child: const Text(
-                      '10%',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'monospace',
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 14),
-
-        // 3 Big Editorial Stat Counters (27 Nila • 27 Lele • 220 Tanaman)
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildEditorialCounter('27', 'Ikan Nila (L3)', Icons.set_meal_rounded, AppTheme.aquaticCyan),
-            const SizedBox(width: 8),
-            _buildEditorialCounter('27', 'Ikan Lele (L1)', Icons.water_rounded, AppTheme.sumpSlate),
-            const SizedBox(width: 8),
-            _buildEditorialCounter('220', 'Tanaman Aktif', Icons.eco_rounded, AppTheme.leafGreen),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  'Dashboard Ekosistem',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.6,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Sistem Kaskade 4-Baris & Kolam Bersekat',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppTheme.mintWash,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: AppTheme.statusOptimal.withValues(alpha: 0.2)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(Icons.eco_rounded, size: 12, color: AppTheme.statusOptimal),
+                  SizedBox(width: 4),
+                  Text(
+                    'ECAD Active',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.mintText,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildEditorialCounter(String count, String label, IconData icon, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppTheme.surface,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppTheme.borderLight),
-          boxShadow: AppTheme.cardShadow,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  // =========================================================================
+  // 2. DONEZO 2X2 BENTO METRIC GRID
+  // =========================================================================
+  Widget _buildBentoMetricGrid(dynamic telemetry, int wqiScore) {
+    return Column(
+      children: [
+        Row(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Icon(icon, size: 14, color: color),
-                Container(
-                  width: 5,
-                  height: 5,
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+            // Card 1: INVERTED HERO CARD (Pine Forest Green #165B39)
+            Expanded(
+              child: Container(
+                height: 165,
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: AppTheme.pinePrimary,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: AppTheme.softShadow,
                 ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              count,
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w300,
-                letterSpacing: -0.8,
-                fontFamily: 'monospace',
-                color: AppTheme.textPrimary,
-              ),
-            ),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 9.5,
-                fontWeight: FontWeight.w500,
-                color: AppTheme.textSecondary,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // =========================================================================
-  // SECTION 2: BENTO CARD 1 - PHOTOGRAPHIC ECOSYSTEM HERO CARD
-  // =========================================================================
-  Widget _buildPhotographicHeroCard(BuildContext context) {
-    return InkWell(
-      onTap: onOpenTowerTab,
-      borderRadius: BorderRadius.circular(28),
-      child: Container(
-        height: 220,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: AppTheme.borderLight),
-          boxShadow: AppTheme.cardShadow,
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Architectural Photo
-            Image.asset(
-              'assets/images/aquaponic_hero.jpg',
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Container(
-                color: AppTheme.charcoal,
-                alignment: Alignment.center,
-                child: const Icon(Icons.forest_rounded, size: 48, color: AppTheme.accentYellow),
-              ),
-            ),
-
-            // Bottom Gradient Overlay for High Contrast Text
-            Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Color(0x55000000),
-                    Color(0xCC000000),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Kualitas Air',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.arrow_outward_rounded,
+                            size: 15,
+                            color: AppTheme.pinePrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        RichText(
+                          text: TextSpan(
+                            style: const TextStyle(
+                              fontSize: 34,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'monospace',
+                              letterSpacing: -1.0,
+                              color: Colors.white,
+                            ),
+                            children: [
+                              TextSpan(text: '$wqiScore'),
+                              const TextSpan(
+                                text: '%',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.normal,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(Icons.trending_up_rounded, size: 11, color: AppTheme.sageMint),
+                              SizedBox(width: 3),
+                              Text(
+                                '+4.2% Stabil',
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
-                  stops: [0.3, 0.65, 1.0],
                 ),
               ),
             ),
+            const SizedBox(width: 12),
 
-            // Top Badges
-            Positioned(
-              top: 14,
-              left: 14,
-              right: 14,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.92),
-                      borderRadius: BorderRadius.circular(999),
-                      boxShadow: AppTheme.softShadow,
-                    ),
-                    child: const Text(
-                      'Closed-Loop Resirkulasi',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.charcoal,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.92),
-                      shape: BoxShape.circle,
-                      boxShadow: AppTheme.softShadow,
-                    ),
-                    child: const Icon(Icons.arrow_outward_rounded, size: 16, color: AppTheme.charcoal),
-                  ),
-                ],
-              ),
-            ),
-
-            // Bottom Content
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: 14,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Ekosistem 4-Tingkat',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.4,
-                          color: Colors.white,
-                        ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Pakcoy • Nila • Kangkung • Lele',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w400,
-                          color: Color(0xCCFFFFFF),
-                        ),
-                      ),
-                    ],
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.22),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
-                    ),
-                    child: const Text(
-                      '96.2% Skor ECAD',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'monospace',
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
+            // Card 2: Suhu Air Kolam (White Bento)
+            Expanded(
+              child: _buildWhiteMetricCard(
+                title: 'Suhu Kolam',
+                value: telemetry.sensors.waterTemperature.toStringAsFixed(1),
+                unit: '°C',
+                badgeText: '24-28°C Ideal',
+                icon: Icons.thermostat_rounded,
+                accentColor: AppTheme.accentCyan,
               ),
             ),
           ],
         ),
-      ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            // Card 3: Oksigen Terlarut DO (White Bento)
+            Expanded(
+              child: _buildWhiteMetricCard(
+                title: 'Oksigen (DO)',
+                value: telemetry.sensors.dissolvedOxygen.toStringAsFixed(2),
+                unit: 'mg/L',
+                badgeText: 'Saturasi 98%',
+                icon: Icons.waves_rounded,
+                accentColor: AppTheme.accentCyan,
+              ),
+            ),
+            const SizedBox(width: 12),
+
+            // Card 4: pH Air (White Bento)
+            Expanded(
+              child: _buildWhiteMetricCard(
+                title: 'Kadar pH Air',
+                value: telemetry.sensors.ph.toStringAsFixed(2),
+                unit: 'pH',
+                badgeText: 'Buffer 6.5-7.5',
+                icon: Icons.water_drop_rounded,
+                accentColor: AppTheme.pinePrimary,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
-  // =========================================================================
-  // SECTION 3: BENTO CARD 2 - LOLLIPOP PARAMETER CHART (pH & TDS)
-  // =========================================================================
-  Widget _buildLollipopChartCard(double ph, int tds) {
+  Widget _buildWhiteMetricCard({
+    required String title,
+    required String value,
+    required String unit,
+    required String badgeText,
+    required IconData icon,
+    required Color accentColor,
+  }) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      height: 165,
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppTheme.borderLight),
         boxShadow: AppTheme.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Header with Arrow
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Stabilitas pH & TDS',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
                   color: AppTheme.textPrimary,
                 ),
               ),
@@ -482,77 +367,144 @@ class DashboardScreen extends ConsumerWidget {
                 height: 28,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: AppTheme.borderMedium),
+                  border: Border.all(color: AppTheme.borderLight),
                 ),
-                child: const Icon(Icons.arrow_outward_rounded, size: 14, color: AppTheme.textSecondary),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-
-          // Big Metric Readout
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                ph.toStringAsFixed(2),
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w300,
-                  letterSpacing: -1.0,
-                  fontFamily: 'monospace',
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-              const SizedBox(width: 4),
-              const Text(
-                'pH',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: AppTheme.textMuted,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Container(
-                width: 1,
-                height: 14,
-                color: AppTheme.borderMedium,
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'TDS $tds ppm',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'monospace',
+                child: Icon(
+                  Icons.arrow_outward_rounded,
+                  size: 14,
                   color: AppTheme.textSecondary,
                 ),
               ),
             ],
           ),
-          const Text(
-            'Rentang optimal biologis 6.5 - 7.5',
-            style: TextStyle(fontSize: 10.5, color: AppTheme.textMuted),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              RichText(
+                text: TextSpan(
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'monospace',
+                    letterSpacing: -0.8,
+                    color: AppTheme.textPrimary,
+                  ),
+                  children: [
+                    TextSpan(text: value),
+                    TextSpan(
+                      text: ' $unit',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.normal,
+                        color: AppTheme.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppTheme.mintWash,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.check_circle_rounded, size: 10, color: AppTheme.mintText),
+                    const SizedBox(width: 3),
+                    Text(
+                      badgeText,
+                      style: const TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.mintText,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =========================================================================
+  // 3. CYCLE ANALYTICS CAPSULE BAR CHART (Donezo Row 2, Card 1)
+  // =========================================================================
+  Widget _buildCycleAnalyticsCard(double currentPh) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppTheme.borderLight),
+        boxShadow: AppTheme.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    'Analisis Siklus Mingguan',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Fotosintesis & Aktivitas Biologis 7 Hari',
+                    style: TextStyle(fontSize: 10.5, color: AppTheme.textSecondary),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceSubtle,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: AppTheme.borderLight),
+                ),
+                child: const Text(
+                  '74% Rata-rata',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'monospace',
+                    color: AppTheme.pinePrimary,
+                  ),
+                ),
+              ),
+            ],
           ),
 
-          const SizedBox(height: 14),
+          const SizedBox(height: 18),
 
-          // 7-Day Lollipop Capsules Row (S M T W T F S)
+          // 7 Days Capsule Bars
           SizedBox(
-            height: 105,
+            height: 110,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                _buildLollipopColumn('S', 0.45, false, ''),
-                _buildLollipopColumn('M', 0.65, false, ''),
-                _buildLollipopColumn('T', 0.55, false, ''),
-                _buildLollipopColumn('W', 0.50, false, ''),
-                _buildLollipopColumn('T', 0.70, false, ''),
-                _buildLollipopColumn('F', 0.88, true, '${ph.toStringAsFixed(2)} pH'),
-                _buildLollipopColumn('S', 0.40, false, ''),
+                _buildCapsuleBar('S', 0.40, false, ''),
+                _buildCapsuleBar('M', 0.65, false, ''),
+                _buildCapsuleBar('T', 0.50, false, ''),
+                _buildCapsuleBar('W', 0.55, false, ''),
+                _buildCapsuleBar('T', 0.75, false, ''),
+                _buildCapsuleBar('F', 0.90, true, '${currentPh.toStringAsFixed(2)} pH'),
+                _buildCapsuleBar('S', 0.45, false, ''),
               ],
             ),
           ),
@@ -561,26 +513,25 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildLollipopColumn(String day, double heightRatio, bool isHighlight, String badgeText) {
+  Widget _buildCapsuleBar(String day, double ratio, bool isPeak, String tooltip) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        // Floating tooltip badge if highlight
-        if (isHighlight) ...[
+        if (isPeak) ...[
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: AppTheme.accentYellow,
+              color: AppTheme.pinePrimary,
               borderRadius: BorderRadius.circular(999),
               boxShadow: AppTheme.softShadow,
             ),
             child: Text(
-              badgeText,
+              tooltip,
               style: const TextStyle(
-                fontSize: 9,
+                fontSize: 8.5,
                 fontWeight: FontWeight.bold,
                 fontFamily: 'monospace',
-                color: AppTheme.charcoal,
+                color: Colors.white,
               ),
             ),
           ),
@@ -589,36 +540,26 @@ class DashboardScreen extends ConsumerWidget {
           const SizedBox(height: 18),
         ],
 
-        // Vertical Capsule Bar
+        // Capsule Bar
         Container(
-          width: 9,
-          height: 52 * heightRatio,
+          width: 14,
+          height: 60 * ratio,
           decoration: BoxDecoration(
-            color: isHighlight ? AppTheme.accentYellow : AppTheme.charcoal,
+            color: isPeak ? AppTheme.pinePrimary : AppTheme.surfaceSubtle,
+            border: isPeak ? null : Border.all(color: AppTheme.borderLight),
             borderRadius: BorderRadius.circular(999),
           ),
         ),
-        const SizedBox(height: 3),
 
-        // Base Dot Connector
-        Container(
-          width: 5,
-          height: 5,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isHighlight ? AppTheme.accentYellowDeep : const Color(0xFFD6CEBF),
-          ),
-        ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
 
-        // Day Monospace Label
         Text(
           day,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 10,
-            fontWeight: FontWeight.bold,
+            fontWeight: isPeak ? FontWeight.bold : FontWeight.w600,
             fontFamily: 'monospace',
-            color: AppTheme.textMuted,
+            color: isPeak ? AppTheme.pinePrimary : AppTheme.textMuted,
           ),
         ),
       ],
@@ -626,18 +567,17 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   // =========================================================================
-  // SECTION 4: BENTO CARD 3 - 270° SUNLIT BUTTER YELLOW ARC DIAL GAUGE
+  // 4. REMINDERS & AUTOMATION CARD (Donezo Row 2, Card 2)
   // =========================================================================
-  Widget _buildDialGaugeCard(double temp, double doVal) {
-    // Normalization: 20°C to 30°C -> 0.0 to 1.0
-    final norm = ((temp - 20) / 10).clamp(0.0, 1.0);
+  Widget _buildRemindersCard(dynamic telemetry, dynamic notifier) {
+    final isFeeding = telemetry.feedActive;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppTheme.borderLight),
         boxShadow: AppTheme.cardShadow,
       ),
@@ -646,127 +586,71 @@ class DashboardScreen extends ConsumerWidget {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Suhu Air & Oksigen (DO)',
+            children: const [
+              Text(
+                'Reminders & Jadwal Pakan',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.textPrimary,
                 ),
               ),
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppTheme.borderMedium),
-                ),
-                child: const Icon(Icons.arrow_outward_rounded, size: 14, color: AppTheme.textSecondary),
-              ),
+              Icon(Icons.access_time_rounded, size: 16, color: AppTheme.textSecondary),
             ],
           ),
+          const SizedBox(height: 10),
+          const Text(
+            'Pemberian Pakan Siang (35g)',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.pinePrimary,
+            ),
+          ),
+          const SizedBox(height: 2),
+          const Text(
+            'Target: Tandon Nila L3 & Kolam Lele L1 • Pelet Terapung 2mm',
+            style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+          ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
 
-          // Custom Circular Arc Gauge Instrument
-          Center(
-            child: SizedBox(
-              width: 160,
-              height: 130,
-              child: Stack(
-                alignment: Alignment.center,
+          // Primary Pine Pill Feed Action Button
+          InkWell(
+            onTap: () {
+              HapticFeedback.heavyImpact();
+              notifier.dispenseFeed();
+            },
+            borderRadius: BorderRadius.circular(999),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: isFeeding ? AppTheme.mintText : AppTheme.pinePrimary,
+                borderRadius: BorderRadius.circular(999),
+                boxShadow: AppTheme.softShadow,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CustomPaint(
-                    size: const Size(160, 130),
-                    painter: DialArcPainter(
-                      normalizedValue: norm,
-                      arcColor: AppTheme.accentYellow,
-                      trackColor: const Color(0xFFF1F5F9),
-                    ),
+                  Icon(
+                    isFeeding ? Icons.check_circle_rounded : Icons.add_circle_outline_rounded,
+                    size: 16,
+                    color: Colors.white,
                   ),
-
-                  // Center Readout
-                  Positioned(
-                    top: 40,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        RichText(
-                          text: TextSpan(
-                            style: const TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w300,
-                              letterSpacing: -0.8,
-                              fontFamily: 'monospace',
-                              color: AppTheme.textPrimary,
-                            ),
-                            children: [
-                              TextSpan(text: temp.toStringAsFixed(1)),
-                              const TextSpan(
-                                text: '°C',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppTheme.textMuted,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'DO ${doVal.toStringAsFixed(2)} mg/L',
-                          style: const TextStyle(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'monospace',
-                            color: AppTheme.textSecondary,
-                          ),
-                        ),
-                      ],
+                  const SizedBox(width: 6),
+                  Text(
+                    isFeeding ? '35g Pakan Telah Keluar! ✨' : '+ Beri Pakan Sekarang',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-
-          // Bottom Telemetry Live Chip
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppTheme.leafGreen,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  const Text(
-                    'Siklus Telemetri 1.5s',
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'monospace',
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-              const Text(
-                'Saturasi Oksigen Prima ✨',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontStyle: FontStyle.italic,
-                  color: AppTheme.leafGreen,
-                ),
-              ),
-            ],
           ),
         ],
       ),
@@ -774,9 +658,9 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   // =========================================================================
-  // SECTION 5: BENTO CARD 4 - MATTE CHARCOAL TASK & AUTOMATION PANEL
+  // 5. RELAY ACTUATORS CARD (Donezo Bento with Sliding Toggles)
   // =========================================================================
-  Widget _buildDarkTaskPanel(
+  Widget _buildRelayActuatorsCard(
     dynamic telemetry,
     dynamic notifier,
     int activeCount,
@@ -786,150 +670,134 @@ class DashboardScreen extends ConsumerWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppTheme.charcoal,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: AppTheme.softShadow,
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppTheme.borderLight),
+        boxShadow: AppTheme.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Otomasi Perangkat & Tugas',
+                'Kontrol Relay Aktuator',
                 style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
                 ),
               ),
-              Text(
-                '$activeCount/$totalCount Aktif',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'monospace',
-                  color: AppTheme.accentYellow,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-
-          // Mini Segmented Progress Pill
-          Row(
-            children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: AppTheme.accentYellow,
+                  color: AppTheme.mintWash,
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  '$activeCount Aktif',
+                  '$activeCount/$totalCount Aktif',
                   style: const TextStyle(
-                    fontSize: 9.5,
+                    fontSize: 10,
                     fontWeight: FontWeight.bold,
                     fontFamily: 'monospace',
-                    color: AppTheme.charcoal,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  '${totalCount - activeCount} Standby',
-                  style: const TextStyle(
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'monospace',
-                    color: Colors.white,
+                    color: AppTheme.mintText,
                   ),
                 ),
               ),
             ],
           ),
 
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
 
-          // List of Relays
+          // List of relays with Donezo sliding toggle switch
           ...telemetry.actuators.entries.map((entry) {
             final id = entry.key;
             final act = entry.value;
 
-            return InkWell(
-              onTap: () {
-                HapticFeedback.heavyImpact();
-                notifier.toggleActuator(id);
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 7),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            _getActuatorIcon(id),
-                            size: 14,
-                            color: Colors.white,
-                          ),
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: act.isOn ? AppTheme.mintWash : AppTheme.surfaceSubtle,
+                          shape: BoxShape.circle,
                         ),
-                        const SizedBox(width: 10),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              act.name,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
-                            Text(
-                              '${act.powerWatts} Watt • Relay Fisik',
-                              style: const TextStyle(
-                                fontSize: 9.5,
-                                fontFamily: 'monospace',
-                                color: Color(0x99FFFFFF),
-                              ),
-                            ),
-                          ],
+                        child: Icon(
+                          _getActuatorIcon(id),
+                          size: 16,
+                          color: act.isOn ? AppTheme.pinePrimary : AppTheme.textMuted,
                         ),
-                      ],
-                    ),
-
-                    // Butter Yellow Checkbox Circle
-                    Container(
-                      width: 20,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: act.isOn ? AppTheme.accentYellow : Colors.transparent,
-                        shape: BoxShape.circle,
-                        border: act.isOn ? null : Border.all(color: Colors.white.withValues(alpha: 0.25)),
                       ),
-                      child: act.isOn
-                          ? const Icon(Icons.check, size: 13, color: AppTheme.charcoal)
-                          : null,
+                      const SizedBox(width: 10),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            act.name,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            '${act.powerWatts}W • ${act.voltage}',
+                            style: const TextStyle(
+                              fontSize: 9.5,
+                              fontFamily: 'monospace',
+                              color: AppTheme.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+
+                  // Donezo Tactile Sliding Toggle Switch
+                  GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      notifier.toggleActuator(id);
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 44,
+                      height: 24,
+                      padding: const EdgeInsets.all(2.5),
+                      decoration: BoxDecoration(
+                        color: act.isOn ? AppTheme.pinePrimary : const Color(0xFFE2E8F0),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: AnimatedAlign(
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOutCubic,
+                        alignment: act.isOn ? Alignment.centerRight : Alignment.centerLeft,
+                        child: Container(
+                          width: 19,
+                          height: 19,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Color(0x20000000),
+                                blurRadius: 4,
+                                offset: Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             );
           }),
@@ -939,45 +807,290 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   // =========================================================================
-  // SECTION 6: QUICK FEED DISPENSER
+  // 6. BIOLOGICAL PAIRS LIST (Donezo Row 3, Card 1)
   // =========================================================================
-  Widget _buildQuickFeedPill(dynamic telemetry, dynamic notifier) {
-    final isFeeding = telemetry.feedActive;
+  Widget _buildBiologicalPairsCard() {
+    final pairs = [
+      {'level': 'Level 4', 'name': 'Pakcoy Hidroponik', 'status': 'Sehat • 180g/pod', 'badge': 'Optimal', 'color': AppTheme.pinePrimary},
+      {'level': 'Level 3', 'name': 'Ikan Nila Merah', 'status': 'Aktif • DO 7.11 mg/L', 'badge': 'Optimal', 'color': AppTheme.accentCyan},
+      {'level': 'Level 2', 'name': 'Kangkung Biofilter', 'status': 'Nitrifikasi 94%', 'badge': 'Buffer', 'color': AppTheme.accentAmber},
+      {'level': 'Level 1', 'name': 'Ikan Lele Dumbo', 'status': 'Solids Sump Aktif', 'badge': 'Optimal', 'color': AppTheme.textSecondary},
+    ];
 
-    return InkWell(
-      onTap: () {
-        HapticFeedback.heavyImpact();
-        notifier.dispenseFeed();
-      },
-      borderRadius: BorderRadius.circular(20),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-        decoration: BoxDecoration(
-          color: isFeeding ? AppTheme.leafGreen : AppTheme.alertCoral,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: AppTheme.softShadow,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isFeeding ? Icons.check_circle_rounded : Icons.send_rounded,
-              color: Colors.white,
-              size: 18,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppTheme.borderLight),
+        boxShadow: AppTheme.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: const [
+              Text(
+                'Pasangan Biologis Ekosistem (ECAD)',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              Icon(Icons.hub_rounded, size: 16, color: AppTheme.textSecondary),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...pairs.map((p) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: p['color'] as Color,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              p['name'] as String,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                            Text(
+                              '${p['level']} • ${p['status']}',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: p['badge'] == 'Optimal' ? AppTheme.mintWash : const Color(0xFFFEF3C7),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        p['badge'] as String,
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.bold,
+                          color: p['badge'] == 'Optimal' ? AppTheme.mintText : const Color(0xFFB45309),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+
+  // =========================================================================
+  // 7. SEMICIRCULAR BIOFILTER DONUT (Donezo Row 3, Card 2)
+  // =========================================================================
+  Widget _buildBiofilterDonutCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppTheme.borderLight),
+        boxShadow: AppTheme.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: const [
+              Text(
+                'Efisiensi Konversi Biofilter',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              Icon(Icons.pie_chart_rounded, size: 16, color: AppTheme.textSecondary),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Center(
+            child: SizedBox(
+              width: 170,
+              height: 100,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CustomPaint(
+                    size: const Size(170, 100),
+                    painter: SemicircularGaugePainter(
+                      progress: 0.964,
+                      color: AppTheme.pinePrimary,
+                      trackColor: const Color(0xFFE5E7EB),
+                    ),
+                  ),
+                  Positioned(
+                    top: 45,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Text(
+                          '96.4%',
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'monospace',
+                            letterSpacing: -0.8,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                        Text(
+                          'Amonia ke Nitrat',
+                          style: TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(width: 8),
-            Text(
-              isFeeding ? '35g Pakan Telah Didistribusikan! ✨' : 'Beri Pakan Ikan Sekarang (Dispense Feed)',
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              Icon(Icons.check_circle_rounded, size: 12, color: AppTheme.mintText),
+              SizedBox(width: 4),
+              Text(
+                'Bakteri Nitrifikasi L2 & L4 Aktif Bekerja',
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.mintText,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =========================================================================
+  // 8. HARDWARE EDGE TRACKER CARD (Donezo Dark Wavy Panel)
+  // =========================================================================
+  Widget _buildHardwareEdgeTrackerCard(int totalWatts) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppTheme.pineWavy,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: AppTheme.softShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: const [
+                  Text(
+                    'IoT Edge Node Runtime',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.sageMint,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: const Text(
+                  'ESP32 DevKit V1',
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'monospace',
+                    color: Colors.white70,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Large Monospace Clock (Matching Donezo 01:24:08)
+          Center(
+            child: Text(
+              _formatTimer(_runtimeSeconds),
               style: const TextStyle(
-                fontSize: 12.5,
+                fontSize: 36,
                 fontWeight: FontWeight.bold,
+                fontFamily: 'monospace',
+                letterSpacing: 1.5,
                 color: Colors.white,
               ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 10),
+
+          // Wattage Chip
+          Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.bolt_rounded, size: 14, color: Color(0xFFFACC15)),
+                  const SizedBox(width: 4),
+                  Text(
+                    '$totalWatts Watt Aktif • WiFi -56 dBm',
+                    style: const TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'monospace',
+                      color: AppTheme.sageMint,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -999,44 +1112,30 @@ class DashboardScreen extends ConsumerWidget {
 }
 
 // ===========================================================================
-// 270° CIRCULAR ARC DIAL GAUGE PAINTER
+// SEMICIRCULAR GAUGE PAINTER (180 Degree Donut Arc)
 // ===========================================================================
-class DialArcPainter extends CustomPainter {
-  final double normalizedValue;
-  final Color arcColor;
+class SemicircularGaugePainter extends CustomPainter {
+  final double progress;
+  final Color color;
   final Color trackColor;
 
-  DialArcPainter({
-    required this.normalizedValue,
-    required this.arcColor,
+  SemicircularGaugePainter({
+    required this.progress,
+    required this.color,
     required this.trackColor,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2 + 10);
-    final radius = size.width / 2 - 20;
+    final center = Offset(size.width / 2, size.height - 10);
+    final radius = size.width / 2 - 15;
 
-    // Outer Dashed Ticks (24 dots around ring)
-    final tickPaint = Paint()
-      ..color = const Color(0xFFCBD5E1)
-      ..strokeWidth = 1.6
-      ..style = PaintingStyle.stroke;
-
-    for (int i = 0; i < 28; i++) {
-      final angle = (i * 360 / 28) * math.pi / 180;
-      final p1 = Offset(center.dx + (radius + 8) * math.cos(angle), center.dy + (radius + 8) * math.sin(angle));
-      final p2 = Offset(center.dx + (radius + 12) * math.cos(angle), center.dy + (radius + 12) * math.sin(angle));
-      canvas.drawLine(p1, p2, tickPaint);
-    }
-
-    // 270° Sweep Track (from 135° to 405°)
-    const startAngle = 135 * math.pi / 180;
-    const sweepTotal = 270 * math.pi / 180;
+    const startAngle = math.pi;
+    const sweepTotal = math.pi;
 
     final trackPaint = Paint()
       ..color = trackColor
-      ..strokeWidth = 11
+      ..strokeWidth = 14
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
 
@@ -1048,25 +1147,23 @@ class DialArcPainter extends CustomPainter {
       trackPaint,
     );
 
-    // Active Butter Yellow Arc
     final activePaint = Paint()
-      ..color = arcColor
-      ..strokeWidth = 11
+      ..color = color
+      ..strokeWidth = 14
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
 
-    final sweepActive = sweepTotal * normalizedValue.clamp(0.0, 1.0);
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       startAngle,
-      sweepActive,
+      sweepTotal * progress.clamp(0.0, 1.0),
       false,
       activePaint,
     );
   }
 
   @override
-  bool shouldRepaint(covariant DialArcPainter oldDelegate) {
-    return oldDelegate.normalizedValue != normalizedValue || oldDelegate.arcColor != arcColor;
+  bool shouldRepaint(covariant SemicircularGaugePainter oldDelegate) {
+    return oldDelegate.progress != progress || oldDelegate.color != color;
   }
 }

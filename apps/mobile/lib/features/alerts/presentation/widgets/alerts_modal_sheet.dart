@@ -87,13 +87,13 @@ class AlertsModalSheet extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: isBackendLive
-                      ? AppTheme.accentEmerald.withValues(alpha: 0.12)
-                      : AppTheme.accentYellowDeep.withValues(alpha: 0.12),
+                      ? AppTheme.mintWash
+                      : const Color(0xFFFEF3C7),
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(
                     color: isBackendLive
-                        ? AppTheme.accentEmerald.withValues(alpha: 0.3)
-                        : AppTheme.accentYellowDeep.withValues(alpha: 0.3),
+                        ? AppTheme.sageMint.withValues(alpha: 0.3)
+                        : const Color(0xFFFDE68A),
                   ),
                 ),
                 child: Row(
@@ -105,19 +105,19 @@ class AlertsModalSheet extends StatelessWidget {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: isBackendLive
-                            ? AppTheme.accentEmerald
+                            ? AppTheme.mintText
                             : AppTheme.accentYellowDeep,
                       ),
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      isBackendLive ? 'Live :3000' : 'Simulated',
+                      isBackendLive ? 'Tersinkron' : 'Mode Mandiri',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                         fontFamily: 'monospace',
                         color: isBackendLive
-                            ? AppTheme.accentEmeraldDark
+                            ? AppTheme.mintText
                             : AppTheme.accentYellowDeep,
                       ),
                     ),
@@ -309,10 +309,10 @@ class AlertsModalSheet extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: isActive ? AppTheme.charcoal : Colors.white,
+          color: isActive ? AppTheme.pinePrimary : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isActive ? AppTheme.charcoal : AppTheme.borderLight,
+            color: isActive ? AppTheme.pinePrimary : AppTheme.borderLight,
             width: isActive ? 1.5 : 1.0,
           ),
           boxShadow: AppTheme.cardShadow,

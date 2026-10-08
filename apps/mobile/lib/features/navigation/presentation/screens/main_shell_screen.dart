@@ -129,7 +129,7 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
                 curve: Curves.easeOutCubic,
                 padding: const EdgeInsets.symmetric(vertical: 7),
                 decoration: BoxDecoration(
-                  color: isSelected ? AppTheme.charcoal : Colors.transparent,
+                  color: isSelected ? AppTheme.pinePrimary : Colors.transparent,
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Column(

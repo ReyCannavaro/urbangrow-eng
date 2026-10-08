@@ -17,56 +17,45 @@ class UniversalHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: AppTheme.surface,
         border: Border(
-          bottom: BorderSide(color: AppTheme.borderLight.withValues(alpha: 0.6)),
+          bottom: BorderSide(color: AppTheme.borderLight),
         ),
       ),
       child: SafeArea(
         bottom: false,
         child: Row(
           children: [
-            // Brand Logo Pill
+            // Brand Logo Pill (Pine Botanical Donezo Style)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppTheme.surface,
                 borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: AppTheme.borderMedium),
+                border: Border.all(color: AppTheme.borderLight),
                 boxShadow: AppTheme.cardShadow,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Image.asset(
-                    'assets/images/urbangrow-logo.png',
-                    height: 18,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, _, _) => const Text(
-                      'URBANGROW',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                        color: AppTheme.charcoal,
-                      ),
+                  Container(
+                    width: 9,
+                    height: 9,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppTheme.pinePrimary,
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Container(
-                    width: 1,
-                    height: 12,
-                    color: AppTheme.borderLight,
-                  ),
-                  const SizedBox(width: 8),
                   const Text(
-                    'IoT Core',
+                    'UrbanGrow',
                     style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'monospace',
-                      color: AppTheme.textSecondary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3,
+                      color: AppTheme.textPrimary,
                     ),
                   ),
                 ],
@@ -75,13 +64,17 @@ class UniversalHeader extends StatelessWidget {
 
             const Spacer(),
 
-            // Backend Connectivity Pill
+            // Backend Connectivity Pill (Human-Friendly Donezo Style)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isLive ? AppTheme.mintWash : AppTheme.surface,
                 borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: AppTheme.borderLight),
+                border: Border.all(
+                  color: isLive
+                      ? AppTheme.statusOptimal.withValues(alpha: 0.25)
+                      : AppTheme.borderLight,
+                ),
                 boxShadow: AppTheme.cardShadow,
               ),
               child: Row(
@@ -92,14 +85,10 @@ class UniversalHeader extends StatelessWidget {
                     height: 6.5,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: isLive
-                          ? AppTheme.accentEmerald
-                          : AppTheme.accentYellowDeep,
+                      color: isLive ? AppTheme.statusOptimal : AppTheme.statusWarning,
                       boxShadow: [
                         BoxShadow(
-                          color: (isLive
-                                  ? AppTheme.accentEmerald
-                                  : AppTheme.accentYellowDeep)
+                          color: (isLive ? AppTheme.statusOptimal : AppTheme.statusWarning)
                               .withValues(alpha: 0.4),
                           blurRadius: 4,
                           spreadRadius: 1,
@@ -109,14 +98,11 @@ class UniversalHeader extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    isLive ? 'Elysia :3000' : 'Simulated',
+                    isLive ? 'Tersinkron' : 'Menghubungkan...',
                     style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'monospace',
-                      color: isLive
-                          ? AppTheme.accentEmeraldDark
-                          : AppTheme.accentYellowDeep,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: isLive ? AppTheme.mintText : AppTheme.statusWarning,
                     ),
                   ),
                 ],
@@ -140,30 +126,30 @@ class UniversalHeader extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppTheme.surface,
                   shape: BoxShape.circle,
-                  border: Border.all(color: AppTheme.borderMedium),
+                  border: Border.all(color: AppTheme.borderLight),
                   boxShadow: AppTheme.cardShadow,
                 ),
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
                     const Icon(
-                      Icons.notifications_outlined,
-                      size: 18,
-                      color: AppTheme.charcoal,
+                      Icons.notifications_none_rounded,
+                      size: 19,
+                      color: AppTheme.textPrimary,
                     ),
                     Positioned(
-                      top: 7,
-                      right: 7,
+                      top: 8,
+                      right: 8,
                       child: Container(
                         width: 7,
                         height: 7,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: activeAnomaly != 'none'
-                              ? AppTheme.accentCoral
-                              : AppTheme.accentYellowDeep,
+                              ? AppTheme.statusAlert
+                              : AppTheme.sageMint,
                           border: Border.all(color: Colors.white, width: 1.2),
                         ),
                       ),
