@@ -20,8 +20,11 @@ export function QuickFeedBanner({ onDispense, feedActive }: QuickFeedBannerProps
 
       <button
         onClick={onDispense}
-        style={{ backgroundColor: feedActive ? "var(--accent-emerald)" : "var(--accent-coral)" }}
-        className="w-full sm:w-auto px-6 py-3 rounded-full text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 cursor-pointer"
+        className={`w-full sm:w-auto px-6 py-3 rounded-full font-semibold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 cursor-pointer ${
+          feedActive
+            ? "bg-[#DCFCE7] text-[#166534] border border-[#166534]/30"
+            : "bg-[#165B39] hover:bg-[#124B2E] text-white"
+        }`}
       >
         {feedActive ? <Check className="h-4 w-4 stroke-[3]" /> : <Send className="h-4 w-4" />}
         <span>{feedActive ? "Pakan Berhasil Disebar!" : "Beri Pakan Sekarang"}</span>

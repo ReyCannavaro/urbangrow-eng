@@ -1,56 +1,90 @@
 @import "tailwindcss";
 
 /* =========================================================================
-   URBANGROW WARM EDITORIAL BENTO DESIGN SYSTEM
-   Inspired by Soft Luxury Tech & Scandinavian Indoor Living
+   URBANGROW: PINE EXECUTIVE & CLEAN BOTANICAL DESIGN SYSTEM
+   Inspired by Donezo Executive Dashboard & Scandinavian Agro-Tech
    ========================================================================= */
 
 :root {
-  --bg-canvas: #f3efe6;
-  --bg-frame: #faf8f3;
+  /* Canvas & Base Surfaces */
+  --bg-viewport: #f0f2f5;
+  --bg-canvas: #f8f9fa;
   --bg-card: #ffffff;
-  --bg-card-subtle: #f7f4ee;
-  --bg-charcoal: #1e1f24;
-  --bg-charcoal-elevated: #282a30;
+  --bg-card-subtle: #f1f5f9;
   
-  --accent-yellow: #facc15;
-  --accent-yellow-light: #fef08a;
-  --accent-yellow-deep: #eab308;
-  --accent-emerald: #10b981;
-  --accent-cyan: #0ea5e9;
-  --accent-coral: #f97316;
+  /* The Pine Botanical System */
+  --pine-primary: #165b39;
+  --pine-primary-hover: #124b2e;
+  --pine-dark-elevated: #0b2c1b;
+  --sage-mint: #4eab7c;
+  --sage-mint-light: #68c194;
+  --mint-wash: #dcfce7;
+  --mint-text: #166534;
   
-  --border-light: rgba(0, 0, 0, 0.06);
-  --border-medium: rgba(0, 0, 0, 0.12);
-  --border-charcoal: rgba(255, 255, 255, 0.1);
+  /* Semantic Status Tokens */
+  --status-completed-bg: #dcfce7;
+  --status-completed-text: #166534;
+  --status-progress-bg: #fef3c7;
+  --status-progress-text: #b45309;
+  --status-pending-bg: #ffe4e6;
+  --status-pending-text: #e11d48;
   
-  --text-primary: #191b1f;
-  --text-secondary: #666973;
-  --text-muted: #9598a3;
-  --text-inverse: #f8fafc;
+  /* Border & Hairlines */
+  --border-hairline: #e5e7eb;
+  --border-card: #e5e7eb;
+  --border-pine: rgba(255, 255, 255, 0.2);
+  
+  /* Typography Tokens */
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #9ca3af;
+  --text-inverse: #ffffff;
 }
 
 body {
-  background-color: var(--bg-canvas);
+  background-color: var(--bg-viewport);
   color: var(--text-primary);
-  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Plus Jakarta Sans", sans-serif;
   letter-spacing: -0.015em;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Warm sunlight ambient gradient effect */
-.sunlit-radial-glow {
-  background: radial-gradient(circle at 95% 15%, rgba(250, 204, 21, 0.18) 0%, rgba(250, 204, 21, 0.05) 35%, transparent 70%);
+/* 45° Diagonal Hatched Texture (Matching Donezo Inactive Bars & Progress Gauge) */
+.bg-hatched-diagonal {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(156, 163, 175, 0.25),
+    rgba(156, 163, 175, 0.25) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+/* Dark Fluid Ribbon Wave Background (Matching Donezo Time Tracker) */
+.bg-wavy-ribbon {
+  background: radial-gradient(circle at 100% 0%, #175c3b 0%, #0b2c1b 60%, #061c11 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.bg-wavy-ribbon::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: repeating-radial-gradient(
+    circle at 90% 10%,
+    rgba(78, 171, 124, 0.15) 0px,
+    rgba(78, 171, 124, 0.15) 12px,
+    transparent 12px,
+    transparent 24px
+  );
+  opacity: 0.6;
+  pointer-events: none;
 }
 
 .num-tabular {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" on;
-}
-
-/* Smooth transitions */
-* {
-  border-color: var(--border-light);
 }
 
 /* Subtle scrollbars */
@@ -62,6 +96,6 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.12);
   border-radius: 9999px;
 }
