@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { AlertTriangle, Droplets, Thermometer, Send } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, Droplets, CheckCircle2, ArrowRight, Clock } from "lucide-react";
 import { AlertNotification } from "@/lib/types";
 
 interface AlertItemCardProps {
@@ -10,36 +11,76 @@ interface AlertItemCardProps {
 }
 
 export function AlertItemCard({ alert, isArchive = false }: AlertItemCardProps) {
-  const renderIcon = () => {
+  const getSeverityStyle = () => {
     if (alert.severity === "critical") {
-      return <AlertTriangle className="h-4 w-4 text-rose-600" />;
+      return {
+        bgIcon: "bg-[#FFE4E6] text-[#E11D48]",
+        icon: <AlertTriangle className="h-4 w-4" />,
+        badgeBg: "bg-[#FFE4E6] text-[#E11D48]",
+        label: "Kritis",
+      };
     }
     if (alert.severity === "warning") {
-      return <AlertTriangle className="h-4 w-4 text-amber-600" />;
+      return {
+        bgIcon: "bg-[#FEF3C7] text-[#D97706]",
+        icon: <AlertTriangle className="h-4 w-4" />,
+        badgeBg: "bg-[#FEF3C7] text-[#B45309]",
+        label: "Peringatan",
+      };
     }
-    return <Droplets className="h-4 w-4 text-sky-600" />;
+    return {
+      bgIcon: "bg-[#DCFCE7] text-[#166534]",
+      icon: <CheckCircle2 className="h-4 w-4" />,
+      badgeBg: "bg-[#DCFCE7] text-[#166534]",
+      label: "Optimal",
+    };
   };
+
+  const style = getSeverityStyle();
 
   return (
     <div
-      className={`rounded-[22px] bg-white border border-[var(--border-light)] p-4 shadow-xs flex items-start justify-between gap-4 ${
-        isArchive ? "opacity-75" : ""
+      className={`rounded-[22px] bg-white border border-[#E5E7EB] p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-[#D1D5DB] transition-all ${
+        isArchive ? "opacity-80" : ""
       }`}
     >
-      <div className="flex items-start gap-3.5">
-        <div className="h-9 w-9 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
-          {renderIcon()}
+      <div className="flex items-start sm:items-center gap-3.5">
+        <div
+          className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 shadow-2xs ${style.bgIcon}`}
+        >
+          {style.icon}
         </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <h4 className="font-semibold text-xs text-[var(--text-primary)]">{alert.title}</h4>
-            <span className="text-[10px] font-mono text-[var(--text-muted)]">{alert.time} WIB</span>
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="font-bold text-sm text-[#111827]">{alert.title}</h4>
+            <span
+              className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${style.badgeBg}`}
+            >
+              {style.label}
+            </span>
+            <span className="flex items-center gap-1 text-[11px] font-mono text-[#9CA3AF]">
+              <Clock className="h-3 w-3" />
+              {alert.time} WIB
+            </span>
           </div>
-          <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">{alert.message}</p>
+          <p className="text-xs text-[#4B5563] leading-relaxed max-w-2xl">
+            {alert.message}
+          </p>
         </div>
       </div>
 
-      {!isArchive && <div className="h-2 w-2 rounded-full bg-[var(--accent-yellow-deep)] shrink-0 mt-2" />}
+      <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+        <span className="px-2.5 py-1 rounded-full bg-[#F3F4F6] text-[10px] font-mono text-[#6B7280]">
+          {alert.isResolved ? "Otomasi Selesai" : "Menunggu Aksi"}
+        </span>
+        <Link
+          href="/controls"
+          className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] flex items-center justify-center text-[#4B5563] hover:text-[#111827] transition-colors shadow-2xs"
+          title="Periksa Kontrol Relay"
+        >
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
     </div>
   );
 }
