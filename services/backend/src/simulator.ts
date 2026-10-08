@@ -118,7 +118,7 @@ class AquaponicsSimulator {
   }
 
   private lastStepTimestamp: number = 0;
-  private readonly STEP_INTERVAL_MS = 4000; // Cadence: step physical simulation at most once every 4 seconds
+  private readonly STEP_INTERVAL_MS = 1500; // Cadence: step physical simulation every 1.5 seconds
   private targetOverrides: Partial<SensorReading> = {};
 
   // Smooth random walk with biological correlations
@@ -135,24 +135,24 @@ class AquaponicsSimulator {
     if (this.anomalyMode === "heatwave") targetWaterTemp = 30.2;
     if (this.anomalyMode === "tds_spike") targetTDS = 1120;
 
-    // Organic drift towards target with calmed, realistic noise (aqueous thermal & chemical buffer)
-    const phDelta = (targetPH - this.state.ph) * 0.03 + (Math.random() - 0.5) * 0.005;
+    // Organic micro-drift towards target every 1.5s (silky smooth, zero glitching)
+    const phDelta = (targetPH - this.state.ph) * 0.01 + (Math.random() - 0.5) * 0.002;
     this.state.ph = round(Math.max(4.0, Math.min(10.0, this.state.ph + phDelta)), 2);
 
-    const tempDelta = (targetWaterTemp - this.state.waterTemperature) * 0.02 + (Math.random() - 0.5) * 0.012;
+    const tempDelta = (targetWaterTemp - this.state.waterTemperature) * 0.008 + (Math.random() - 0.5) * 0.004;
     this.state.waterTemperature = round(this.state.waterTemperature + tempDelta, 1);
 
-    const tdsDelta = (targetTDS - this.state.tds) * 0.03 + (Math.random() - 0.5) * 0.8;
+    const tdsDelta = (targetTDS - this.state.tds) * 0.01 + (Math.random() - 0.5) * 0.3;
     this.state.tds = Math.round(this.state.tds + tdsDelta);
 
     // Air temperature & humidity
-    const airDelta = (Math.random() - 0.5) * 0.04;
+    const airDelta = (Math.random() - 0.5) * 0.015;
     this.state.airTemperature = round(27.0 + (this.state.waterTemperature - 24.0) * 0.35 + airDelta, 1);
-    this.state.humidity = round(Math.max(40, Math.min(90, 65.0 - (this.state.airTemperature - 25.0) * 1.2 + (Math.random() - 0.5) * 0.3)), 1);
+    this.state.humidity = round(Math.max(40, Math.min(90, 65.0 - (this.state.airTemperature - 25.0) * 1.2 + (Math.random() - 0.5) * 0.1)), 1);
 
     // Dissolved oxygen reacts biologically to aerator state unless manually overridden
     let targetDO = this.targetOverrides.dissolvedOxygen ?? (this.actuators.aerator.isOn ? 7.4 : 4.4);
-    const doDelta = (targetDO - this.state.dissolvedOxygen) * 0.04 + (Math.random() - 0.5) * 0.008;
+    const doDelta = (targetDO - this.state.dissolvedOxygen) * 0.012 + (Math.random() - 0.5) * 0.003;
     this.state.dissolvedOxygen = round(Math.max(2.0, Math.min(10.0, this.state.dissolvedOxygen + doDelta)), 2);
 
     // Light reacts to grow light state unless manually overridden

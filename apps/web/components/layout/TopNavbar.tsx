@@ -32,7 +32,7 @@ export function TopNavbar() {
           <span
             className={`h-2 w-2 rounded-full ${
               backendConnected
-                ? "bg-[#165B39] shadow-[0_0_8px_rgba(22,91,57,0.6)]"
+                ? "bg-[#165B39] shadow-[0_0_8px_rgba(22,91,57,0.6)] animate-pulse"
                 : "bg-amber-400 animate-pulse"
             }`}
           />
@@ -43,7 +43,7 @@ export function TopNavbar() {
                 : "text-[#9CA3AF]"
             }
           >
-            {backendConnected ? "Elysia :3000 (Live)" : "Menghubungkan..."}
+            {backendConnected ? "Live 1.5s • Elysia :3000" : "Menghubungkan..."}
           </span>
         </div>
 
