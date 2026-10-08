@@ -24,6 +24,36 @@ const API_ENDPOINTS = [
 
 const TelemetryContext = createContext<TelemetryContextType | undefined>(undefined);
 
+function generateInitialHistory(): HistorySample[] {
+  const now = Date.now();
+  const samples: HistorySample[] = [];
+  for (let i = 45; i >= 0; i--) {
+    const t = new Date(now - i * 1500);
+    const wave = Math.sin((45 - i) * 0.2);
+    const cosWave = Math.cos((45 - i) * 0.15);
+    samples.push({
+      timestamp: t.toISOString(),
+      sensors: {
+        ph: Number((6.95 + wave * 0.07 + (Math.random() - 0.5) * 0.02).toFixed(2)),
+        waterTemperature: Number((24.2 + cosWave * 0.3 + (Math.random() - 0.5) * 0.05).toFixed(1)),
+        tds: Math.round(540 + wave * 10 + (Math.random() - 0.5) * 3),
+        dissolvedOxygen: Number((7.25 - wave * 0.18 + (Math.random() - 0.5) * 0.03).toFixed(2)),
+        airTemperature: Number((27.1 + cosWave * 0.4).toFixed(1)),
+        humidity: Number((65.2 - wave * 1.5).toFixed(1)),
+        lightIntensity: Math.round(680 + wave * 30),
+        waterLevel: 92.4,
+      },
+      actuators: {
+        waterPump: true,
+        aerator: true,
+        growLight: true,
+        feeder: false,
+      },
+    });
+  }
+  return samples;
+}
+
 export function TelemetryProvider({ children }: { children: React.ReactNode }) {
   const [sensors, setSensors] = useState<SensorData>({
     ph: 6.94,
@@ -75,7 +105,7 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
     },
   });
 
-  const [history, setHistory] = useState<HistorySample[]>([]);
+  const [history, setHistory] = useState<HistorySample[]>(generateInitialHistory);
   const [alerts, setAlerts] = useState<AlertNotification[]>([
     {
       id: "alt-1",
@@ -144,7 +174,7 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
       };
 
       setHistory((prevH) => [
-        ...prevH.slice(-30),
+        ...prevH.slice(-59),
         {
           timestamp: new Date().toISOString(),
           sensors: newSample,
@@ -176,7 +206,7 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
             setSensors(json.sensors);
             // Append incoming live reading to history for real-time spline graphs
             setHistory((prevH) => [
-              ...prevH.slice(-35),
+              ...prevH.slice(-59),
               {
                 timestamp: json.timestamp || new Date().toISOString(),
                 sensors: json.sensors,
