@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../telemetry/presentation/telemetry_notifier.dart';
 import '../widgets/universal_header.dart';
+import '../../../dashboard/presentation/screens/dashboard_screen.dart';
 import '../../../tower/presentation/screens/tower_screen.dart';
 import '../../../controls/presentation/screens/controls_screen.dart';
 import '../../../analytics/presentation/screens/analytics_screen.dart';
@@ -19,14 +20,23 @@ class MainShellScreen extends ConsumerStatefulWidget {
 class _MainShellScreenState extends ConsumerState<MainShellScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = const [
-    TowerScreen(),
-    ControlsScreen(),
-    AnalyticsScreen(),
-    AgriBotScreen(),
-  ];
+  List<Widget> get _screens => [
+        DashboardScreen(
+          onOpenTowerTab: () => setState(() => _currentIndex = 1),
+          onOpenControlsTab: () => setState(() => _currentIndex = 2),
+        ),
+        const TowerScreen(),
+        const ControlsScreen(),
+        const AnalyticsScreen(),
+        const AgriBotScreen(),
+      ];
 
   final List<Map<String, dynamic>> _navItems = const [
+    {
+      'label': 'Beranda',
+      'icon': Icons.grid_view_outlined,
+      'activeIcon': Icons.grid_view_rounded,
+    },
     {
       'label': 'Menara',
       'icon': Icons.layers_outlined,
@@ -80,9 +90,9 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
 
           // Floating Bottom Navigation Bar (Warm Editorial Bento styled)
           Positioned(
-            left: 16,
-            right: 16,
-            bottom: 20,
+            left: 14,
+            right: 14,
+            bottom: 18,
             child: _buildFloatingBottomNav(),
           ),
         ],
@@ -92,9 +102,9 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
 
   Widget _buildFloatingBottomNav() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.95),
+        color: Colors.white.withValues(alpha: 0.96),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: AppTheme.borderMedium),
         boxShadow: AppTheme.floatingPillShadow,
@@ -117,7 +127,7 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeOutCubic,
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.symmetric(vertical: 7),
                 decoration: BoxDecoration(
                   color: isSelected ? AppTheme.charcoal : Colors.transparent,
                   borderRadius: BorderRadius.circular(999),
@@ -127,14 +137,14 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
                   children: [
                     Icon(
                       isSelected ? item['activeIcon'] : item['icon'],
-                      size: 20,
+                      size: 19,
                       color: isSelected ? Colors.white : AppTheme.textSecondary,
                     ),
                     const SizedBox(height: 2),
                     Text(
                       item['label'],
                       style: TextStyle(
-                        fontSize: 9.5,
+                        fontSize: 9,
                         fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                         color: isSelected ? Colors.white : AppTheme.textSecondary,
                         fontFamily: 'monospace',
