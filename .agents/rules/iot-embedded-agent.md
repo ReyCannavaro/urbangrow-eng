@@ -120,3 +120,18 @@ float applyEMA(float current, float previous, float alpha = 0.25) {
 Sistem UrbanGrow dilengkapi relay saklar otomatis antara adaptor AC-DC 12V dan Baterai Cadangan SLA 12V 7Ah:
 - Dioda Schottky daya tinggi (10A) dipasang pada katoda gabungan guna mencegah arus balik (*reverse current*) ke adaptor.
 - Pin GPIO 36 (ADC1_CH0) memantau pembagi tegangan baterai untuk mendeteksi status pemadaman listrik PLN dan mengirimkan sinyal `power_source: "battery"` ke telemetri backend.
+
+---
+
+## 📟 8. Protokol Diagnostik Serial ESP32 & MQTT QoS 1
+
+1. **Baud Rate**: Serial port UART0 dikonfigurasi pada `115200 bps` untuk logging event FreeRTOS.
+2. **Format Log Diagnostik**:
+   ```
+   [URBANGROW-EDGE][INFO][T=1240s] SENSORS: pH=6.82 TDS=610ppm WT=24.5C AT=28.1C RH=72% LUX=18200 DO=5.8mg/L
+   [URBANGROW-EDGE][INFO][T=1240s] MQTT: Published telemetry to 'urbangrow/telemetry' (QoS 1, MessageID=42)
+   ```
+3. **QoS 1 Telemetry Ack**:
+   - Telemetri MQTT menggunakan **QoS 1 (At least once delivery)** dengan timeout ACK 2.000 ms.
+   - Jika broker tidak mengembalikan `PUBACK`, firmware menyimpan payload ke RingBuffer memori RTC internal (kapasitas 50 payload) untuk re-transmisi otomatis saat koneksi pulih.
+
