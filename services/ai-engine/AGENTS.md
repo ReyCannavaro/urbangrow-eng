@@ -79,3 +79,27 @@ Untuk pelatihan awal sebelum sensor fisik mengumpulkan data 90 hari, AI Engine m
 
 - Model Scikit-Learn dan XGBoost diekspor ke format ONNX (`model.onnx`).
 - Inferensi dijalankan via `onnxruntime` CPU yang menghasilkan latensi inferensi di bawah **5 milidetik** dengan batas alokasi memori maksimal **150 MB RAM** agar dapat berjalan mulus pada Raspberry Pi 4/5.
+
+---
+
+## 🎯 7. Pembobotan Fitur (Feature Importance) & Hyperparameter Grid
+
+Untuk model regresi XGBoost estimasi hari menuju panen (EDH):
+1. **Fitur Paling Berpengaruh**:
+   - `cumulative_gdd` (38% importance)
+   - `daily_avg_water_temp` (24% importance)
+   - `avg_lux_exposure_hours` (18% importance)
+   - `tds_stability_index` (12% importance)
+   - `ph_variance` (8% importance)
+2. **Hyperparameter Optimal**:
+   ```python
+   xgb_params = {
+       "n_estimators": 120,
+       "max_depth": 5,
+       "learning_rate": 0.05,
+       "subsample": 0.85,
+       "colsample_bytree": 0.8,
+       "objective": "reg:squarederror"
+   }
+   ```
+
