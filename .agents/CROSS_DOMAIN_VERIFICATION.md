@@ -48,3 +48,16 @@ moon run simulator:dev
 # 5. Verifikasi konektivitas backend
 curl -i http://localhost:3000/api/sensors/current
 ```
+
+---
+
+## 🚨 3. Protokol Simulasi Bencana (Disaster Recovery Drills)
+
+1. **Skenario 1: Pemadaman Listrik PLN Mendadak**:
+   - Cabut adaptor 12V. Amati sistem beralih otomatis ke Baterai SLA 12V 7Ah tanpa restart board ESP32.
+   - Periksa apakah telemetri mengirim flag `power_source: "battery"` ke dashboard web dalam 5 detik.
+2. **Skenario 2: Kabel Sensor Terlepas (Floating ADC Input)**:
+   - Lepaskan kabel probe pH atau TDS. Validasi bahwa backend tidak crash dan menandai status `SENSOR_DISCONNECTED / INVALID_VOLTAGE`.
+3. **Skenario 3: Broker MQTT Offline**:
+   - Hentikan broker Mosquitto. Pastikan firmware ESP32 menyimpan data ke buffer lokal dan backend beralih ke mode polling HTTP fallback.
+
