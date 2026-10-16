@@ -49,6 +49,11 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-urbangrow_secret_2026}
     volumes:
       - timescale_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U urbangrow_admin -d urbangrow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   mosquitto:
     image: eclipse-mosquitto:2.0
@@ -69,8 +74,15 @@ services:
       DATABASE_URL: postgres://urbangrow_admin:${DB_PASSWORD:-urbangrow_secret_2026}@timescaledb:5432/urbangrow
       MQTT_BROKER_URL: mqtt://mosquitto:1883
     depends_on:
-      - timescaledb
-      - mosquitto
+      timescaledb:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
 
   ai-engine:
     build:
@@ -103,3 +115,48 @@ volumes:
 Untuk akses mobile jarak jauh tanpa IP publik statis:
 - Gunakan `cloudflared` tunnel yang menghubungkan port lokal 3000 ke domain terenkripsi TLS.
 - Selalu simpan token otorisasi di berkas `.env.production` yang tidak boleh di-commit ke Git repo.
+
+---
+
+## 📦 4. Standar Multi-Stage Dockerfile (Minimal Footprint)
+
+Untuk menjaga image size di bawah 100MB pada board ARM64 Raspberry Pi:
+
+```dockerfile
+# Contoh Multi-stage Dockerfile untuk Backend Elysia
+FROM oven/bun:1.3-alpine AS builder
+WORKDIR /app
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile --production
+COPY src ./src
+
+FROM oven/bun:1.3-alpine AS runner
+WORKDIR /app
+COPY --from=builder /app ./
+USER bun
+EXPOSE 3000
+CMD ["bun", "run", "src/index.ts"]
+```
+
+---
+
+## ⚙️ 5. Edge Systemd Service (Auto-Start Pasca Mati Lampu)
+
+Jika server mini PC atau Raspberry Pi mengalami siklus mati daya dan menyala kembali:
+```ini
+[Unit]
+Description=UrbanGrow Edge Docker Compose Stack
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/urbangrow
+ExecStart=/usr/bin/docker compose up -d
+ExecStop=/usr/bin/docker compose down
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
+```
