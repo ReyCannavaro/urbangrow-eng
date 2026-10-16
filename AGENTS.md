@@ -89,6 +89,8 @@ Setiap agen beroperasi secara otonom namun terkoordinasi melalui topologi event-
 - 🚀 **DevOps & Monorepo Agent**: [devops-agent.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/.agents/rules/devops-agent.md)
 - 🛡️ **Security & Protection Agent**: [security-agent.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/.agents/rules/security-agent.md)
 - 📐 **Data Governance Agent**: [data-governance-agent.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/.agents/rules/data-governance-agent.md)
+- 🤝 **Coordination & Conflict Manifest**: [agent-coordination-manifest.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/.agents/rules/agent-coordination-manifest.md)
+- 🏗️ **Architecture Blueprint**: [ARCHITECTURE_DEEP_DIVE.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/docs/ARCHITECTURE_DEEP_DIVE.md)
 
 ---
 
@@ -96,3 +98,4 @@ Setiap agen beroperasi secara otonom namun terkoordinasi melalui topologi event-
 
 Untuk memastikan kepatuhan standar kualitas dan kesiapan sistem secara menyeluruh sebelum deployment atau pameran karya inovasi, seluruh agen wajib merujuk pada:
 👉 **[CROSS_DOMAIN_VERIFICATION.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/.agents/CROSS_DOMAIN_VERIFICATION.md)**
+
