@@ -61,7 +61,28 @@ apps/web/
 
 ---
 
-## 🧪 4. Standar Kode & Command Verifikasi
+## 📶 4. Penanganan Status Telemetri Basi (Stale State Handling)
+
+Untuk mencegah pengguna mengambil keputusan berdasarkan data usang saat sensor terputus:
+- Jika telemetri terakhir berumur lebih dari 15 detik (`Date.now() - lastTelemetryTimestamp > 15000`):
+  - Ubah warna border sensor card dari emerald menjadi `amber-500/50`.
+  - Tampilkan badge peringatan `STALE TELEMETRY / RECONNECTING...`.
+  - Jangan matikan tampilan angka sebelumnya, namun redupkan opasitas teks menjadi `text-slate-400`.
+
+---
+
+## 📐 5. Sistem Breakpoint Responsif & Bento Grid
+
+- **Mobile (< 640px)**: Tata letak kolom tunggal (*single column*), 6 sensor card berbaris vertikal, panel tombol darurat sticky di bagian bawah layar.
+- **Tablet (640px – 1024px)**: Bento grid 2 kolom dengan rasio visualizer menara 1:1.
+- **Desktop Wide (> 1024px)**: Bento grid 3–4 kolom asimetris:
+  - Kolom Kiri: 6 Sensor Cards (2x3).
+  - Kolom Tengah: 4-Level Vertical Aquaponic Visualizer Interaktif.
+  - Kolom Kanan: Panel Kendali Aktuator Cepat + Climate Adaptation Score Gauge.
+
+---
+
+## 🧪 6. Standar Kode & Command Verifikasi
 
 ```bash
 # Menjalankan linter Next.js
