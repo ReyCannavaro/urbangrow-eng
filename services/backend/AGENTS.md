@@ -65,3 +65,18 @@ bun x drizzle-kit migrate
 # 3. Inspeksi visual skema via Drizzle Studio (Port 4983)
 bun x drizzle-kit studio
 ```
+
+---
+
+## 🔒 6. Security Headers, CORS & Request Tracing
+
+1. **Request ID Tracing**:
+   - Pasang hook middleware `.derive(({ headers }) => ({ requestId: headers['x-request-id'] || crypto.randomUUID() }))`. Setiap log sistem wajib menyertakan `[req_id]` untuk memudahkan debugging.
+2. **CORS Allowlists**:
+   - Di lingkungan produksi, kunci origin hanya ke domain resmi dashboard web dan mobile app:
+     ```typescript
+     origin: ["https://urbangrow.smktelkom-sda.sch.id", "http://localhost:3001"]
+     ```
+3. **Security Headers**:
+   - Terapkan header `X-Content-Type-Options: nosniff` dan `X-Frame-Options: DENY` untuk mencegah clickjacking.
+
