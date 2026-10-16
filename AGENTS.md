@@ -81,12 +81,14 @@ Setiap agen beroperasi secara otonom namun terkoordinasi melalui topologi event-
 
 - ⚡ **IoT & Hardware Agent**: [iot-embedded-agent.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/.agents/rules/iot-embedded-agent.md)
 - 🧪 **IoT Simulator Agent**: [apps/iot-simulator/AGENTS.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/apps/iot-simulator/AGENTS.md)
-- 💻 **Web Frontend Agent**: [apps/web/AGENTS.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/apps/web/AGENTS.md)
-- 📱 **Mobile Frontend Agent**: [apps/mobile/AGENTS.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/apps/mobile/AGENTS.md)
-- ⚡ **Backend Gateway Agent**: [services/backend/AGENTS.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/services/backend/AGENTS.md)
+- 💻 **Web Frontend Agent**: [apps/web/AGENTS.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/apps/web/AGENTS.md) & [frontend-web-agent.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/.agents/rules/frontend-web-agent.md)
+- 📱 **Mobile Frontend Agent**: [apps/mobile/AGENTS.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/apps/mobile/AGENTS.md) & [mobile-agent.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/.agents/rules/mobile-agent.md)
+- ⚡ **Backend Gateway Agent**: [services/backend/AGENTS.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/services/backend/AGENTS.md) & [backend-agent.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/.agents/rules/backend-agent.md)
 - 🗄️ **Database & TimescaleDB Agent**: [database-agent.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/.agents/rules/database-agent.md)
-- 🧠 **AI & Predictive Engine Agent**: [services/ai-engine/AGENTS.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/services/ai-engine/AGENTS.md)
+- 🧠 **AI & Predictive Engine Agent**: [services/ai-engine/AGENTS.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/services/ai-engine/AGENTS.md) & [ai-agent.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/.agents/rules/ai-agent.md)
 - 🚀 **DevOps & Monorepo Agent**: [devops-agent.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/.agents/rules/devops-agent.md)
+- 🛡️ **Security & Protection Agent**: [security-agent.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/.agents/rules/security-agent.md)
+- 📐 **Data Governance Agent**: [data-governance-agent.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/.agents/rules/data-governance-agent.md)
 
 ---
 
