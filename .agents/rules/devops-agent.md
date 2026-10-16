@@ -160,3 +160,39 @@ TimeoutStartSec=0
 [Install]
 WantedBy=multi-user.target
 ```
+
+---
+
+## 🤖 6. GitHub Actions Continuous Integration (CI) Workflow
+
+Spesifikasi alur kerja otomatis pada `.github/workflows/ci.yml`:
+```yaml
+name: UrbanGrow Monorepo CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun Runtime
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.13
+
+      - name: Install Moon CLI
+        run: curl -fsSL https://moonrepo.dev/install/moon.sh | bash
+
+      - name: Run Monorepo Lint & Typecheck
+        run: |
+          ~/.moon/bin/moon run :lint
+          ~/.moon/bin/moon run :build
+```
+
