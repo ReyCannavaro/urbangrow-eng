@@ -91,3 +91,12 @@ bun run lint
 # Membangun produksi untuk memastikan tidak ada type error
 bun run build
 ```
+
+---
+
+## ♿ 7. Standar Aksesibilitas (WCAG 2.1 AA) & Keyboard Navigation
+
+1. **Kontras Rasio Teks**: Seluruh teks metrik dan label kartu wajib memenuhi rasio kontras minimum 4.5:1 terhadap latar belakang dark slate (`slate-950`).
+2. **Focus Indicators**: Seluruh elemen interaktif (tombol toggle relay, tombol drawer AgriBot) wajib memiliki outline fokus yang jelas (`focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none`).
+3. **Screen Reader ARIA**: Komponen indikator status relay wajib menyertakan atribut `aria-pressed="true|false"` dan `aria-live="polite"` pada pembaruan nilai sensor.
+
