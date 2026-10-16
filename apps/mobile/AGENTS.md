@@ -58,3 +58,23 @@ flutter test
 # Mengompilasi APK rilis untuk pengujian lapangan di smartphone
 flutter build apk --release --split-per-abi
 ```
+
+---
+
+## 💾 4. Skema Cache Lokal SQLite & Retry Queue
+
+1. **Tabel Cache Telemetri**:
+   - Simpan snapshot sensor terakhir ke tabel lokal `cached_telemetry` dengan batas maksimal 50 baris (`FIFO retention`).
+2. **Offline Mutation Queue**:
+   - Jika pengguna menekan saklar aktuator saat koneksi jaringan drop, simpan aksi ke dalam antrean `actuator_retry_queue`. Begitu status konektivitas kembali `online`, kirimkan aksi tertunda secara berurutan dengan jeda 500ms.
+
+---
+
+## 📳 5. Matriks Haptics Feedback
+
+| Aksi Pengguna | Tipe Feedback Haptic | Alasan UX |
+|---|---|---|
+| Toggle Relay Aktuator | `HapticFeedback.mediumImpact()` | Memberikan sensasi mekanis saklar nyata |
+| Tarik untuk Refresh (*Pull to refresh*) | `HapticFeedback.lightImpact()` | Konfirmasi gestur berhasil dimulai |
+| Peringatan Anomali Darurat | `HapticFeedback.vibrate()` (Pola ganda) | Menarik perhatian pengguna pada krisis air |
+
