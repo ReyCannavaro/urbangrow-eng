@@ -79,3 +79,33 @@ SELECT add_continuous_aggregate_policy('sensor_readings_hourly',
 ## 💎 4. Integrasi Drizzle ORM (TypeScript)
 
 Drizzle ORM di `services/backend/src/db/schema.ts` bertindak sebagai single source of truth untuk type-safe queries. Dilarang melakukan query raw SQL tanpa sanitasi parameter.
+
+---
+
+## 🗜️ 5. Kebijakan Kompresi Kolom (TimescaleDB Compression)
+
+Untuk menghemat pemakaian disk hingga 90% pada penyimpanan deret waktu:
+```sql
+ALTER TABLE sensor_readings SET (
+    timescaledb.compress,
+    timescaledb.compress_segmentby = 'device_id',
+    timescaledb.compress_orderby = 'time DESC'
+);
+
+-- Kompresi otomatis chunk yang berumur lebih dari 7 hari
+SELECT add_compression_policy('sensor_readings', INTERVAL '7 days');
+```
+
+---
+
+## 💾 6. Cadangan Data Harian & Disaster Recovery
+
+Jadwalkan cron job harian pada container database untuk membuat backup snapshot:
+```bash
+# Dump terkompresi schema & data
+pg_dump -U urbangrow_admin -Fc urbangrow > /backups/urbangrow_$(date +%Y%m%d).dump
+
+# Prosedur Restore Darurat
+pg_restore -U urbangrow_admin -d urbangrow -c /backups/urbangrow_latest.dump
+```
+
