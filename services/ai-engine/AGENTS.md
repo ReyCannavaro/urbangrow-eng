@@ -1,7 +1,7 @@
 # 🧠 UrbanGrow AI & Predictive Analytics Agent Specification (`services/ai-engine`)
 
 > **Layanan**: Machine Learning & Predictive Analytics Microservice  
-> **Teknologi**: Python 3.11, FastAPI, Scikit-Learn, XGBoost, Pydantic v2  
+> **Teknologi**: Python 3.11, FastAPI, Scikit-Learn, XGBoost, ONNX Runtime, Pydantic v2  
 > **Port Default**: `8000` (dijalankan via `uvicorn main:app --reload --port 8000`)
 
 ---
@@ -56,3 +56,26 @@ class AnomalyResponse(BaseModel):
 
 - Model wajib dilatih dan disimpan ke direktori `services/ai-engine/models/` dalam format `.joblib` atau `.onnx`.
 - Setiap model wajib menyertakan metadata versi dan tanggal training pada nama file (`isolation_forest_v1_202610.joblib`).
+
+---
+
+## 🌦️ 4. Sintesis Data Iklim Mikro Tropis Sidoarjo
+
+Untuk pelatihan awal sebelum sensor fisik mengumpulkan data 90 hari, AI Engine menggunakan generator data sintetis berbasis profil iklim Kabupaten Sidoarjo / Jawa Timur:
+- Suhu Siang Hari: `31°C – 36°C` dengan kelembapan `60% – 75%`.
+- Suhu Malam Hari: `24°C – 27°C` dengan kelembapan `80% – 95%`.
+- Simulasi Fenomena *Urban Heat Island*: Lonjakan suhu air kolam hingga `32.5°C` pada pukul 12:00–14:30 WIB yang menguji efektivitas sirkulasi aerasi.
+
+---
+
+## 📈 5. Deteksi Concept Drift & Retraining Otomatis
+
+- Lakukan uji statistik **Kolmogorov-Smirnov (KS-test)** pada jendela geser data aktual 7 hari terhadap distribusi baseline training.
+- Jika $p\text{-value} < 0.05$ terdeteksi pada metrik pH atau TDS selama 3 hari berturut-turut, trigger sinyal retrain otomatis untuk memperbarui bobot model XGBoost.
+
+---
+
+## ⚡ 6. Inferensi Ringan Edge ONNX Runtime
+
+- Model Scikit-Learn dan XGBoost diekspor ke format ONNX (`model.onnx`).
+- Inferensi dijalankan via `onnxruntime` CPU yang menghasilkan latensi inferensi di bawah **5 milidetik** dengan batas alokasi memori maksimal **150 MB RAM** agar dapat berjalan mulus pada Raspberry Pi 4/5.
