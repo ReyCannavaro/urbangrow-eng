@@ -71,6 +71,52 @@ ESP32 mengirimkan telemetri berkala (interval 5.000 ms) ke Backend API melalui H
 
 ## 🛡️ 4. Panduan untuk AI Developer Agen IoT
 
-- Saat mengimplementasikan driver sensor, gunakan **ADC1** untuk pembacaan analog karena ADC2 di nonaktifkan oleh radio Wi-Fi internal ESP32.
+- Saat mengimplementasikan driver sensor, gunakan **ADC1** untuk pembacaan analog karena ADC2 dinonaktifkan oleh radio Wi-Fi internal ESP32.
 - Lakukan sampling analog sebanyak 10 kali lalu ambil **median** untuk menghilangkan lonjakan spike noise listrik.
 - Di sisi simulator (`apps/iot-simulator`), pastikan state sinkron dengan endpoint `/api/simulation/sensor-override`.
+
+---
+
+## 🔬 5. Algoritma Filter Derau Sinyal Analog (Signal Conditioning)
+
+Tegangan riak (*ripple voltage*) dari motor pompa 12V dapat menginduksi noise pada probe analog pH dan TDS. Firmware ESP32 wajib mengimplementasikan **Dua Tahap Penyaringan**:
+
+```cpp
+// 1. Median Filter (Menghilangkan Spike Acak)
+float readMedianADC(int pin, int samples = 10) {
+    int raw[10];
+    for (int i = 0; i < samples; i++) {
+        raw[i] = analogRead(pin);
+        delay(10);
+    }
+    std::sort(raw, raw + samples);
+    return (raw[4] + raw[5]) / 2.0;
+}
+
+// 2. Exponential Moving Average (EMA) Smoothing (Alpha = 0.25)
+float applyEMA(float current, float previous, float alpha = 0.25) {
+    return (alpha * current) + ((1.0 - alpha) * previous);
+}
+```
+
+---
+
+## 🧪 6. Formula Kalibrasi & Kompensasi Suhu
+
+1. **Kalibrasi pH Dua Titik (pH 4.01 & 6.86)**:
+   $$V_{\text{in}} = \frac{\text{ADC}_{\text{median}}}{4095.0} \times 3.3\text{V}$$
+   $$\text{pH} = 7.0 + ((V_{\text{neutral}} - V_{\text{in}}) \times m)$$
+   *(di mana $m \approx 3.5$ adalah slope sensitivitas elektroda kaca)*.
+
+2. **Kompensasi Suhu TDS (Temperature Coefficient)**:
+   $$T_{\text{coeff}} = 1.0 + 0.02 \times (T_{\text{water}} - 25.0)$$
+   $$V_{\text{compensated}} = \frac{V_{\text{in}}}{T_{\text{coeff}}}$$
+   $$\text{TDS (ppm)} = (133.42 \times V^3 - 255.86 \times V^2 + 857.39 \times V) \times 0.5$$
+
+---
+
+## ⚡ 7. Sirkuit Catu Daya Ganda & Mitigasi Blackout
+
+Sistem UrbanGrow dilengkapi relay saklar otomatis antara adaptor AC-DC 12V dan Baterai Cadangan SLA 12V 7Ah:
+- Dioda Schottky daya tinggi (10A) dipasang pada katoda gabungan guna mencegah arus balik (*reverse current*) ke adaptor.
+- Pin GPIO 36 (ADC1_CH0) memantau pembagi tegangan baterai untuk mendeteksi status pemadaman listrik PLN dan mengirimkan sinyal `power_source: "battery"` ke telemetri backend.
