@@ -87,3 +87,10 @@ Setiap agen beroperasi secara otonom namun terkoordinasi melalui topologi event-
 - 🗄️ **Database & TimescaleDB Agent**: [database-agent.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/.agents/rules/database-agent.md)
 - 🧠 **AI & Predictive Engine Agent**: [services/ai-engine/AGENTS.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/services/ai-engine/AGENTS.md)
 - 🚀 **DevOps & Monorepo Agent**: [devops-agent.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/.agents/rules/devops-agent.md)
+
+---
+
+## ✅ 6. Audit & Matriks Verifikasi Lintas-Domain
+
+Untuk memastikan kepatuhan standar kualitas dan kesiapan sistem secara menyeluruh sebelum deployment atau pameran karya inovasi, seluruh agen wajib merujuk pada:
+👉 **[CROSS_DOMAIN_VERIFICATION.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/.agents/CROSS_DOMAIN_VERIFICATION.md)**
