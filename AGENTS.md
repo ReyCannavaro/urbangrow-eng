@@ -91,6 +91,9 @@ Setiap agen beroperasi secara otonom namun terkoordinasi melalui topologi event-
 - 📐 **Data Governance Agent**: [data-governance-agent.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/.agents/rules/data-governance-agent.md)
 - 🤝 **Coordination & Conflict Manifest**: [agent-coordination-manifest.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/.agents/rules/agent-coordination-manifest.md)
 - 🏗️ **Architecture Blueprint**: [ARCHITECTURE_DEEP_DIVE.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/docs/ARCHITECTURE_DEEP_DIVE.md)
+- 🐟🌱 **Biological Pairing Guide**: [BIOLOGICAL_PAIRING_GUIDE.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/docs/BIOLOGICAL_PAIRING_GUIDE.md)
+- 🧪 **Sensor Calibration SOP**: [SENSOR_CALIBRATION_SOP.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/docs/SENSOR_CALIBRATION_SOP.md)
+- 🚀 **Edge Deployment Runbook**: [DEPLOYMENT_RUNBOOK.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/docs/DEPLOYMENT_RUNBOOK.md)
 
 ---
 
@@ -98,4 +101,5 @@ Setiap agen beroperasi secara otonom namun terkoordinasi melalui topologi event-
 
 Untuk memastikan kepatuhan standar kualitas dan kesiapan sistem secara menyeluruh sebelum deployment atau pameran karya inovasi, seluruh agen wajib merujuk pada:
 👉 **[CROSS_DOMAIN_VERIFICATION.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/.agents/CROSS_DOMAIN_VERIFICATION.md)**
+
 
