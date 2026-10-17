@@ -1,0 +1,62 @@
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: urbangrow-timescaledb
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: urbangrow
+      POSTGRES_USER: urbangrow_admin
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-urbangrow_secret_2026}
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U urbangrow_admin -d urbangrow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: urbangrow-mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./docker/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+
+  backend:
+    build:
+      context: ./services/backend
+      dockerfile: Dockerfile
+    container_name: urbangrow-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://urbangrow_admin:${DB_PASSWORD:-urbangrow_secret_2026}@timescaledb:5432/urbangrow
+      MQTT_BROKER_URL: mqtt://mosquitto:1883
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+
+  ai-engine:
+    build:
+      context: ./services/ai-engine
+      dockerfile: Dockerfile
+    container_name: urbangrow-ai-engine
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    depends_on:
+      - backend
+
+volumes:
+  timescale_data:
+  mosquitto_data:
+  mosquitto_log:
