@@ -3,6 +3,7 @@ import { cors } from "@elysiajs/cors";
 import { simulator } from "./simulator";
 
 import { MqttBridgeService } from "./mqtt";
+import { SafetyInterlockManager } from "./safety";
 
 export const app = new Elysia()
   .use(
@@ -59,6 +60,28 @@ export const app = new Elysia()
   .post(
     "/api/actuators/:id/toggle",
     ({ params: { id }, set }) => {
+      // Check dry-run pump safety
+      if (id === "pump") {
+        const snap = simulator.getSnapshot();
+        const canPump = SafetyInterlockManager.canActivatePump({
+          ph: snap.sensors.ph,
+          tds_ppm: snap.sensors.tds,
+          water_temp_c: snap.sensors.waterTemperature,
+          air_temp_c: snap.sensors.airTemperature,
+          humidity_pct: snap.sensors.humidity,
+          lux: snap.sensors.lightIntensity,
+          dissolved_oxygen_mg_l: snap.sensors.dissolvedOxygen,
+          water_level_ok: snap.sensors.waterLevel > 20,
+        });
+
+        const currentPump = snap.actuators.find((a) => a.id === "pump");
+        // If turning ON but not allowed
+        if (!currentPump?.isOn && !canPump.allowed) {
+          set.status = 400;
+          return { success: false, message: canPump.reason };
+        }
+      }
+
       const updated = simulator.toggleActuator(id);
       if (!updated) {
         set.status = 404;
