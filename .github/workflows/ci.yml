@@ -24,3 +24,20 @@ jobs:
 
       - name: Verify Workspace Configuration
         run: ~/.moon/bin/moon project :
+
+      - name: Run Backend Tests
+        run: |
+          cd services/backend
+          bun install
+          bun test
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate AI Engine Syntax
+        run: |
+          cd services/ai-engine
+          python -m py_compile *.py
+
