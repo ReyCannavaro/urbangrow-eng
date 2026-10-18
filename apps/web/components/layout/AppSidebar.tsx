@@ -14,6 +14,7 @@ import {
   Cpu,
   Smartphone,
   ExternalLink,
+  Sparkles,
 } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
 
@@ -26,6 +27,7 @@ export function AppSidebar() {
     { label: "Menara Kaskade", href: "/ecosystem", icon: Layers },
     { label: "Kontrol Relay", href: "/controls", icon: ToggleLeft },
     { label: "Analitik IoT", href: "/analytics", icon: BarChart3 },
+    { label: "Prediksi AI", href: "/ai-insights", icon: Sparkles },
     { label: "AgriBot AI", href: "/agribot", icon: Bot },
   ];
 
