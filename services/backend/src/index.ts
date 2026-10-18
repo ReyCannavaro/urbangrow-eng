@@ -4,6 +4,7 @@ import { simulator } from "./simulator";
 
 import { MqttBridgeService } from "./mqtt";
 import { SafetyInterlockManager } from "./safety";
+import { AiEngineClient } from "./aiClient";
 
 export const app = new Elysia()
   .use(
@@ -151,6 +152,34 @@ export const app = new Elysia()
     set.headers["Content-Type"] = "application/vnd.android.package-archive";
     set.headers["Content-Disposition"] = 'attachment; filename="UrbanGrow-v1.0.5.apk"';
     return apkFile;
+  })
+  // 9. AI Engine Anomaly Evaluation Gateway
+  .post("/api/ai/predict", async () => {
+    const snap = simulator.getSnapshot();
+    const result = await AiEngineClient.predictAnomaly({
+      ph: snap.sensors.ph,
+      tds_ppm: snap.sensors.tds,
+      water_temp_c: snap.sensors.waterTemperature,
+      air_temp_c: snap.sensors.airTemperature,
+      humidity_pct: snap.sensors.humidity,
+      lux: snap.sensors.lightIntensity,
+      dissolved_oxygen: snap.sensors.dissolvedOxygen,
+    });
+    return { success: true, ...result };
+  })
+  // 10. AI Engine Climate Adaptation Score Gateway
+  .get("/api/ai/climate-score", async () => {
+    const snap = simulator.getSnapshot();
+    const result = await AiEngineClient.calculateClimateScore({
+      ph: snap.sensors.ph,
+      tds_ppm: snap.sensors.tds,
+      water_temp_c: snap.sensors.waterTemperature,
+      air_temp_c: snap.sensors.airTemperature,
+      humidity_pct: snap.sensors.humidity,
+      lux: snap.sensors.lightIntensity,
+      dissolved_oxygen: snap.sensors.dissolvedOxygen,
+    });
+    return { success: true, ...result };
   })
   .listen({
     port: 3000,
