@@ -94,6 +94,9 @@ Setiap agen beroperasi secara otonom namun terkoordinasi melalui topologi event-
 - 🐟🌱 **Biological Pairing Guide**: [BIOLOGICAL_PAIRING_GUIDE.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/docs/BIOLOGICAL_PAIRING_GUIDE.md)
 - 🧪 **Sensor Calibration SOP**: [SENSOR_CALIBRATION_SOP.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/docs/SENSOR_CALIBRATION_SOP.md)
 - 🚀 **Edge Deployment Runbook**: [DEPLOYMENT_RUNBOOK.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/docs/DEPLOYMENT_RUNBOOK.md)
+- 📡 **API Reference Catalog**: [API_REFERENCE.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/docs/API_REFERENCE.md)
+- 🔌 **Circuit Diagram Specs**: [CIRCUIT_DIAGRAM_SPECS.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/docs/CIRCUIT_DIAGRAM_SPECS.md)
+- 🧪 **Water Chemistry Guide**: [WATER_CHEMISTRY_GUIDE.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/docs/WATER_CHEMISTRY_GUIDE.md)
 
 ---
 
