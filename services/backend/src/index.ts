@@ -2,6 +2,8 @@ import { Elysia, t } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { simulator } from "./simulator";
 
+import { MqttBridgeService } from "./mqtt";
+
 export const app = new Elysia()
   .use(
     cors({
@@ -19,10 +21,24 @@ export const app = new Elysia()
       current: "/api/sensors/current",
       history: "/api/sensors/history",
       alerts: "/api/alerts",
+      telemetry: "POST /api/sensors/telemetry",
       toggleActuator: "POST /api/actuators/:id/toggle",
       simulateAnomaly: "POST /api/simulation/anomaly",
+      mqttStatus: "/api/mqtt/status",
     },
   }))
+  // Status of edge MQTT broker connection
+  .get("/api/mqtt/status", () => ({
+    success: true,
+    ...MqttBridgeService.getStatus(),
+  }))
+
+  // Direct edge telemetry ingestion (ESP32 HTTP POST)
+  .post("/api/sensors/telemetry", ({ body }) => {
+    MqttBridgeService.handleIncomingTelemetry(body as any);
+    return { success: true, message: "Telemetry ingested" };
+  })
+
   // 1. Current real-time sensor snapshot
   .get("/api/sensors/current", () => simulator.getSnapshot())
 
