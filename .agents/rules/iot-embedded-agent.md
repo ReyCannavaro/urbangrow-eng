@@ -135,3 +135,14 @@ Sistem UrbanGrow dilengkapi relay saklar otomatis antara adaptor AC-DC 12V dan B
    - Telemetri MQTT menggunakan **QoS 1 (At least once delivery)** dengan timeout ACK 2.000 ms.
    - Jika broker tidak mengembalikan `PUBACK`, firmware menyimpan payload ke RingBuffer memori RTC internal (kapasitas 50 payload) untuk re-transmisi otomatis saat koneksi pulih.
 
+---
+
+## 📲 9. Pembaruan Firmware Over-The-Air (OTA) & Rollback Dual-Bank
+
+1. **Skema Partisi Dual-OTA**:
+   - ESP32 menggunakan partisi `ota_0` dan `ota_1` (masing-masing 1.5 MB).
+   - Saat flashing firmware baru via Wi-Fi (`ArduinoOTA` / HTTP OTA), firmware di-download ke partisi sekunder tanpa memutus loop sirkulasi pompa relay fisik.
+2. **Rollback Watchdog**:
+   - Bootloader ESP32 menandai firmware baru dalam status `ESP_OTA_IMG_NEW`. Jika board gagal melakukan booting sukses dan terhubung ke backend dalam 3 siklus restart, bootloader otomatis melakukan rollback ke partisi firmware stabil sebelumnya.
+
+
