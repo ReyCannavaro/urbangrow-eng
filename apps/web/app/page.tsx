@@ -10,9 +10,20 @@ import { RelayActuatorsCard } from "@/components/dashboard/RelayActuatorsCard";
 import { BiologicalPairingCard } from "@/components/dashboard/BiologicalPairingCard";
 import { BiofilterDonutCard } from "@/components/dashboard/BiofilterDonutCard";
 import { EdgeTimeTrackerCard } from "@/components/dashboard/EdgeTimeTrackerCard";
+import { AnomalyAlertBanner } from "@/components/ai/AnomalyAlertBanner";
+import { fetchAnomalyInference, AnomalyPrediction } from "@/lib/aiApi";
 
 export default function DashboardPage() {
   const { dispenseFeed, feedActive } = useTelemetry();
+  const [anomaly, setAnomaly] = React.useState<AnomalyPrediction | null>(null);
+
+  React.useEffect(() => {
+    fetchAnomalyInference().then(setAnomaly);
+    const timer = setInterval(() => {
+      fetchAnomalyInference().then(setAnomaly);
+    }, 15000);
+    return () => clearInterval(timer);
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -46,6 +57,9 @@ export default function DashboardPage() {
           </button>
         </div>
       </section>
+
+      {/* Real-time AI Anomaly Alert Banner */}
+      <AnomalyAlertBanner anomaly={anomaly} />
 
       {/* 2. Row 1: 4 Metric Cards (Inverted Pine Hero Anchor + 3 White Metric Cards) */}
       <MetricCardsRow />
