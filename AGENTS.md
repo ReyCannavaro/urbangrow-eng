@@ -97,6 +97,10 @@ Setiap agen beroperasi secara otonom namun terkoordinasi melalui topologi event-
 - 📡 **API Reference Catalog**: [API_REFERENCE.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/docs/API_REFERENCE.md)
 - 🔌 **Circuit Diagram Specs**: [CIRCUIT_DIAGRAM_SPECS.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/docs/CIRCUIT_DIAGRAM_SPECS.md)
 - 🧪 **Water Chemistry Guide**: [WATER_CHEMISTRY_GUIDE.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/docs/WATER_CHEMISTRY_GUIDE.md)
+- 🚨 **Security Incident Runbook**: [SECURITY_INCIDENT_RUNBOOK.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/docs/SECURITY_INCIDENT_RUNBOOK.md)
+- ⚡ **Energy & Dual-Power Spec**: [ENERGY_MANAGEMENT_SPEC.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/docs/ENERGY_MANAGEMENT_SPEC.md)
+- 🌿 **Plant Nutrient Deficiency Guide**: [PLANT_NUTRIENT_DEFICIENCY_GUIDE.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/docs/PLANT_NUTRIENT_DEFICIENCY_GUIDE.md)
+- 🐟 **Fish Welfare & Ethology Guide**: [FISH_WELFARE_GUIDE.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/docs/FISH_WELFARE_GUIDE.md)
 
 ---
 
