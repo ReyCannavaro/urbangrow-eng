@@ -5,6 +5,7 @@ import { simulator } from "./simulator";
 import { MqttBridgeService } from "./mqtt";
 import { SafetyInterlockManager } from "./safety";
 import { AiEngineClient } from "./aiClient";
+import { TelemetryWebSocketManager } from "./websocket";
 
 export const app = new Elysia()
   .use(
@@ -180,6 +181,26 @@ export const app = new Elysia()
       dissolved_oxygen: snap.sensors.dissolvedOxygen,
     });
     return { success: true, ...result };
+  })
+  // 11. Full-duplex WebSocket Telemetry Stream
+  .ws("/api/telemetry/ws", {
+    open(ws) {
+      TelemetryWebSocketManager.addClient({
+        id: ws.id,
+        send: (msg) => ws.send(msg),
+      });
+    },
+    message(ws, message: any) {
+      if (message === "ping" || (typeof message === "object" && message?.type === "pong")) {
+        ws.send(JSON.stringify({ type: "pong" }));
+      }
+    },
+    close(ws) {
+      TelemetryWebSocketManager.removeClient({
+        id: ws.id,
+        send: () => {},
+      });
+    },
   })
   .listen({
     port: 3000,
