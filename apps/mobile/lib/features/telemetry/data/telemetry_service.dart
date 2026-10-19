@@ -58,4 +58,21 @@ class TelemetryService {
       return false;
     }
   }
+
+  /// Fetch AI-driven Climate Adaptation Score & sub-metrics
+  Future<Map<String, dynamic>?> fetchClimateScore() async {
+    try {
+      final response = await _client.get(
+        Uri.parse(ApiConfig.aiClimateScore),
+        headers: {'Accept': 'application/json'},
+      ).timeout(const Duration(seconds: 4));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
 }
