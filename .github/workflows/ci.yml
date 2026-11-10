@@ -1,14 +1,22 @@
-name: UrbanGrow Monorepo CI
+name: UrbanGrow CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, dev ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: urbangrow-cicd-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
 
 jobs:
   validate:
-    name: Lint & Build Validation
+    name: CI Validate (Backend, Web, AI Engine)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Codebase
@@ -20,16 +28,53 @@ jobs:
           bun-version: 1.3.13
 
       - name: Install Moon CLI
-        run: curl -fsSL https://moonrepo.dev/install/moon.sh | bash
-
-      - name: Verify Workspace Configuration
-        run: ~/.moon/bin/moon project :
-
-      - name: Run Backend Tests
+        env:
+          MOON_INSTALL_DIR: ${{ runner.temp }}/moon-bin
         run: |
-          cd services/backend
-          bun install
-          bun test
+          mkdir -p "${MOON_INSTALL_DIR}"
+          curl -fsSL https://moonrepo.dev/install/moon.sh | bash
+          echo "${MOON_INSTALL_DIR}" >> "$GITHUB_PATH"
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.proto/bin" >> "$GITHUB_PATH"
+
+      - name: Verify Moon Workspace
+        run: |
+          moon --version
+          moon query projects > /dev/null
+          moon project backend > /dev/null
+          moon project web > /dev/null
+
+      - name: Install Backend & Web Dependencies
+        run: |
+          (cd services/backend && bun install --frozen-lockfile)
+          (cd apps/web && bun install --frozen-lockfile)
+
+      - name: Run Backend Unit & Integration Tests
+        run: moon run backend:test
+
+      - name: Typecheck Backend (Strict)
+        run: |
+          ./apps/web/node_modules/.bin/tsc --noEmit \
+            --types ./services/backend/node_modules/bun-types \
+            --moduleResolution bundler --target ES2022 --module ES2022 \
+            --strict --skipLibCheck \
+            services/backend/src/types.ts \
+            services/backend/src/index.ts \
+            services/backend/src/simulator.ts \
+            services/backend/src/mqtt.ts \
+            services/backend/src/websocket.ts \
+            services/backend/src/safety.ts \
+            services/backend/src/aiClient.ts \
+            services/backend/src/geminiChat.ts
+
+      - name: Lint Web Frontend
+        run: moon run web:lint
+
+      - name: Build Web Frontend (Next.js)
+        env:
+          NEXT_PUBLIC_API_URL: "https://urbangrow-api.reycannavaro.dev"
+        run: moon run web:build
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -41,3 +86,113 @@ jobs:
           cd services/ai-engine
           python -m py_compile *.py
 
+  deploy-backend:
+    name: CD Deploy Backend to AWS EC2
+    needs: validate
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure SSH Key for AWS EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$EC2_SSH_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Deploy & Restart Backend Service on EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "${EC2_USER}@${EC2_HOST}" bash -s <<'REMOTE_SCRIPT'
+          set -euo pipefail
+
+          REPO_DIR="/home/ubuntu/urbangrow-eng"
+          BACKEND_DIR="${REPO_DIR}/services/backend"
+          ENV_BAK="/tmp/urbangrow-backend.env.bak"
+
+          if [[ -f "${BACKEND_DIR}/.env" ]]; then
+            cp -p "${BACKEND_DIR}/.env" "${ENV_BAK}"
+          fi
+
+          cd "${REPO_DIR}"
+          git fetch origin main
+          git checkout -B main origin/main
+          git reset --hard origin/main
+
+          if [[ -f "${ENV_BAK}" ]]; then
+            mv -f "${ENV_BAK}" "${BACKEND_DIR}/.env"
+            chmod 600 "${BACKEND_DIR}/.env"
+          fi
+
+          cd "${BACKEND_DIR}"
+          /usr/local/bin/bun install --frozen-lockfile --production || /usr/local/bin/bun install --production
+
+          sudo systemctl daemon-reload
+          sudo systemctl restart urbangrow-backend
+          sudo systemctl reload caddy || true
+
+          for i in $(seq 1 10); do
+            if curl -fsS http://127.0.0.1:3000/health; then
+              echo ""
+              echo "Backend local health check passed on attempt $i."
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "Backend health check failed after restart!"
+          sudo journalctl -u urbangrow-backend --no-pager -n 30 || true
+          exit 1
+          REMOTE_SCRIPT
+
+      - name: Cleanup Ephemeral SSH Key
+        if: always()
+        run: rm -f ~/.ssh/id_ed25519
+
+      - name: Verify Public Backend HTTPS Health
+        run: |
+          curl -fsS --retry 3 --retry-delay 2 --max-time 15 https://urbangrow-api.reycannavaro.dev/health
+          echo ""
+          curl -fsS --retry 3 --retry-delay 2 --max-time 15 https://urbangrow-api.reycannavaro.dev/api/ai/diagnostics | head -c 260
+          echo ""
+
+  verify-frontend:
+    name: CD Verify Vercel Frontend Production
+    needs: [ validate, deploy-backend ]
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Optional Vercel Deploy Hook
+        env:
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          if [[ -n "${VERCEL_DEPLOY_HOOK_URL}" ]]; then
+            echo "Triggering fallback Vercel Deploy Hook..."
+            curl -fsS -X POST "${VERCEL_DEPLOY_HOOK_URL}"
+            echo ""
+          else
+            echo "Using Vercel native GitHub integration on branch main."
+          fi
+
+      - name: Verify Live Frontend & API Bridge
+        run: |
+          for i in $(seq 1 24); do
+            STATUS_HOME=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 https://urbangrow.reycannavaro.dev/ || echo "000")
+            STATUS_BOT=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 https://urbangrow.reycannavaro.dev/agribot || echo "000")
+            STATUS_API=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 https://urbangrow.reycannavaro.dev/api/sensors/current || echo "000")
+            echo "Attempt $i: /=HTTP_${STATUS_HOME}, /agribot=HTTP_${STATUS_BOT}, /api/sensors/current=HTTP_${STATUS_API}"
+            if [[ "$STATUS_HOME" == "200" && "$STATUS_BOT" == "200" && "$STATUS_API" == "200" ]]; then
+              curl -fsS --max-time 10 https://urbangrow.reycannavaro.dev/api/sensors/current | grep -q '"sensors"'
+              echo "Frontend production and Backend proxy verified healthy!"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Frontend verification timed out!"
+          exit 1
