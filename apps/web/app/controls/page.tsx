@@ -215,7 +215,10 @@ export default function ControlsPage() {
       />
 
       {/* 6. Signature Wavy Ribbon Footer: Fail-safe Hardware Specs */}
-      <div className="rounded-[24px] bg-wavy-ribbon text-white p-6 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-5">
+      <div
+        id="hardware-esp32"
+        className="scroll-mt-6 rounded-[24px] bg-wavy-ribbon text-white p-6 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-5"
+      >
         <div>
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-[#68C194] animate-pulse" />

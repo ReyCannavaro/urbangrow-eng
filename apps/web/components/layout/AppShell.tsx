@@ -6,9 +6,9 @@ import { TopNavbar } from "./TopNavbar";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#F0F2F5] p-3 sm:p-5 lg:p-6">
-      <div className="max-w-[1460px] mx-auto flex flex-col lg:flex-row gap-5 items-start">
-        {/* 1. Locked Sticky Left Sidebar (Never scrolls away) */}
+    <div className="app-shell bg-[#F0F2F5]">
+      <div className="max-w-[1460px] mx-auto flex flex-col lg:flex-row gap-4 xl:gap-5 items-start">
+        {/* 1. Locked Non-Scrollable Sticky Left Sidebar */}
         <AppSidebar />
 
         {/* 2. Main Content Column */}

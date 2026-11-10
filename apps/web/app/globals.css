@@ -71,6 +71,7 @@ body {
   content: "";
   position: absolute;
   inset: 0;
+  z-index: 0;
   background-image: repeating-radial-gradient(
     circle at 90% 10%,
     rgba(78, 171, 124, 0.15) 0px,
@@ -80,6 +81,98 @@ body {
   );
   opacity: 0.6;
   pointer-events: none;
+}
+
+/* Device-Adaptive Shell & Non-Scrollable Locked Sidebar */
+.app-shell {
+  --shell-pad-y: clamp(10px, 2vh, 24px);
+  --shell-pad-y: clamp(10px, 2dvh, 24px);
+  --shell-pad-x: clamp(12px, 1.8vw, 24px);
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: var(--shell-pad-y) var(--shell-pad-x);
+}
+
+.app-sidebar-panel {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+@media (min-width: 1024px) {
+  .app-sidebar-panel {
+    position: sticky;
+    top: var(--shell-pad-y);
+    align-self: flex-start;
+    width: clamp(208px, 16.5vw, 252px);
+    height: calc(100vh - (var(--shell-pad-y) * 2));
+    height: calc(100dvh - (var(--shell-pad-y) * 2));
+    padding: clamp(12px, 1.8vh, 20px) clamp(12px, 1.25vw, 18px);
+    padding: clamp(12px, 1.8dvh, 20px) clamp(12px, 1.25vw, 18px);
+    overflow: hidden;
+  }
+
+  .app-sidebar-brand {
+    margin-bottom: clamp(8px, 1.8vh, 22px);
+    margin-bottom: clamp(8px, 1.8dvh, 22px);
+  }
+
+  .app-sidebar-logo {
+    height: clamp(24px, 3.2vh, 32px);
+    height: clamp(24px, 3.2dvh, 32px);
+  }
+
+  .app-sidebar-groups {
+    gap: clamp(8px, 1.5vh, 18px);
+    gap: clamp(8px, 1.5dvh, 18px);
+  }
+
+  .app-sidebar-heading {
+    margin-bottom: clamp(3px, 0.65vh, 8px);
+    margin-bottom: clamp(3px, 0.65dvh, 8px);
+    font-size: clamp(9px, 1.05vh, 10px);
+    font-size: clamp(9px, 1.05dvh, 10px);
+  }
+
+  .app-sidebar-nav {
+    gap: clamp(1px, 0.35vh, 4px);
+    gap: clamp(1px, 0.35dvh, 4px);
+  }
+
+  .app-sidebar-link {
+    padding-block: clamp(4px, 0.78vh, 8px);
+    padding-block: clamp(4px, 0.78dvh, 8px);
+    padding-inline: clamp(8px, 0.8vw, 12px);
+    font-size: clamp(11px, 1.3vh, 12.5px);
+    font-size: clamp(11px, 1.3dvh, 12.5px);
+  }
+
+  .app-sidebar-icon {
+    width: clamp(14px, 1.65vh, 16px);
+    height: clamp(14px, 1.65vh, 16px);
+    width: clamp(14px, 1.65dvh, 16px);
+    height: clamp(14px, 1.65dvh, 16px);
+  }
+
+  .app-sidebar-mobile-card {
+    margin-top: clamp(8px, 1.4vh, 16px);
+    margin-top: clamp(8px, 1.4dvh, 16px);
+    padding: clamp(10px, 1.35vh, 14px);
+    padding: clamp(10px, 1.35dvh, 14px);
+  }
+
+  .app-sidebar-mobile-desc {
+    margin-bottom: clamp(6px, 1.1vh, 10px);
+    margin-bottom: clamp(6px, 1.1dvh, 10px);
+    font-size: clamp(9.5px, 1.12vh, 10.5px);
+    font-size: clamp(9.5px, 1.12dvh, 10.5px);
+  }
+
+  .app-sidebar-mobile-cta {
+    padding-block: clamp(5px, 0.75vh, 7px);
+    padding-block: clamp(5px, 0.75dvh, 7px);
+    font-size: clamp(10px, 1.15vh, 11px);
+    font-size: clamp(10px, 1.15dvh, 11px);
+  }
 }
 
 .num-tabular {
