@@ -6,7 +6,7 @@ import Image from "next/image";
 import {
   Send,
   Sparkles,
-  SquarePen,
+  RotateCcw,
   ImagePlus,
   X,
   Power,
@@ -431,9 +431,6 @@ export function ChatWindow() {
   >({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
-  const [activeModelLabel, setActiveModelLabel] = useState<string>(
-    "Gemini Multimodal • IoT Vision"
-  );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -602,10 +599,6 @@ export function ChatWindow() {
     });
     const latencyMs = res.latencyMs ?? 0;
 
-    if (res.model && res.provider === "gemini") {
-      setActiveModelLabel(`${res.model} • IoT Vision`);
-    }
-
     setMessages((prev) => [
       ...prev,
       {
@@ -707,32 +700,20 @@ export function ChatWindow() {
           <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-[#165B39] to-[#0B2C1B] text-white flex items-center justify-center shadow-2xs shrink-0">
             <Sparkles className="h-4 w-4" />
           </div>
-          <div className="flex items-center gap-2 flex-wrap min-w-0">
-            <h1 className="text-sm font-bold text-[#111827] tracking-tight">
-              AgriBot
-            </h1>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#F8F9FA] border border-[#E5E7EB] text-[10.5px] font-mono text-[#4B5563] truncate">
-              <span
-                className={`h-1.5 w-1.5 rounded-full shrink-0 ${
-                  systemMeta.edgeOnline
-                    ? "bg-[#165B39] animate-pulse"
-                    : "bg-[#4EAB7C]"
-                }`}
-              />
-              <span className="truncate">{activeModelLabel}</span>
-            </span>
-          </div>
+          <h1 className="text-sm font-bold text-[#111827] tracking-tight">
+            AgriBot
+          </h1>
         </div>
 
         <button
           type="button"
           onClick={handleResetChat}
           disabled={messages.length === 0 || isTyping}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F8F9FA] disabled:opacity-40 text-xs font-medium text-[#374151] transition cursor-pointer disabled:cursor-default shrink-0"
-          title="Mulai obrolan baru"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] hover:border-[#D1D5DB] disabled:opacity-40 text-xs font-medium text-[#374151] transition-colors cursor-pointer disabled:cursor-default shrink-0"
+          title="Mulai ulang obrolan"
         >
-          <SquarePen className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Obrolan Baru</span>
+          <RotateCcw className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Mulai Ulang Obrolan</span>
         </button>
       </div>
 
@@ -768,13 +749,13 @@ export function ChatWindow() {
                           void handleSend(item.prompt);
                         }
                       }}
-                      className="group text-left p-2.5 sm:p-3 rounded-2xl border border-[#E5E7EB] bg-[#F8F9FA]/70 hover:bg-white hover:border-[#165B39]/40 hover:shadow-xs transition-all flex items-start gap-2.5 cursor-pointer"
+                      className="text-left p-2.5 sm:p-3 rounded-2xl border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] hover:border-[#D1D5DB] transition-colors flex items-start gap-2.5 cursor-pointer"
                     >
-                      <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-xl bg-white border border-[#E5E7EB] group-hover:border-[#165B39]/30 group-hover:bg-[#DCFCE7]/50 text-[#165B39] flex items-center justify-center shrink-0 transition-colors">
+                      <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-xl bg-[#F8F9FA] border border-[#E5E7EB] text-[#165B39] flex items-center justify-center shrink-0">
                         <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       </div>
                       <div className="min-w-0">
-                        <div className="text-xs font-semibold text-[#111827] group-hover:text-[#165B39] transition-colors leading-tight">
+                        <div className="text-xs font-semibold text-[#111827] leading-tight">
                           {item.title}
                         </div>
                         <div className="text-[11px] text-[#6B7280] mt-0.5 leading-snug line-clamp-2">
@@ -1055,7 +1036,7 @@ export function ChatWindow() {
                   type="button"
                   disabled={isTyping || pendingImages.length >= MAX_IMAGES_PER_TURN}
                   onClick={() => fileInputRef.current?.click()}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#DCFCE7]/60 hover:border-[#165B39]/30 hover:text-[#165B39] disabled:opacity-45 text-xs font-medium text-[#4B5563] transition cursor-pointer disabled:cursor-default"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] hover:border-[#D1D5DB] disabled:opacity-45 text-xs font-medium text-[#4B5563] transition-colors cursor-pointer disabled:cursor-default"
                   title="Unggah foto daun tanaman atau ikan (PNG/JPG/WEBP, bisa juga drag & drop atau Ctrl+V)"
                 >
                   <ImagePlus className="h-4 w-4 shrink-0" />
@@ -1068,7 +1049,7 @@ export function ChatWindow() {
                 disabled={!canSend}
                 onClick={() => void handleSend()}
                 aria-label="Kirim pesan"
-                className="h-8 w-8 rounded-full bg-[#165B39] hover:bg-[#124B2E] disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF] text-white flex items-center justify-center active:scale-95 transition cursor-pointer disabled:cursor-default shrink-0"
+                className="h-8 w-8 rounded-full bg-[#165B39] hover:bg-[#145032] disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF] text-white flex items-center justify-center transition-colors cursor-pointer disabled:cursor-default shrink-0"
               >
                 <Send className="h-3.5 w-3.5" />
               </button>

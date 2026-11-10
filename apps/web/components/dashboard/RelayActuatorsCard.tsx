@@ -64,7 +64,7 @@ export function RelayActuatorsCard() {
             <div
               key={item.id}
               onClick={() => toggleActuator(item.id)}
-              className="flex items-center justify-between py-1 px-2 rounded-xl hover:bg-[#F8F9FA] cursor-pointer transition-colors group"
+              className="flex items-center justify-between py-1 px-2 rounded-xl hover:bg-[#F8F9FA] cursor-pointer transition-colors"
             >
               <div className="flex items-center gap-2.5">
                 <div
@@ -73,7 +73,7 @@ export function RelayActuatorsCard() {
                   <Icon className="h-3.5 w-3.5" />
                 </div>
                 <div>
-                  <div className="text-xs font-semibold text-[#111827] group-hover:text-[#165B39] transition-colors">
+                  <div className="text-xs font-semibold text-[#111827]">
                     {item.name}
                   </div>
                   <div className="text-[10px] text-[#9CA3AF] font-mono">

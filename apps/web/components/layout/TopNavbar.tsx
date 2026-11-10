@@ -81,7 +81,7 @@ export function TopNavbar({ compact = false }: { compact?: boolean }) {
         {/* Mail / System Report Button */}
         <Link
           href="/analytics"
-          className="h-9 w-9 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563] hover:text-[#111827] hover:border-[#111827] transition-colors shadow-2xs"
+          className="h-9 w-9 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563] hover:text-[#111827] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] transition-colors shadow-2xs"
           title="Laporan Analitik"
         >
           <Mail className="h-4 w-4" />
@@ -90,7 +90,7 @@ export function TopNavbar({ compact = false }: { compact?: boolean }) {
         {/* Notification Bell Button */}
         <Link
           href="/alerts"
-          className="relative h-9 w-9 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563] hover:text-[#111827] hover:border-[#111827] transition-colors shadow-2xs"
+          className="relative h-9 w-9 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563] hover:text-[#111827] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] transition-colors shadow-2xs"
           title="Notifikasi"
         >
           <Bell className="h-4 w-4" />
