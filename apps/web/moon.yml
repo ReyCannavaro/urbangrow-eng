@@ -1,4 +1,10 @@
 language: typescript
 tasks:
   dev:
-    command: 'bun run dev'
+    command: 'bun run dev'
+  build:
+    command: 'bun run build'
+  start:
+    command: 'bun run start'
+  lint:
+    command: 'bun run lint'

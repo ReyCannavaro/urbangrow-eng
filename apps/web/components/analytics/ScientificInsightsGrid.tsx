@@ -5,16 +5,12 @@ import {
   CheckCircle2,
   Thermometer,
   Sun,
-  Activity,
-  Droplets,
-  Layers,
   Sparkles,
-  ArrowUpRight,
 } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
 
 export function ScientificInsightsGrid() {
-  const { sensors, actuators } = useTelemetry();
+  const { sensors, actuators, sensorSources } = useTelemetry();
 
   const formattedTemp =
     typeof sensors.waterTemperature === "number"
@@ -24,6 +20,20 @@ export function ScientificInsightsGrid() {
     typeof sensors.dissolvedOxygen === "number"
       ? sensors.dissolvedOxygen.toFixed(2)
       : sensors.dissolvedOxygen;
+  const formattedLux =
+    typeof sensors.lightIntensity === "number"
+      ? Math.round(sensors.lightIntensity)
+      : sensors.lightIntensity;
+  const isLdrLive = sensorSources.lightIntensity === "live_iot";
+  const lightEfficiencyPct =
+    sensors.lightIntensity >= 1200
+      ? 100
+      : sensors.lightIntensity >= 500
+      ? 90
+      : sensors.lightIntensity >= 250
+      ? 78
+      : 62;
+  const estimatedPpfd = Math.round((sensors.lightIntensity || 0) * 0.0185);
 
   return (
     <div className="space-y-4">
@@ -171,49 +181,58 @@ export function ScientificInsightsGrid() {
           </div>
         </div>
 
-        {/* CARD 3: SPEKTRUM PAR & FOTOPERIODE GROW LIGHT */}
+        {/* CARD 3: SPEKTRUM PAR & CAHAYA LDR LIVE */}
         <div className="rounded-[24px] bg-white border border-[#E5E7EB] p-6 shadow-xs flex flex-col justify-between space-y-5 hover:border-[#D1D5DB] transition-colors">
           <div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <div className="h-7 w-7 rounded-full bg-[#FEF3C7] flex items-center justify-center text-[#D97706]">
                   <Sun className="h-4 w-4" />
                 </div>
                 <span className="text-xs font-bold text-[#111827]">
-                  Radiasi Fotosintesis (PAR)
+                  Intensitas Cahaya (LDR)
                 </span>
               </div>
-              <span className="px-2 py-0.5 rounded-full bg-[#FEF3C7] text-[10px] font-mono font-bold text-[#D97706]">
-                660nm + 450nm
+              <span
+                className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                  isLdrLive
+                    ? "bg-[#DCFCE7] text-[#166534]"
+                    : "bg-[#FEF3C7] text-[#D97706]"
+                }`}
+              >
+                {isLdrLive ? "LIVE ESP32" : "Auto-Dummy"}
               </span>
             </div>
 
             {/* KPI Display */}
             <div className="mt-4">
               <div className="text-3xl sm:text-4xl font-bold tracking-tight num-tabular text-[#111827]">
-                220<span className="text-xl font-normal text-[#9CA3AF] ml-1">µmol</span>
+                {formattedLux}
+                <span className="text-xl font-normal text-[#9CA3AF] ml-1">lux</span>
               </div>
               <p className="text-xs text-[#6B7280] mt-0.5">
-                Intensitas PPFD Fotosintesis Daun Pakcoy
+                Estimasi PPFD Fotosintesis ~{estimatedPpfd} µmol/m²/s
               </p>
             </div>
 
-            {/* Photoperiod Daily Progress */}
+            {/* Photosynthetic Light Efficiency */}
             <div className="mt-4 space-y-2">
               <div className="flex items-center justify-between text-[11px] font-mono">
-                <span className="text-[#6B7280]">Siklus Terang Harian:</span>
-                <span className="text-[#D97706] font-bold">14 / 16 Jam (87%)</span>
+                <span className="text-[#6B7280]">Efisiensi Fotosintesis (GDD):</span>
+                <span className="text-[#D97706] font-bold">{lightEfficiencyPct}% Optimal</span>
               </div>
               <div className="h-2.5 w-full rounded-full bg-[#F3F4F6] overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-[#D97706] to-[#FBBF24] rounded-full"
-                  style={{ width: "87.5%" }}
+                  className="h-full bg-gradient-to-r from-[#D97706] to-[#FBBF24] rounded-full transition-all duration-300"
+                  style={{ width: `${lightEfficiencyPct}%` }}
                 />
               </div>
               <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-[11px]">
                 <div className="p-2 rounded-xl bg-[#F8F9FA] border border-[#E5E7EB]">
-                  <div className="text-[10px] text-[#9CA3AF]">DLI Terakumulasi</div>
-                  <div className="font-bold text-[#111827]">12.7 mol/m²/d</div>
+                  <div className="text-[10px] text-[#9CA3AF]">Sumber Sensor</div>
+                  <div className="font-bold text-[#111827]">
+                    {isLdrLive ? "ADC Hardware" : "Simulasi"}
+                  </div>
                 </div>
                 <div className="p-2 rounded-xl bg-[#F8F9FA] border border-[#E5E7EB]">
                   <div className="text-[10px] text-[#9CA3AF]">LED Array Status</div>
@@ -226,7 +245,7 @@ export function ScientificInsightsGrid() {
           </div>
 
           <div className="pt-3 border-t border-[#F3F4F6] text-xs text-[#4B5563] leading-relaxed">
-            Fotoperiode 16 jam dengan rasio spektrum merah-biru memicu laju asimilasi daun Pakcoy hingga +28% lebih pesat tanpa bergantung cuaca luar.
+            Pembacaan lux dari sensor LDR langsung memodulasi estimasi hari panen GDD dan peringatan etiolasi daun oleh AgriBot AI.
           </div>
         </div>
       </div>

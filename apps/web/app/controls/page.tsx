@@ -9,6 +9,8 @@ import {
   TrendingUp,
   CheckCircle2,
   Sliders,
+  AlertOctagon,
+  X,
 } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
 import { ControlsHeader } from "@/components/controls/ControlsHeader";
@@ -24,6 +26,8 @@ export default function ControlsPage() {
     feedActive,
     setAnomaly,
     anomalyMode,
+    lastActuatorError,
+    clearActuatorError,
   } = useTelemetry();
 
   const actuatorList = Object.values(actuators);
@@ -42,6 +46,24 @@ export default function ControlsPage() {
         activeCount={activeCount}
         totalCount={totalCount}
       />
+
+      {lastActuatorError && (
+        <div className="flex items-center justify-between gap-3 rounded-[20px] border border-rose-200 bg-rose-50 px-5 py-3.5 text-xs text-rose-800 shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <AlertOctagon className="h-4 w-4 text-rose-600 shrink-0" />
+            <span>
+              <strong>Proteksi Dry-Run Aktif:</strong> {lastActuatorError}
+            </span>
+          </div>
+          <button
+            onClick={clearActuatorError}
+            className="h-6 w-6 rounded-full hover:bg-rose-100 flex items-center justify-center text-rose-600 cursor-pointer"
+            aria-label="Tutup peringatan"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* 2. Donezo 4-Metric Bento Row (Identitas Visual Dashboard Utama) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

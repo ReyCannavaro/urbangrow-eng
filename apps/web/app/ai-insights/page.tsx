@@ -4,29 +4,62 @@ import React, { useEffect, useState } from "react";
 import { Sparkles, BrainCircuit, RefreshCw } from "lucide-react";
 import { ClimateScoreCard } from "../../components/ai/ClimateScoreCard";
 import { HarvestCountdownCard } from "../../components/ai/HarvestCountdownCard";
-import { fetchClimateScore, fetchAnomalyInference, ClimateScoreData, AnomalyPrediction } from "../../lib/aiApi";
+import {
+  fetchClimateScore,
+  fetchAnomalyInference,
+  fetchAgriBotDiagnostics,
+  ClimateScoreData,
+  AnomalyPrediction,
+} from "../../lib/aiApi";
+import { EcosystemDiagnosticReport } from "../../lib/types";
 
 export default function AiInsightsPage() {
   const [climateData, setClimateData] = useState<ClimateScoreData | null>(null);
   const [anomaly, setAnomaly] = useState<AnomalyPrediction | null>(null);
+  const [diagnostics, setDiagnostics] = useState<EcosystemDiagnosticReport | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadData = async () => {
     setLoading(true);
-    const [c, a] = await Promise.all([
+    const [c, a, d] = await Promise.all([
       fetchClimateScore(),
       fetchAnomalyInference(),
+      fetchAgriBotDiagnostics(),
     ]);
     setClimateData(c);
     setAnomaly(a);
+    setDiagnostics(d);
     setLoading(false);
   };
 
   useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 10000);
-    return () => clearInterval(interval);
+    let cancelled = false;
+    async function syncInsights() {
+      const [c, a, d] = await Promise.all([
+        fetchClimateScore(),
+        fetchAnomalyInference(),
+        fetchAgriBotDiagnostics(),
+      ]);
+      if (cancelled) return;
+      setClimateData(c);
+      setAnomaly(a);
+      setDiagnostics(d);
+      setLoading(false);
+    }
+
+    void syncInsights();
+    const interval = setInterval(() => {
+      void syncInsights();
+    }, 10000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, []);
+
+  const pakcoy = diagnostics?.predictions.harvest.pakcoy;
+  const kangkung = diagnostics?.predictions.harvest.kangkung;
 
   return (
     <div className="space-y-8 p-6 lg:p-8">
@@ -62,23 +95,23 @@ export default function AiInsightsPage() {
         {/* Climate Score */}
         {climateData && <ClimateScoreCard data={climateData} />}
 
-        {/* Harvest Forecast: Pakcoy & Kangkung */}
+        {/* Harvest Forecast: Pakcoy & Kangkung (Live Backend GDD) */}
         <div className="space-y-4">
           <HarvestCountdownCard
             cropName="pakcoy"
-            daysToHarvest={8}
-            accumulatedGdd={285.5}
-            targetGdd={380.0}
-            projectedBiomassGrams={135.0}
-            growthStage="Fase Pematangan & Pembesaran Daun"
+            daysToHarvest={pakcoy?.estimatedDaysRemaining ?? 10}
+            accumulatedGdd={pakcoy?.accumulatedGdd ?? 185.0}
+            targetGdd={pakcoy?.targetGdd ?? 380.0}
+            projectedBiomassGrams={pakcoy?.projectedBiomassGrams ?? 65.0}
+            growthStage={pakcoy?.growthStage ?? "Fase Pertumbuhan Vegetatif Cepat"}
           />
           <HarvestCountdownCard
             cropName="kangkung"
-            daysToHarvest={4}
-            accumulatedGdd={270.0}
-            targetGdd={320.0}
-            projectedBiomassGrams={125.0}
-            growthStage="Fase Siap Panen Optimal"
+            daysToHarvest={kangkung?.estimatedDaysRemaining ?? 8}
+            accumulatedGdd={kangkung?.accumulatedGdd ?? 195.0}
+            targetGdd={kangkung?.targetGdd ?? 320.0}
+            projectedBiomassGrams={kangkung?.projectedBiomassGrams ?? 72.0}
+            growthStage={kangkung?.growthStage ?? "Fase Pematangan & Pembesaran Daun"}
           />
         </div>
       </div>
