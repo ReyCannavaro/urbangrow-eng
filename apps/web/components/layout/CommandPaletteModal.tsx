@@ -15,11 +15,9 @@ import {
   Send,
   Download,
   Droplets,
-  Wind,
   Sun,
   Thermometer,
   Gauge,
-  Waves,
   ArrowUpRight,
   Check,
 } from "lucide-react";
@@ -86,16 +84,6 @@ export function CommandPaletteModal({ isOpen, onClose }: CommandPaletteModalProp
         onSelect: () => go("/analytics"),
       },
       {
-        id: "sensor-do",
-        section: "Sensor Real-Time",
-        title: `Oksigen Terlarut (DO): ${sensors.dissolvedOxygen.toFixed(2)} mg/L`,
-        subtitle: "Target Kolam Nila L3: > 5.5 mg/L • Klik untuk buka grafik",
-        badge: sensors.dissolvedOxygen >= 5.5 ? "Optimal" : "Rendah",
-        icon: Wind,
-        keywords: "do oksigen terlarut nila aerator",
-        onSelect: () => go("/analytics"),
-      },
-      {
         id: "sensor-tds",
         section: "Sensor Real-Time",
         title: `Nutrisi TDS Terlarut: ${Math.round(sensors.tds)} ppm`,
@@ -124,16 +112,6 @@ export function CommandPaletteModal({ isOpen, onClose }: CommandPaletteModalProp
         icon: Sun,
         keywords: "cahaya lux ldr lampu grow light",
         onSelect: () => go("/analytics"),
-      },
-      {
-        id: "sensor-level",
-        section: "Sensor Real-Time",
-        title: `Ketinggian Air Tandon: ${sensors.waterLevel.toFixed(1)}%`,
-        subtitle: "Interlock proteksi dry-run pompa sirkulasi 12V",
-        badge: sensors.waterLevel > 25 ? "Aman" : "Rendah",
-        icon: Waves,
-        keywords: "level air tandon pompa dry run",
-        onSelect: () => go("/controls"),
       },
 
       // Quick Actuator Actions
@@ -324,7 +302,7 @@ export function CommandPaletteModal({ isOpen, onClose }: CommandPaletteModalProp
               setQuery(e.target.value);
               setSelectedIndex(0);
             }}
-            placeholder="Ketik nama sensor (pH, DO, TDS), aktuator, atau halaman..."
+            placeholder="Ketik nama sensor (pH, TDS, suhu), aktuator, atau halaman..."
             className="w-full bg-transparent text-sm text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none"
           />
           <button

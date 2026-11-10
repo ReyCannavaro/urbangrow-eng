@@ -180,6 +180,50 @@ body {
   font-feature-settings: "tnum" on;
 }
 
+/* =========================================================================
+   Botanical Motion Choreography (GPU-composited, subtle, zero bounce)
+   ========================================================================= */
+@keyframes ugFadeSlideUp {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes ugChartRevealX {
+  0% {
+    clip-path: inset(0 100% 0 0);
+    opacity: 0.35;
+  }
+  100% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+}
+
+.ug-enter {
+  animation: ugFadeSlideUp 520ms cubic-bezier(0.22, 1, 0.36, 1) var(--ug-delay, 0ms) both;
+  will-change: opacity, transform;
+}
+
+.ug-chart-reveal {
+  animation: ugChartRevealX 780ms cubic-bezier(0.22, 1, 0.36, 1) 120ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ug-enter,
+  .ug-chart-reveal {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    clip-path: none !important;
+  }
+}
+
 /* Subtle scrollbars */
 ::-webkit-scrollbar {
   width: 5px;

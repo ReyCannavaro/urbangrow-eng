@@ -27,7 +27,7 @@ export function BiologicalPairingCard() {
     {
       level: "Sekat 1",
       name: "Ikan Nila Merah",
-      detail: "Kolam Atas Sekat • DO Tinggi (>5 mg/L)",
+      detail: "Kolam Atas Sekat • Suhu 22-27°C & Aerasi",
       status: "Aktif",
       statusType: "progress",
       icon: Fish,
@@ -35,7 +35,7 @@ export function BiologicalPairingCard() {
     },
     {
       level: "Sekat 2",
-      name: "Ikan Lele & Sump",
+      name: "Ikan Lele & Biofilter",
       detail: "Kolam Bawah • Pompa Submersible 12V",
       status: "Sirkulasi",
       statusType: "completed",
@@ -57,7 +57,7 @@ export function BiologicalPairingCard() {
         </div>
         <Link
           href="/ecosystem"
-          className="px-2.5 py-1 rounded-full border border-[#E5E7EB] text-[10px] font-bold text-[#111827] hover:bg-[#F8F9FA] transition-colors"
+          className="px-2.5 py-1 rounded-full border border-[#E5E7EB] bg-white text-[10px] font-bold text-[#111827] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] transition-colors"
         >
           + Detail Menara
         </Link>
@@ -72,7 +72,7 @@ export function BiologicalPairingCard() {
           return (
             <div
               key={item.level}
-              className="flex items-center justify-between py-1 px-1.5 rounded-xl hover:bg-[#F8F9FA] transition-colors"
+              className="flex items-center justify-between py-1 px-1.5 rounded-xl hover:bg-[#F9FAFB] transition-colors"
             >
               <div className="flex items-center gap-2.5">
                 <div

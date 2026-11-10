@@ -30,7 +30,7 @@ export function AutomationReminderCard({
             <button
               type="button"
               onClick={onManageSchedules}
-              className="inline-flex items-center gap-1 rounded-full border border-[#E5E7EB] bg-[#F9FAFB] px-2.5 py-0.5 text-[11px] font-medium text-[#374151] transition-colors hover:bg-white hover:border-[#D1D5DB] cursor-pointer"
+              className="inline-flex items-center gap-1 rounded-full border border-[#E5E7EB] bg-white px-2.5 py-0.5 text-[11px] font-medium text-[#374151] transition-colors hover:bg-[#F9FAFB] hover:border-[#D1D5DB] cursor-pointer"
             >
               <SlidersHorizontal className="h-3 w-3 text-[#165B39]" />
               <span>Atur Jadwal</span>

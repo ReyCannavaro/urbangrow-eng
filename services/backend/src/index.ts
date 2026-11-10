@@ -303,6 +303,7 @@ export const app = new Elysia()
     "/api/sensors/telemetry",
     ({ body }) => {
       const result = MqttBridgeService.handleIncomingTelemetry(body);
+      persistCurrentTelemetrySnapshot();
       TelemetryWebSocketManager.broadcastTelemetry("telemetry");
       const snap = simulator.getSnapshot();
       return {
@@ -322,12 +323,44 @@ export const app = new Elysia()
   // 1. Current real-time sensor snapshot (hybrid live IoT + smooth auto-dummy)
   .get("/api/sensors/current", () => simulator.getSnapshot())
 
-  // 2. Historical sensor data for telemetry trend charts
-  .get("/api/sensors/history", () => ({
-    success: true,
-    count: simulator.getHistory().length,
-    data: simulator.getHistory(),
-  }))
+  // 2. Historical sensor data for telemetry trend charts (backed by SQLite + live ring buffer)
+  .get("/api/sensors/history", () => {
+    const dbRows = getPersistedSensorReadings(60);
+    const liveHistory = simulator.getHistory();
+    if (dbRows.length >= 5) {
+      const snap = simulator.getSnapshot();
+      const actuatorMap = Object.fromEntries(
+        Object.entries(snap.actuators).map(([k, v]) => [k, Boolean(v.isOn)])
+      );
+      const merged = dbRows.map((r) => ({
+        timestamp: r.recordedAt,
+        sensors: {
+          ph: r.ph,
+          tds: r.tds,
+          waterTemperature: r.waterTemperature,
+          airTemperature: r.airTemperature,
+          humidity: r.humidity,
+          lightIntensity: r.lightIntensity,
+          dissolvedOxygen: r.dissolvedOxygen,
+          waterLevel: r.waterLevel,
+        },
+        actuators: actuatorMap,
+      }));
+      return {
+        success: true,
+        source: "sqlite_database",
+        count: merged.length,
+        data: merged,
+      };
+    }
+
+    return {
+      success: true,
+      source: "live_buffer",
+      count: liveHistory.length,
+      data: liveHistory,
+    };
+  })
 
   // 3. Active system alerts
   .get("/api/alerts", () => ({

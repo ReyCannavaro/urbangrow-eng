@@ -7,7 +7,7 @@ import { useTelemetry } from "@/lib/telemetryContext";
 import { CommandPaletteModal } from "./CommandPaletteModal";
 
 export function TopNavbar({ compact = false }: { compact?: boolean }) {
-  const { backendConnected, alerts, systemMeta } = useTelemetry();
+  const { alerts } = useTelemetry();
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   useEffect(() => {
@@ -23,18 +23,6 @@ export function TopNavbar({ compact = false }: { compact?: boolean }) {
 
   const hasActiveAlerts = alerts.some((a) => !a.isResolved);
 
-  const statusText = !backendConnected
-    ? "Menghubungkan..."
-    : systemMeta.edgeOnline
-    ? "ESP32 Live • Tersinkron"
-    : "Telemetri Real-Time • Aktif";
-
-  const statusTooltip = !backendConnected
-    ? "Menghubungkan ke server backend UrbanGrow..."
-    : systemMeta.edgeOnline
-    ? `Node ${systemMeta.edgeNode} aktif mengirim telemetri sensor real-time.`
-    : `Gateway backend tersinkronisasi dengan node ${systemMeta.edgeNode}.`;
-
   return (
     <header
       className={`bg-white rounded-[24px] border border-[#E5E7EB] p-3.5 sm:px-6 sm:py-3 shadow-xs flex flex-wrap items-center justify-between gap-3 sm:gap-4 shrink-0 ${
@@ -42,7 +30,7 @@ export function TopNavbar({ compact = false }: { compact?: boolean }) {
       }`}
     >
       {/* Search Input Trigger Pill (Opens Global Command Palette ⌘K) */}
-      <div className="flex-1 max-w-md relative">
+      <div className="flex-1 min-w-[200px] max-w-md relative">
         <button
           type="button"
           onClick={() => setPaletteOpen(true)}
@@ -57,44 +45,11 @@ export function TopNavbar({ compact = false }: { compact?: boolean }) {
       </div>
 
       {/* Right Action Icons & User Profile */}
-      <div className="flex items-center gap-3">
-        {/* Connection & ESP32 Telemetry Sync Status Indicator */}
-        <div
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium shadow-2xs transition-colors ${
-            !backendConnected
-              ? "border-amber-200 bg-amber-50/70"
-              : systemMeta.edgeOnline
-              ? "border-[#165B39]/30 bg-[#DCFCE7]/50"
-              : "border-[#E5E7EB] bg-white"
-          }`}
-          title={statusTooltip}
-        >
-          <span
-            className={`h-2 w-2 rounded-full ${
-              !backendConnected
-                ? "bg-amber-500 animate-pulse"
-                : systemMeta.edgeOnline
-                ? "bg-[#165B39] animate-pulse"
-                : "bg-[#4EAB7C]"
-            }`}
-          />
-          <span
-            className={
-              !backendConnected
-                ? "text-amber-700 font-medium"
-                : systemMeta.edgeOnline
-                ? "text-[#165B39] font-bold"
-                : "text-[#165B39] font-semibold"
-            }
-          >
-            {statusText}
-          </span>
-        </div>
-
-        {/* Mail / System Report Button */}
+      <div className="flex items-center gap-2.5 sm:gap-3 ml-auto">
+        {/* Analytics Report Shortcut */}
         <Link
           href="/analytics"
-          className="h-9 w-9 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563] hover:text-[#111827] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] transition-colors shadow-2xs"
+          className="h-9 w-9 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563] hover:text-[#111827] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] transition-colors"
           title="Laporan Analitik"
         >
           <Mail className="h-4 w-4" />
@@ -103,7 +58,7 @@ export function TopNavbar({ compact = false }: { compact?: boolean }) {
         {/* Notification Bell Button */}
         <Link
           href="/alerts"
-          className="relative h-9 w-9 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563] hover:text-[#111827] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] transition-colors shadow-2xs"
+          className="relative h-9 w-9 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563] hover:text-[#111827] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] transition-colors"
           title="Notifikasi"
         >
           <Bell className="h-4 w-4" />
@@ -113,8 +68,8 @@ export function TopNavbar({ compact = false }: { compact?: boolean }) {
         </Link>
 
         {/* User Profile / Farm Owner */}
-        <div className="flex items-center gap-2.5 pl-2">
-          <div className="h-9 w-9 rounded-full bg-[#165B39] text-white flex items-center justify-center font-bold text-xs shadow-sm">
+        <div className="flex items-center gap-2.5 pl-1.5 sm:pl-2">
+          <div className="h-9 w-9 rounded-full bg-[#165B39] text-white flex items-center justify-center font-bold text-xs">
             RC
           </div>
           <div className="hidden sm:block text-left">

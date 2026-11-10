@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { Waves, Wind, Sun, Utensils, Check } from "lucide-react";
+import { Waves, Wind, Sun, Utensils } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
 
 export function RelayActuatorsCard() {
@@ -19,7 +19,7 @@ export function RelayActuatorsCard() {
     {
       id: "aerator",
       name: "Aerator Oksigen Nila",
-      sub: "18 Watt • DO Booster L3",
+      sub: "18 Watt • Sirkulasi Udara L3",
       icon: Wind,
       iconBg: "bg-teal-50 text-teal-600",
     },
@@ -47,7 +47,7 @@ export function RelayActuatorsCard() {
         </span>
         <Link
           href="/controls"
-          className="px-2.5 py-1 rounded-full border border-[#E5E7EB] text-[10px] font-bold text-[#111827] hover:bg-[#F8F9FA] transition-colors"
+          className="px-2.5 py-1 rounded-full border border-[#E5E7EB] bg-white text-[10px] font-bold text-[#111827] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] transition-colors"
         >
           + Kontrol
         </Link>
@@ -64,7 +64,7 @@ export function RelayActuatorsCard() {
             <div
               key={item.id}
               onClick={() => toggleActuator(item.id)}
-              className="flex items-center justify-between py-1 px-2 rounded-xl hover:bg-[#F8F9FA] cursor-pointer transition-colors"
+              className="flex items-center justify-between py-1 px-2 rounded-xl hover:bg-[#F9FAFB] cursor-pointer transition-colors"
             >
               <div className="flex items-center gap-2.5">
                 <div

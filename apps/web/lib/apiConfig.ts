@@ -2,14 +2,22 @@ const ENV_API_URL = (process.env.NEXT_PUBLIC_API_URL || "")
   .trim()
   .replace(/\/+$/, "");
 
+const PRODUCTION_VPS_API_URL = "https://urbangrow-api.reycannavaro.dev";
+
 let cachedWorkingBase: string | null = null;
 
 export function getCandidateApiBases(): string[] {
+  const isLocalBrowser =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1");
+
   const ordered = [
     cachedWorkingBase !== null ? cachedWorkingBase : undefined,
     ENV_API_URL || undefined,
     "", // Same-origin Next.js proxy rewrite (/api/*)
-    "http://localhost:3000",
+    isLocalBrowser ? "http://localhost:3000" : undefined,
+    PRODUCTION_VPS_API_URL,
   ].filter((v): v is string => v !== undefined);
 
   return Array.from(new Set(ordered));
@@ -29,7 +37,7 @@ export function getActiveDirectBackendUrl(): string | null {
   ) {
     return "http://localhost:3000";
   }
-  return null;
+  return PRODUCTION_VPS_API_URL;
 }
 
 export function getWebSocketEndpoint(baseUrl: string): string | null {

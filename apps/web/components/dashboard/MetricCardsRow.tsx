@@ -6,27 +6,22 @@ import {
   ArrowUpRight,
   TrendingUp,
   CheckCircle2,
-  ShieldCheck,
   Sun,
   ThermometerSun,
-  Waves,
   Bot,
 } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
 
-function LiveTelemetryBadge() {
-  return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wide bg-[#DCFCE7] text-[#166534] border border-[#165B39]/25">
-      <span className="h-1.5 w-1.5 rounded-full bg-[#165B39] animate-pulse" />
-      Live ESP32
-    </span>
-  );
-}
-
 export function MetricCardsRow() {
   const { sensors, systemMeta } = useTelemetry();
 
-  // Dynamic WQI score with graceful stability
+  // Dynamic WQI score computed from active physical sensors (pH, Water Temp, TDS, LDR)
+  const tdsPenalty =
+    sensors.tds < 400
+      ? (400 - sensors.tds) * 0.03
+      : sensors.tds > 800
+      ? (sensors.tds - 800) * 0.03
+      : 0;
   const wqiScore = Math.max(
     50,
     Math.min(
@@ -34,8 +29,8 @@ export function MetricCardsRow() {
       Math.round(
         100 -
           Math.abs((sensors.ph ?? 7.0) - 7.0) * 16 -
-          Math.max(0, 6.5 - (sensors.dissolvedOxygen ?? 7.2)) * 8 -
-          Math.abs((sensors.waterTemperature ?? 24.5) - 24.5) * 2.5
+          Math.abs((sensors.waterTemperature ?? 24.5) - 24.5) * 2.5 -
+          tdsPenalty
       )
     )
   );
@@ -44,10 +39,6 @@ export function MetricCardsRow() {
     typeof sensors.waterTemperature === "number"
       ? sensors.waterTemperature.toFixed(1)
       : sensors.waterTemperature;
-  const formattedDO =
-    typeof sensors.dissolvedOxygen === "number"
-      ? sensors.dissolvedOxygen.toFixed(2)
-      : sensors.dissolvedOxygen;
   const formattedPH =
     typeof sensors.ph === "number"
       ? sensors.ph.toFixed(2)
@@ -68,10 +59,6 @@ export function MetricCardsRow() {
     typeof sensors.humidity === "number"
       ? sensors.humidity.toFixed(0)
       : sensors.humidity;
-  const formattedLevel =
-    typeof sensors.waterLevel === "number"
-      ? sensors.waterLevel.toFixed(1)
-      : sensors.waterLevel;
 
   const luxLabel =
     sensors.lightIntensity < 300
@@ -82,27 +69,30 @@ export function MetricCardsRow() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* 1. THE INVERTED HERO ANCHOR CARD */}
-        <div className="rounded-[24px] bg-[#165B39] text-white p-5 shadow-sm flex flex-col justify-between h-[170px] relative overflow-hidden group">
+        <Link
+          href="/analytics"
+          style={{ "--ug-delay": "90ms" } as React.CSSProperties}
+          className="ug-enter rounded-[24px] bg-[#165B39] hover:bg-[#145233] text-white p-5 shadow-xs flex flex-col justify-between h-[164px] relative overflow-hidden transition-colors group"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-white/90">
               Kualitas Air (WQI)
             </span>
-            <Link
-              href="/analytics"
-              className="h-8 w-8 rounded-full bg-white flex items-center justify-center text-[#165B39] shadow-xs group-hover:scale-105 transition-transform"
+            <span
+              className="h-8 w-8 rounded-full bg-white flex items-center justify-center text-[#165B39] transition-colors"
               title="Detail WQI"
             >
-              <ArrowUpRight className="h-4 w-4 stroke-[2.5]" />
-            </Link>
+              <ArrowUpRight className="h-4 w-4 stroke-[2.25] transition-transform duration-200 group-hover:rotate-45" />
+            </span>
           </div>
 
           <div>
-            <div className="text-4xl font-bold tracking-tight num-tabular text-white transition-all duration-300">
+            <div className="text-4xl font-bold tracking-tight num-tabular text-white">
               {wqiScore}<span className="text-xl font-normal text-white/80">%</span>
             </div>
-            <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/15 text-[10px] font-mono text-white/90">
+            <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 text-[10px] font-mono text-white/90">
               <TrendingUp className="h-3 w-3 text-[#68C194]" />
               <span>
                 {systemMeta.edgeOnline
@@ -111,88 +101,58 @@ export function MetricCardsRow() {
               </span>
             </div>
           </div>
-        </div>
+        </Link>
 
         {/* 2. SUHU AIR KOLAM */}
-        <div className="rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs flex flex-col justify-between h-[170px] group">
+        <Link
+          href="/ecosystem"
+          style={{ "--ug-delay": "145ms" } as React.CSSProperties}
+          className="ug-enter rounded-[24px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] p-5 shadow-xs flex flex-col justify-between h-[164px] transition-colors group"
+        >
           <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs font-semibold text-[#111827] block">
-                Suhu Air Kolam
-              </span>
-              <LiveTelemetryBadge />
-            </div>
-            <Link
-              href="/ecosystem"
-              className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563] group-hover:text-[#111827] group-hover:border-[#111827] transition-colors"
+            <span className="text-xs font-semibold text-[#111827] block">
+              Suhu Air Kolam
+            </span>
+            <span
+              className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563] group-hover:text-[#111827] group-hover:border-[#D1D5DB] transition-colors"
               title="Detail Ekosistem"
             >
-              <ArrowUpRight className="h-4 w-4" />
-            </Link>
+              <ArrowUpRight className="h-4 w-4 transition-transform duration-200 group-hover:rotate-45" />
+            </span>
           </div>
 
           <div>
-            <div className="text-4xl font-bold tracking-tight num-tabular text-[#111827] transition-all duration-300">
+            <div className="text-4xl font-bold tracking-tight num-tabular text-[#111827]">
               {formattedTemp}
               <span className="text-xl font-normal text-[#9CA3AF]">°C</span>
             </div>
-            <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#DCFCE7] text-[10px] font-medium text-[#166534]">
+            <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[10px] font-medium text-[#166534]">
               <CheckCircle2 className="h-3 w-3" />
               <span>Ideal rentang 24 - 28°C</span>
             </div>
           </div>
-        </div>
+        </Link>
 
-        {/* 3. OKSIGEN TERLARUT DO */}
-        <div className="rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs flex flex-col justify-between h-[170px] group">
+        {/* 3. KADAR pH & TDS */}
+        <Link
+          href="/analytics"
+          style={{ "--ug-delay": "200ms" } as React.CSSProperties}
+          className="ug-enter rounded-[24px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] p-5 shadow-xs flex flex-col justify-between h-[164px] transition-colors group"
+        >
           <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs font-semibold text-[#111827] block">
-                Oksigen Terlarut (DO)
-              </span>
-              <LiveTelemetryBadge />
-            </div>
-            <Link
-              href="/ecosystem"
-              className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563] group-hover:text-[#111827] group-hover:border-[#111827] transition-colors"
-              title="Aliran Aerasi"
-            >
-              <ArrowUpRight className="h-4 w-4" />
-            </Link>
-          </div>
-
-          <div>
-            <div className="text-4xl font-bold tracking-tight num-tabular text-[#111827] transition-all duration-300">
-              {formattedDO}
-              <span className="text-base font-normal text-[#9CA3AF] ml-1">mg/L</span>
-            </div>
-            <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#DCFCE7] text-[10px] font-medium text-[#166534]">
-              <ShieldCheck className="h-3 w-3" />
-              <span>Kaya oksigen untuk Nila L3</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 4. KADAR pH & TDS */}
-        <div className="rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs flex flex-col justify-between h-[170px] group">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs font-semibold text-[#111827] block">
-                Kadar pH & Nutrisi
-              </span>
-              <LiveTelemetryBadge />
-            </div>
-            <Link
-              href="/analytics"
-              className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563] group-hover:text-[#111827] group-hover:border-[#111827] transition-colors"
+            <span className="text-xs font-semibold text-[#111827] block">
+              Kadar pH &amp; Nutrisi
+            </span>
+            <span
+              className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563] group-hover:text-[#111827] group-hover:border-[#D1D5DB] transition-colors"
               title="Analitik pH"
             >
-              <ArrowUpRight className="h-4 w-4" />
-            </Link>
+              <ArrowUpRight className="h-4 w-4 transition-transform duration-200 group-hover:rotate-45" />
+            </span>
           </div>
 
           <div>
-            <div className="text-4xl font-bold tracking-tight num-tabular text-[#111827] transition-all duration-300">
+            <div className="text-4xl font-bold tracking-tight num-tabular text-[#111827]">
               {formattedPH}
               <span className="text-base font-normal text-[#9CA3AF] ml-1">pH</span>
             </div>
@@ -200,24 +160,24 @@ export function MetricCardsRow() {
               TDS <span className="font-bold text-[#111827]">{formattedTDS} ppm</span> • Buffer Stabil
             </div>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Secondary Telemetry & AgriBot Shortcut Strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {/* Highlighted LDR Light Sensor */}
-        <div className="rounded-[20px] border px-4 py-3 flex items-center justify-between gap-3 transition-colors bg-[#DCFCE7]/35 border-[#165B39]/30 shadow-2xs">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {/* LDR Light Sensor (Clean White Card) */}
+        <div
+          style={{ "--ug-delay": "255ms" } as React.CSSProperties}
+          className="ug-enter rounded-[20px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] px-4 py-3 flex items-center justify-between gap-3 transition-colors"
+        >
           <div className="flex items-center gap-3 min-w-0">
             <div className="h-9 w-9 rounded-xl bg-[#FEF3C7] text-[#D97706] flex items-center justify-center shrink-0">
               <Sun className="h-4 w-4" />
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-semibold text-[#111827] truncate">
-                  Cahaya LDR
-                </span>
-                <LiveTelemetryBadge />
-              </div>
+              <span className="text-[11px] font-semibold text-[#111827] block truncate">
+                Cahaya LDR
+              </span>
               <div className="text-sm font-bold text-[#111827] num-tabular">
                 {formattedLux} <span className="text-[11px] font-normal text-[#6B7280]">lux</span>
                 <span className="text-[10px] font-normal text-[#6B7280] ml-1.5">• {luxLabel}</span>
@@ -227,39 +187,20 @@ export function MetricCardsRow() {
         </div>
 
         {/* Air Temp & Humidity */}
-        <div className="rounded-[20px] bg-white border border-[#E5E7EB] px-4 py-3 flex items-center justify-between gap-3">
+        <div
+          style={{ "--ug-delay": "305ms" } as React.CSSProperties}
+          className="ug-enter rounded-[20px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] px-4 py-3 flex items-center justify-between gap-3 transition-colors"
+        >
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-[#E0F2FE] text-[#0284C7] flex items-center justify-center shrink-0">
               <ThermometerSun className="h-4 w-4" />
             </div>
             <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-semibold text-[#111827]">Iklim Mikro</span>
-                <LiveTelemetryBadge />
-              </div>
+              <span className="text-[11px] font-semibold text-[#111827] block">
+                Iklim Mikro
+              </span>
               <div className="text-sm font-bold text-[#111827] num-tabular">
                 {formattedAirTemp}°C <span className="text-[11px] font-normal text-[#6B7280]">• RH {formattedHumidity}%</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Sump Water Level */}
-        <div className="rounded-[20px] bg-white border border-[#E5E7EB] px-4 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-[#ECFDF5] text-[#165B39] flex items-center justify-center shrink-0">
-              <Waves className="h-4 w-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-semibold text-[#111827]">Level Sump (L1)</span>
-                <LiveTelemetryBadge />
-              </div>
-              <div className="text-sm font-bold text-[#111827] num-tabular">
-                {formattedLevel}%{" "}
-                <span className="text-[10px] font-normal text-[#166534]">
-                  {sensors.waterLevel > 25 ? "• Aman Dry-Run" : "• Kritis!"}
-                </span>
               </div>
             </div>
           </div>
@@ -268,22 +209,25 @@ export function MetricCardsRow() {
         {/* Direct AgriBot Copilot Shortcut */}
         <Link
           href="/agribot"
-          className="rounded-[20px] bg-white border border-[#E5E7EB] hover:border-[#165B39]/50 hover:bg-[#DCFCE7]/25 px-4 py-3 flex items-center justify-between gap-3 transition-all group"
+          style={{ "--ug-delay": "355ms" } as React.CSSProperties}
+          className="ug-enter rounded-[20px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] px-4 py-3 flex items-center justify-between gap-3 transition-colors group"
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="h-9 w-9 rounded-xl bg-[#165B39] text-white flex items-center justify-center shrink-0">
               <Bot className="h-4 w-4" />
             </div>
-            <div>
-              <span className="text-[11px] font-semibold text-[#111827] block">
+            <div className="min-w-0">
+              <span className="text-[11px] font-semibold text-[#111827] block truncate">
                 AgriBot Gemini Copilot
               </span>
-              <span className="text-[11px] text-[#165B39] font-medium">
-                Diagnosis & Prediksi Panen →
+              <span className="text-[11px] text-[#165B39] font-medium block truncate">
+                Diagnosis &amp; Prediksi Panen
               </span>
             </div>
           </div>
-          <ArrowUpRight className="h-4 w-4 text-[#9CA3AF] group-hover:text-[#165B39] transition-colors shrink-0" />
+          <span className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563] group-hover:text-[#111827] group-hover:border-[#D1D5DB] transition-colors shrink-0">
+            <ArrowUpRight className="h-4 w-4 transition-transform duration-200 group-hover:rotate-45" />
+          </span>
         </Link>
       </div>
     </div>
