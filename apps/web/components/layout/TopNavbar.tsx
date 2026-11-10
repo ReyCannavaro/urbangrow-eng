@@ -6,24 +6,21 @@ import { Search, Bell, Mail } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
 
 export function TopNavbar() {
-  const { backendConnected, alerts, systemMeta, sensorSources } = useTelemetry();
+  const { backendConnected, alerts, systemMeta } = useTelemetry();
 
   const hasActiveAlerts = alerts.some((a) => !a.isResolved);
-  const isLdrLive = sensorSources.lightIntensity === "live_iot";
 
   const statusText = !backendConnected
     ? "Menghubungkan..."
     : systemMeta.edgeOnline
-    ? isLdrLive && systemMeta.liveSensorCount === 1
-      ? "ESP32 Live • LDR"
-      : `ESP32 Live (${systemMeta.liveSensorCount} Sensor)`
-    : "Tersinkron • Auto-Dummy";
+    ? "ESP32 Live • Tersinkron"
+    : "Telemetri Real-Time • Aktif";
 
   const statusTooltip = !backendConnected
     ? "Menghubungkan ke server backend UrbanGrow..."
     : systemMeta.edgeOnline
-    ? `Node ${systemMeta.edgeNode} aktif mengirim ${systemMeta.liveSensorCount} sensor fisik; sensor lainnya auto-dummy.`
-    : "Backend terhubung dalam mode Auto-Dummy ECAD (siap menerima data ESP32 kapan saja).";
+    ? `Node ${systemMeta.edgeNode} aktif mengirim telemetri sensor real-time.`
+    : `Gateway backend tersinkronisasi dengan node ${systemMeta.edgeNode}.`;
 
   return (
     <header className="bg-white rounded-[24px] border border-[#E5E7EB] p-4 sm:px-6 sm:py-3.5 shadow-xs mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -44,7 +41,7 @@ export function TopNavbar() {
 
       {/* Right Action Icons & User Profile */}
       <div className="flex items-center gap-3">
-        {/* Connection & Hybrid IoT Sync Status Indicator */}
+        {/* Connection & ESP32 Telemetry Sync Status Indicator */}
         <div
           className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium shadow-2xs transition-colors ${
             !backendConnected

@@ -47,7 +47,7 @@ function formatOverallStatus(status?: HealthSeverity) {
 }
 
 export function AgriBotBentoRow({ diagnostics }: AgriBotBentoRowProps) {
-  const { sensors, sensorSources } = useTelemetry();
+  const { sensors } = useTelemetry();
 
   const formattedPH =
     typeof sensors.ph === "number" ? sensors.ph.toFixed(2) : sensors.ph;
@@ -63,8 +63,6 @@ export function AgriBotBentoRow({ diagnostics }: AgriBotBentoRowProps) {
     typeof sensors.lightIntensity === "number"
       ? Math.round(sensors.lightIntensity)
       : sensors.lightIntensity;
-
-  const isLdrLive = sensorSources.lightIntensity === "live_iot";
 
   const overallStatus = diagnostics?.overallStatus ?? "OPTIMAL";
   const plantStatus = diagnostics?.diagnosis.plant.status ?? "OPTIMAL";
@@ -138,15 +136,9 @@ export function AgriBotBentoRow({ diagnostics }: AgriBotBentoRowProps) {
               {formattedPH}
               <span className="text-base font-normal text-[#9CA3AF] ml-1">pH</span>
             </div>
-            <span
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-mono font-bold ${
-                isLdrLive
-                  ? "bg-[#DCFCE7] text-[#166534] border border-[#165B39]/25"
-                  : "bg-[#F3F4F6] text-[#4B5563]"
-              }`}
-            >
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-[#DCFCE7] text-[#166534] border border-[#165B39]/25">
               <Sun className="h-2.5 w-2.5 text-[#D97706]" />
-              {formattedLux} lux {isLdrLive ? "• LIVE" : ""}
+              {formattedLux} lux • LIVE
             </span>
           </div>
           <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#DCFCE7] text-[10px] font-medium text-[#166534]">

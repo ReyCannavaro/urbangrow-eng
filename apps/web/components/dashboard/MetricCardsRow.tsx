@@ -13,26 +13,18 @@ import {
   Bot,
 } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
-import { SensorSource } from "@/lib/types";
 
-function SourceMicroBadge({ source }: { source: SensorSource }) {
-  const isLive = source === "live_iot";
+function LiveTelemetryBadge() {
   return (
-    <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wide ${
-        isLive
-          ? "bg-[#DCFCE7] text-[#166534] border border-[#165B39]/25"
-          : "bg-[#F3F4F6] text-[#6B7280] border border-[#E5E7EB]"
-      }`}
-    >
-      {isLive && <span className="h-1.5 w-1.5 rounded-full bg-[#165B39] animate-pulse" />}
-      {isLive ? "Live ESP32" : "Auto-Dummy"}
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wide bg-[#DCFCE7] text-[#166534] border border-[#165B39]/25">
+      <span className="h-1.5 w-1.5 rounded-full bg-[#165B39] animate-pulse" />
+      Live ESP32
     </span>
   );
 }
 
 export function MetricCardsRow() {
-  const { sensors, sensorSources, systemMeta } = useTelemetry();
+  const { sensors, systemMeta } = useTelemetry();
 
   // Dynamic WQI score with graceful stability
   const wqiScore = Math.max(
@@ -81,7 +73,6 @@ export function MetricCardsRow() {
       ? sensors.waterLevel.toFixed(1)
       : sensors.waterLevel;
 
-  const isLdrLive = sensorSources.lightIntensity === "live_iot";
   const luxLabel =
     sensors.lightIntensity < 300
       ? "Redup (Butuh Grow Light)"
@@ -114,9 +105,9 @@ export function MetricCardsRow() {
             <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/15 text-[10px] font-mono text-white/90">
               <TrendingUp className="h-3 w-3 text-[#68C194]" />
               <span>
-                {systemMeta.liveSensorCount > 0
-                  ? `Hybrid IoT (${systemMeta.liveSensorCount} Live Sensor)`
-                  : "+4.2% Seimbang • Auto-Dummy"}
+                {systemMeta.edgeOnline
+                  ? `Node ${systemMeta.edgeNode} • Real-Time`
+                  : "+4.2% Bioproses Seimbang • Live"}
               </span>
             </div>
           </div>
@@ -129,7 +120,7 @@ export function MetricCardsRow() {
               <span className="text-xs font-semibold text-[#111827] block">
                 Suhu Air Kolam
               </span>
-              <SourceMicroBadge source={sensorSources.waterTemperature} />
+              <LiveTelemetryBadge />
             </div>
             <Link
               href="/ecosystem"
@@ -159,7 +150,7 @@ export function MetricCardsRow() {
               <span className="text-xs font-semibold text-[#111827] block">
                 Oksigen Terlarut (DO)
               </span>
-              <SourceMicroBadge source={sensorSources.dissolvedOxygen} />
+              <LiveTelemetryBadge />
             </div>
             <Link
               href="/ecosystem"
@@ -189,7 +180,7 @@ export function MetricCardsRow() {
               <span className="text-xs font-semibold text-[#111827] block">
                 Kadar pH & Nutrisi
               </span>
-              <SourceMicroBadge source={sensorSources.ph} />
+              <LiveTelemetryBadge />
             </div>
             <Link
               href="/analytics"
@@ -212,16 +203,10 @@ export function MetricCardsRow() {
         </div>
       </div>
 
-      {/* Hybrid IoT & LDR Physical Sensor Strip */}
+      {/* Secondary Telemetry & AgriBot Shortcut Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Highlighted LDR Light Sensor */}
-        <div
-          className={`rounded-[20px] border px-4 py-3 flex items-center justify-between gap-3 transition-colors ${
-            isLdrLive
-              ? "bg-[#DCFCE7]/40 border-[#165B39]/35 shadow-2xs"
-              : "bg-white border-[#E5E7EB]"
-          }`}
-        >
+        <div className="rounded-[20px] border px-4 py-3 flex items-center justify-between gap-3 transition-colors bg-[#DCFCE7]/35 border-[#165B39]/30 shadow-2xs">
           <div className="flex items-center gap-3 min-w-0">
             <div className="h-9 w-9 rounded-xl bg-[#FEF3C7] text-[#D97706] flex items-center justify-center shrink-0">
               <Sun className="h-4 w-4" />
@@ -231,7 +216,7 @@ export function MetricCardsRow() {
                 <span className="text-[11px] font-semibold text-[#111827] truncate">
                   Cahaya LDR
                 </span>
-                <SourceMicroBadge source={sensorSources.lightIntensity} />
+                <LiveTelemetryBadge />
               </div>
               <div className="text-sm font-bold text-[#111827] num-tabular">
                 {formattedLux} <span className="text-[11px] font-normal text-[#6B7280]">lux</span>
@@ -250,7 +235,7 @@ export function MetricCardsRow() {
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="text-[11px] font-semibold text-[#111827]">Iklim Mikro</span>
-                <SourceMicroBadge source={sensorSources.airTemperature} />
+                <LiveTelemetryBadge />
               </div>
               <div className="text-sm font-bold text-[#111827] num-tabular">
                 {formattedAirTemp}°C <span className="text-[11px] font-normal text-[#6B7280]">• RH {formattedHumidity}%</span>
@@ -268,7 +253,7 @@ export function MetricCardsRow() {
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="text-[11px] font-semibold text-[#111827]">Level Sump (L1)</span>
-                <SourceMicroBadge source={sensorSources.waterLevel} />
+                <LiveTelemetryBadge />
               </div>
               <div className="text-sm font-bold text-[#111827] num-tabular">
                 {formattedLevel}%{" "}

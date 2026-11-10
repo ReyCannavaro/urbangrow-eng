@@ -39,13 +39,13 @@ export function EdgeTimeTrackerCard() {
             IoT Edge Node Runtime
           </span>
           <span className="px-2 py-0.5 rounded-full bg-white/10 text-[9px] font-mono font-medium text-white/80 truncate max-w-[140px]">
-            {systemMeta.edgeOnline ? systemMeta.edgeNode : "ESP32 DevKit V1"}
+            {systemMeta.edgeNode || "ESP32-GROW-01"}
           </span>
         </div>
         <p className="text-[10px] text-white/60 mt-0.5">
           {backendConnected && systemMeta.edgeOnline
-            ? `Live Ingest Aktif (${systemMeta.liveSensorCount} sensor fisik)`
-            : "Siklus operasional & auto-dummy fail-safe"}
+            ? "Sinkronisasi ESP32 Real-Time Aktif"
+            : "Siklus Telemetri Node Edge Aktif"}
         </p>
       </div>
 

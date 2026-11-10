@@ -23,16 +23,14 @@ export function AgriBotHeader({
   loadingDiagnostics,
   onRefreshDiagnostics,
 }: AgriBotHeaderProps) {
-  const { sensors, sensorSources, backendConnected } = useTelemetry();
+  const { sensors, backendConnected } = useTelemetry();
 
-  const isLdrLive =
-    (diagnostics?.sensorSources?.lightIntensity ?? sensorSources.lightIntensity) === "live_iot";
   const currentLux = Math.round(diagnostics?.sensors?.lightIntensity ?? sensors.lightIntensity);
   const providerLabel =
     activeAiInfo?.provider === "ecad_local_fallback"
       ? "ECAD Local Rule Engine"
       : activeAiInfo?.provider === "offline_fallback"
-      ? "Offline Guard"
+      ? "Sinkronisasi Tertunda"
       : `Gemini AI • ${activeAiInfo?.model || "gemini-3.5-flash-lite"}`;
 
   return (
@@ -56,7 +54,7 @@ export function AgriBotHeader({
               </span>
             </div>
             <p className="text-xs text-[#6B7280] mt-1 max-w-2xl leading-relaxed">
-              Copilot diagnosis kondisi tumbuhan, air &amp; ikan serta prediksi tren air, gejala dini, dan estimasi panen berbasis data sensor live + auto-dummy.
+              Copilot diagnosis kondisi tumbuhan, air &amp; ikan serta prediksi tren air, gejala dini, dan estimasi panen berbasis data sensor ESP32 real-time.
             </p>
           </div>
         </div>
@@ -79,20 +77,13 @@ export function AgriBotHeader({
         </div>
 
         <div
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] font-mono shadow-2xs ${
-            isLdrLive
-              ? "bg-[#ECFDF5] border-[#165B39]/30 text-[#165B39] font-semibold"
-              : "bg-white border-[#E5E7EB] text-[#111827]"
-          }`}
-          title="Status sensor fisik LDR ESP32 vs Auto-Dummy sensor lain"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-[#ECFDF5] border-[#165B39]/30 text-[#165B39] font-semibold text-[11px] font-mono shadow-2xs"
+          title="Intensitas cahaya terukur langsung dari sensor LDR ESP32"
         >
-          {isLdrLive ? (
-            <span className="h-2 w-2 rounded-full bg-[#165B39] animate-pulse" />
-          ) : (
-            <Sun className="h-3.5 w-3.5 text-[#D97706]" />
-          )}
+          <span className="h-2 w-2 rounded-full bg-[#165B39] animate-pulse" />
+          <Sun className="h-3.5 w-3.5 text-[#D97706]" />
           <span>
-            {isLdrLive ? "LDR Live ESP32" : "Auto-Dummy"}: <strong>{currentLux} lux</strong>
+            LDR Live ESP32: <strong>{currentLux} lux</strong>
           </span>
         </div>
 

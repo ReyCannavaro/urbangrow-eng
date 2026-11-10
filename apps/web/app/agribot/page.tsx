@@ -79,7 +79,7 @@ export default function AgriBotPage() {
 
   return (
     <div className="space-y-6">
-      {/* 1. Header with Gemini & Hybrid IoT Status Badges */}
+      {/* 1. Header with Gemini & IoT Status Badges */}
       <AgriBotHeader
         activeAiInfo={activeAiInfo}
         diagnostics={diagnostics}
@@ -117,7 +117,7 @@ export default function AgriBotPage() {
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-[#4EAB7C] animate-pulse" />
             <span className="text-xs font-mono font-bold text-[#68C194] uppercase tracking-wider">
-              ECAD Biological Twin • Gemini Hybrid Telemetry Loop
+              ECAD Biological Intelligence • Gemini Live Telemetry
             </span>
             <span className="px-2 py-0.5 rounded-full bg-white/10 text-[10px] font-mono text-white/80">
               Inferensi Real-Time
@@ -127,7 +127,7 @@ export default function AgriBotPage() {
             Diagnosis Tumbuhan, Air, Ikan & Prediksi Gejala Akuaponik Presisi
           </h3>
           <p className="text-xs text-white/70 max-w-2xl leading-relaxed">
-            AgriBot mengkorelasikan pembacaan sensor fisik ESP32 (seperti LDR cahaya) dan simulasi adaptif auto-dummy untuk mendeteksi stres biologis lebih awal dan memproyeksikan hari panen GDD.
+            AgriBot mengkorelasikan pembacaan multi-sensor ESP32 secara real-time untuk mendeteksi stres biologis lebih awal dan memproyeksikan hari panen GDD.
           </p>
         </div>
 

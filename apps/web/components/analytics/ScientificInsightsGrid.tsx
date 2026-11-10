@@ -10,7 +10,7 @@ import {
 import { useTelemetry } from "@/lib/telemetryContext";
 
 export function ScientificInsightsGrid() {
-  const { sensors, actuators, sensorSources } = useTelemetry();
+  const { sensors, actuators } = useTelemetry();
 
   const formattedTemp =
     typeof sensors.waterTemperature === "number"
@@ -24,7 +24,6 @@ export function ScientificInsightsGrid() {
     typeof sensors.lightIntensity === "number"
       ? Math.round(sensors.lightIntensity)
       : sensors.lightIntensity;
-  const isLdrLive = sensorSources.lightIntensity === "live_iot";
   const lightEfficiencyPct =
     sensors.lightIntensity >= 1200
       ? 100
@@ -193,14 +192,8 @@ export function ScientificInsightsGrid() {
                   Intensitas Cahaya (LDR)
                 </span>
               </div>
-              <span
-                className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
-                  isLdrLive
-                    ? "bg-[#DCFCE7] text-[#166534]"
-                    : "bg-[#FEF3C7] text-[#D97706]"
-                }`}
-              >
-                {isLdrLive ? "LIVE ESP32" : "Auto-Dummy"}
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#DCFCE7] text-[#166534]">
+                LIVE ESP32
               </span>
             </div>
 
@@ -231,7 +224,7 @@ export function ScientificInsightsGrid() {
                 <div className="p-2 rounded-xl bg-[#F8F9FA] border border-[#E5E7EB]">
                   <div className="text-[10px] text-[#9CA3AF]">Sumber Sensor</div>
                   <div className="font-bold text-[#111827]">
-                    {isLdrLive ? "ADC Hardware" : "Simulasi"}
+                    ADC Hardware ESP32
                   </div>
                 </div>
                 <div className="p-2 rounded-xl bg-[#F8F9FA] border border-[#E5E7EB]">

@@ -53,13 +53,12 @@ export function HarvestProjectionsSidebar({
   cropDayKangkung = 17,
   onChangeCropDay,
 }: HarvestProjectionsSidebarProps) {
-  const { sensors, sensorSources } = useTelemetry();
+  const { sensors } = useTelemetry();
 
   const pakcoy = diagnostics?.predictions.harvest.pakcoy;
   const kangkung = diagnostics?.predictions.harvest.kangkung;
   const trends = diagnostics?.predictions.trends;
   const diag = diagnostics?.diagnosis;
-  const isLdrLive = sensorSources.lightIntensity === "live_iot";
 
   return (
     <div className="rounded-[28px] bg-white border border-[#E5E7EB] p-5 sm:p-6 shadow-xs space-y-5">
@@ -186,11 +185,7 @@ export function HarvestProjectionsSidebar({
               </h3>
             </div>
           </div>
-          <span
-            className={`px-2 py-0.5 rounded-full text-[9px] font-mono font-bold flex items-center gap-1 ${
-              isLdrLive ? "bg-[#DCFCE7] text-[#166534]" : "bg-[#F3F4F6] text-[#6B7280]"
-            }`}
-          >
+          <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold flex items-center gap-1 bg-[#DCFCE7] text-[#166534]">
             <Sun className="h-2.5 w-2.5 text-[#D97706]" />
             {Math.round(sensors.lightIntensity)} lux
           </span>

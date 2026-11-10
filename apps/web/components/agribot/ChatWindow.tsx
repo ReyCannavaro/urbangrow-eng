@@ -80,9 +80,9 @@ const QUICK_PROMPTS = [
       "Apakah kondisi oksigen terlarut (DO) dan suhu air aman untuk Ikan Nila dan Lele? Gejala awal apa yang harus diwaspadai?",
   },
   {
-    label: "Status Sensor LDR vs Dummy",
+    label: "Optimasi Nutrisi & Cahaya",
     prompt:
-      "Jelaskan mana sensor yang saat ini terbaca LIVE dari ESP32 (LDR) dan mana yang menggunakan mode auto-dummy.",
+      "Bagaimana rekomendasi optimasi pH, TDS nutrisi, dan intensitas cahaya LDR untuk pertumbuhan Pakcoy L4 & Kangkung L2 saat ini?",
   },
 ];
 
@@ -182,13 +182,13 @@ export function ChatWindow({
   cropDayKangkung = 17,
   onDiagnosticsUpdate,
 }: ChatWindowProps) {
-  const { sensorSources, actuators, setActuatorState, systemMeta } = useTelemetry();
+  const { actuators, setActuatorState, systemMeta } = useTelemetry();
 
   const [messages, setMessages] = useState<ChatMsg[]>([
     {
       id: "welcome-1",
       sender: "bot",
-      text: "Halo! Saya **AgriBot Gemini**, asisten pakar akuaponik cerdas UrbanGrow.\n\nSaya membaca telemetri hybrid Anda secara real-time (**sensor LDR fisik ESP32** + **auto-dummy adaptif** untuk probe pH, suhu, TDS, DO) untuk:\n- **Diagnosis 3 Domain**: Kondisi tumbuhan Pakcoy & Kangkung, kualitas air, dan kesehatan Ikan Nila & Lele.\n- **Prediksi Proaktif**: Tren air ke depan, gejala awal anomali sebelum ikan/tanaman stres, dan estimasi hari panen GDD.\n\nSilakan ketik pertanyaan atau klik topik cepat di bawah.",
+      text: "Halo! Saya **AgriBot Gemini**, asisten pakar akuaponik cerdas UrbanGrow.\n\nSaya memantau telemetri sensor node ESP32 Anda secara real-time (**cahaya LDR, pH air, suhu, TDS, oksigen terlarut DO, dan level tandon**) untuk:\n- **Diagnosis 3 Domain**: Kondisi tumbuhan Pakcoy & Kangkung, kualitas air, dan kesehatan Ikan Nila & Lele.\n- **Prediksi Proaktif**: Tren air ke depan, gejala awal anomali sebelum ikan/tanaman stres, dan estimasi hari panen GDD.\n\nSilakan ketik pertanyaan atau klik topik cepat di bawah.",
       time: "Sekarang",
       provider: "gemini",
       model: "gemini-3.5-flash-lite",
@@ -200,8 +200,6 @@ export function ChatWindow({
   const [pendingActionKey, setPendingActionKey] = useState<string | null>(null);
   const [actionFeedback, setActionFeedback] = useState<Record<string, { ok: boolean; msg: string }>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const isLdrLive = sensorSources.lightIntensity === "live_iot";
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -330,19 +328,9 @@ export function ChatWindow({
               <h3 className="font-bold text-sm text-[#111827]">
                 AgriBot Telemetry Copilot
               </h3>
-              <span
-                className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold ${
-                  systemMeta.edgeOnline
-                    ? "bg-[#DCFCE7] text-[#166534]"
-                    : "bg-[#F3F4F6] text-[#4B5563]"
-                }`}
-              >
-                <span
-                  className={`h-1.5 w-1.5 rounded-full ${
-                    systemMeta.edgeOnline ? "bg-[#166534] animate-pulse" : "bg-[#6B7280]"
-                  }`}
-                />
-                {systemMeta.edgeOnline ? "Hybrid Live IoT" : "Auto-Dummy"}
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-[#DCFCE7] text-[#166534]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#166534] animate-pulse" />
+                {systemMeta.edgeOnline ? "ESP32 Online • Live" : "Telemetri Real-Time"}
               </span>
             </div>
             <p className="text-[11px] text-[#6B7280]">
@@ -360,18 +348,12 @@ export function ChatWindow({
         </button>
       </div>
 
-      {/* 1b. Live Hybrid Sensor Context Strip */}
+      {/* 1b. Live ESP32 Sensor Context Strip */}
       <div className="py-2 px-3 mt-2.5 rounded-2xl bg-[#F8F9FA] border border-[#E5E7EB] flex flex-wrap items-center gap-2 text-[10.5px] font-mono">
-        <span
-          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold ${
-            isLdrLive
-              ? "bg-[#DCFCE7] text-[#166534] border border-[#165B39]/25"
-              : "bg-white text-[#4B5563] border border-[#E5E7EB]"
-          }`}
-        >
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold bg-[#DCFCE7] text-[#166534] border border-[#165B39]/25">
           <Sun className="h-3 w-3 text-[#D97706]" />
           <span>
-            LDR {Math.round(sensors.lightIntensity)} lux ({isLdrLive ? "LIVE ESP32" : "Auto-Dummy"})
+            LDR {Math.round(sensors.lightIntensity)} lux (LIVE ESP32)
           </span>
         </span>
         <span className="text-[#4B5563]">

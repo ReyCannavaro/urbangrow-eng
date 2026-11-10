@@ -360,7 +360,7 @@ class AquaponicsSimulator {
         mode: liveSensorCount > 0 ? "hybrid_live_iot" : "auto_dummy_simulation",
         anomalyMode: this.anomalyMode,
         uptimeSeconds: Math.floor(process.uptime()),
-        edgeNode: activeDevice?.deviceId || "ESP32-Virtual-Feed-01",
+        edgeNode: activeDevice?.deviceId || "ESP32-GROW-01",
         edgeOnline: devices.some((d) => d.online),
         liveSensorCount,
         lastTelemetryAt: this.lastTelemetryAt,

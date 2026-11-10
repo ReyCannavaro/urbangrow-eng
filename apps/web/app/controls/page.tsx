@@ -16,16 +16,16 @@ import { useTelemetry } from "@/lib/telemetryContext";
 import { ControlsHeader } from "@/components/controls/ControlsHeader";
 import { RelaySwitchCard } from "@/components/controls/RelaySwitchCard";
 import { QuickFeedBanner } from "@/components/controls/QuickFeedBanner";
-import { AnomalySimulationSuite } from "@/components/controls/AnomalySimulationSuite";
+import { SafetyInterlockPanel } from "@/components/controls/SafetyInterlockPanel";
 
 export default function ControlsPage() {
   const {
+    sensors,
+    systemMeta,
     actuators,
     toggleActuator,
     dispenseFeed,
     feedActive,
-    setAnomaly,
-    anomalyMode,
     lastActuatorError,
     clearActuatorError,
   } = useTelemetry();
@@ -207,10 +207,11 @@ export default function ControlsPage() {
       {/* 4. Manual Immediate Action Banner */}
       <QuickFeedBanner onDispense={dispenseFeed} feedActive={feedActive} />
 
-      {/* 5. Environmental Anomaly Simulation Suite */}
-      <AnomalySimulationSuite
-        anomalyMode={anomalyMode}
-        onSetAnomaly={setAnomaly}
+      {/* 5. Real-Time Automation & Hardware Interlock Rules */}
+      <SafetyInterlockPanel
+        sensors={sensors}
+        actuators={actuators}
+        edgeNode={systemMeta.edgeNode}
       />
 
       {/* 6. Signature Wavy Ribbon Footer: Fail-safe Hardware Specs */}

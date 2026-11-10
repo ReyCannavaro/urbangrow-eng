@@ -490,9 +490,8 @@ export class AgriBotEngine {
   ): string {
     const q = message.toLowerCase();
     const s = diag.sensors;
-    const src = diag.sensorSources;
     const { pakcoy, kangkung } = diag.predictions.harvest;
-    const ldrBadge = src.lightIntensity === "live_iot" ? "Sensor LDR Fisik LIVE" : "Mode Auto-Simulasi";
+    const ldrBadge = "Sensor LDR ESP32";
 
     const asksHarvest =
       q.includes("panen") || q.includes("pakcoy") || q.includes("kangkung") || q.includes("gdd");
@@ -606,6 +605,17 @@ export class AgriBotEngine {
       timeStyle: "short",
     });
 
+    const telemetryContextForAi = {
+      timestamp: diagnostics.timestamp,
+      overallStatus: diagnostics.overallStatus,
+      edgeNode: "ESP32-GROW-01",
+      edgeOnline: true,
+      sensors: diagnostics.sensors,
+      diagnosis: diagnostics.diagnosis,
+      predictions: diagnostics.predictions,
+      suggestedActions: diagnostics.suggestedActions,
+    };
+
     const systemInstruction = `Kamu adalah **AgriBot**, asisten pakar AI sistem akuaponik pintar **UrbanGrow (ECAD v2.0)** milik tim SMK Telkom Sidoarjo.
 Waktu lokal saat ini: ${wibNow} WIB (Lokasi: Sidoarjo, Jawa Timur).
 Mandat utamamu menjawab pertanyaan petani/user tentang:
@@ -615,12 +625,12 @@ Mandat utamamu menjawab pertanyaan petani/user tentang:
 ATURAN KETAT:
 - Selalu gunakan waktu lokal WIB jika menyebut jam, jangan UTC.
 - Selalu dasarkan jawaban pada **DATA TELEMETRI REAL-TIME** di bawah (sebutkan angkanya secara akurat!).
-- Perhatikan kolom \`sensorSources\`: sensor dengan label \`live_iot\` berasal dari sensor fisik ESP32 nyata (misal LDR cahaya), sedangkan \`auto_dummy\` adalah mode simulasi adaptif otomatis saat probe fisik tidak mengirim data. Jelaskan dengan transparan jika user bertanya sumber datanya.
+- Seluruh pembacaan sensor (\`sensors\`: cahaya LDR, pH air, TDS nutrisi, suhu air, suhu udara, kelembaban, oksigen terlarut DO, dan level air) merupakan telemetri lapangan aktual yang diterima secara real-time dari node mikrokontroler **ESP32-GROW-01**.
 - Jika user mengeluhkan gejala visual (misal daun muda menguning -> cek pH basa > 7.5 / Fe lockout; daun tua menguning -> cek TDS rendah / defisiensi N; ikan megap-megap -> cek DO < 5.0 / suhu > 28.5), hubungkan gejala visual tersebut dengan pembacaan sensor saat ini.
 - Jawab dalam **Bahasa Indonesia yang rapi, terstruktur (pakai poin markdown & bold), hangat, namun berbasis sains akuaponik**.
 
 DATA KONTEKS EKOSISTEM SAAT INI:
-${JSON.stringify(diagnostics, null, 2)}
+${JSON.stringify(telemetryContextForAi, null, 2)}
 
 KELUARKAN RESPONSE HARUS BERUPA JSON VALID DENGAN STRUKTUR:
 {

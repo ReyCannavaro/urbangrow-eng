@@ -67,7 +67,7 @@ export default function AnalyticsPage() {
             <div className="text-[10px] text-white/50">Koneksi Backend</div>
             <div className="font-bold text-white flex items-center gap-1.5">
               <Wifi className="h-3.5 w-3.5 text-[#38BDF8]" />
-              <span>{backendConnected ? "Tersinkron" : "Lokal Mode"}</span>
+              <span>{backendConnected ? "Tersinkron" : "Menghubungkan"}</span>
             </div>
           </div>
 
