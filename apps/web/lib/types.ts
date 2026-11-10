@@ -114,6 +114,68 @@ export interface EcosystemDiagnosticReport {
   suggestedActions: SuggestedAction[];
 }
 
+export type AgriBotChartType =
+  | "line"
+  | "area"
+  | "bar"
+  | "horizontal_bar"
+  | "pie"
+  | "donut"
+  | "radar"
+  | "scatter"
+  | "composed"
+  | "radial"
+  | "heatmap";
+
+export type AgriBotChartTheme =
+  | "light"
+  | "dark"
+  | "emerald"
+  | "ocean"
+  | "sunset"
+  | "neon"
+  | "minimal"
+  | "brutalist";
+
+export interface AgriBotChartSeries {
+  name: string;
+  unit?: string;
+  color?: string;
+  type?: "line" | "area" | "bar";
+  values: number[];
+  points?: Array<{ x: number; y: number; label?: string }>;
+}
+
+export interface AgriBotChartStyle {
+  theme?: AgriBotChartTheme;
+  curve?: "smooth" | "linear" | "step";
+  palette?: string[];
+  showGrid?: boolean;
+  showValues?: boolean;
+  showLegend?: boolean;
+  xLabel?: string;
+  yLabel?: string;
+  unit?: string;
+}
+
+export interface AgriBotChartSpec {
+  id: string;
+  title: string;
+  subtitle?: string;
+  chartType: AgriBotChartType;
+  labels: string[];
+  series: AgriBotChartSeries[];
+  style?: AgriBotChartStyle;
+  summaryNote?: string;
+}
+
+export interface AgriBotImageAttachment {
+  mimeType: string;
+  data: string;
+  name?: string;
+  previewUrl?: string;
+}
+
 export interface AgriBotChatTurn {
   role: "user" | "assistant" | "bot" | "model";
   text: string;
@@ -127,6 +189,7 @@ export interface AgriBotChatResponse {
   category: "diagnosis" | "prediction" | "advisory" | "general";
   diagnostics: EcosystemDiagnosticReport;
   suggestedActions: SuggestedAction[];
+  charts?: AgriBotChartSpec[];
   latencyMs?: number;
 }
 

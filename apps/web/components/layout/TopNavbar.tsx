@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Search, Bell, Mail } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
 
-export function TopNavbar() {
+export function TopNavbar({ compact = false }: { compact?: boolean }) {
   const { backendConnected, alerts, systemMeta } = useTelemetry();
 
   const hasActiveAlerts = alerts.some((a) => !a.isResolved);
@@ -23,7 +23,11 @@ export function TopNavbar() {
     : `Gateway backend tersinkronisasi dengan node ${systemMeta.edgeNode}.`;
 
   return (
-    <header className="bg-white rounded-[24px] border border-[#E5E7EB] p-4 sm:px-6 sm:py-3.5 shadow-xs mb-6 flex flex-wrap items-center justify-between gap-4">
+    <header
+      className={`bg-white rounded-[24px] border border-[#E5E7EB] p-3.5 sm:px-6 sm:py-3 shadow-xs flex flex-wrap items-center justify-between gap-3 sm:gap-4 shrink-0 ${
+        compact ? "mb-3 lg:mb-4" : "mb-6"
+      }`}
+    >
       {/* Search Input Bar (Matching Donezo Pill with Shortcut Badge) */}
       <div className="flex-1 max-w-md relative">
         <div className="relative flex items-center">

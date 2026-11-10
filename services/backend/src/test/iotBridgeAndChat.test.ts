@@ -144,6 +144,71 @@ describe("Hybrid IoT Bridge, Actuator Sync & AgriBot AI Tests", () => {
       expect(chatRes.diagnostics.predictions.harvest.kangkung).toHaveProperty(
         "estimatedDaysRemaining"
       );
+      expect(Array.isArray(chatRes.charts)).toBe(true);
+      expect(chatRes.charts?.length).toBe(0);
+    } finally {
+      if (prevKey !== undefined) {
+        process.env.GEMINI_API_KEY = prevKey;
+      } else {
+        delete process.env.GEMINI_API_KEY;
+      }
+    }
+  });
+
+  it("should generate dynamic charts in fallback mode and accept multimodal images on /api/ai/chat", async () => {
+    const prevKey = process.env.GEMINI_API_KEY;
+    process.env.GEMINI_API_KEY = "PASTE_API_KEY_GEMINI_KAMU_DI_SINI";
+
+    try {
+      // 1. Chart generation request with explicit style & chart type
+      const chartReq = await app.handle(
+        new Request("http://localhost/api/ai/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: "Tolong ringkas data IoT saya dalam bentuk radar chart style neon",
+          }),
+        })
+      );
+      expect(chartReq.status).toBe(200);
+      const chartJson = await chartReq.json();
+      expect(chartJson.success).toBe(true);
+      expect(Array.isArray(chartJson.charts)).toBe(true);
+      expect(chartJson.charts.length).toBeGreaterThan(0);
+      expect(chartJson.charts[0].chartType).toBe("radar");
+      expect(chartJson.charts[0].style?.theme).toBe("neon");
+
+      // 2. Multimodal image-only payload (empty message allowed when image exists)
+      const imgReq = await app.handle(
+        new Request("http://localhost/api/ai/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: "",
+            images: [
+              {
+                mimeType: "image/png",
+                data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=",
+                name: "daun-sample.png",
+              },
+            ],
+          }),
+        })
+      );
+      expect(imgReq.status).toBe(200);
+      const imgJson = await imgReq.json();
+      expect(imgJson.success).toBe(true);
+      expect(imgJson.reply).toContain("Gambar berhasil diterima");
+
+      // 3. Reject completely empty payload (no message and no images)
+      const emptyReq = await app.handle(
+        new Request("http://localhost/api/ai/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: "   " }),
+        })
+      );
+      expect(emptyReq.status).toBe(400);
     } finally {
       if (prevKey !== undefined) {
         process.env.GEMINI_API_KEY = prevKey;

@@ -323,20 +323,28 @@ export const app = new Elysia()
     return apkFile;
   })
 
-  // 9. Gemini AI Chatbot Copilot (Plant/Water/Fish Diagnosis & Water/Harvest Predictions)
+  // 9. Gemini AI Chatbot Copilot (Multimodal Vision + Chart Generation + IoT Diagnosis)
   .post(
     "/api/ai/chat",
-    async ({ body }) => {
+    async ({ body, set }) => {
+      const msg = (body.message ?? "").trim();
+      const imgs = body.images ?? [];
+      if (!msg && imgs.length === 0) {
+        set.status = 400;
+        return { success: false, message: "Pesan atau lampiran gambar wajib diisi." };
+      }
+
       return await AgriBotEngine.chat({
-        message: body.message,
+        message: msg,
         history: body.history,
+        images: imgs,
         cropDayPakcoy: body.cropDayPakcoy,
         cropDayKangkung: body.cropDayKangkung,
       });
     },
     {
       body: t.Object({
-        message: t.String({ minLength: 1 }),
+        message: t.Optional(t.String()),
         history: t.Optional(
           t.Array(
             t.Object({
@@ -348,6 +356,16 @@ export const app = new Elysia()
               ]),
               text: t.String(),
             })
+          )
+        ),
+        images: t.Optional(
+          t.Array(
+            t.Object({
+              mimeType: t.String(),
+              data: t.String({ maxLength: 5_500_000 }),
+              name: t.Optional(t.String()),
+            }),
+            { maxItems: 3 }
           )
         ),
         cropDayPakcoy: t.Optional(t.Number({ minimum: 0, maximum: 90 })),

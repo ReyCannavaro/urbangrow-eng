@@ -1,25 +1,34 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
+import Image from "next/image";
 import {
   Send,
-  Bot,
   Sparkles,
-  Trash2,
-  Sun,
+  SquarePen,
+  ImagePlus,
+  X,
   Power,
   Check,
   AlertCircle,
   Loader2,
+  Copy,
+  BarChart3,
+  Camera,
+  TrendingUp,
+  Radar,
+  UploadCloud,
 } from "lucide-react";
 import {
-  SensorData,
-  EcosystemDiagnosticReport,
   SuggestedAction,
   AgriBotChatTurn,
+  AgriBotChartSpec,
+  AgriBotImageAttachment,
 } from "@/lib/types";
 import { sendAgriBotChat } from "@/lib/aiApi";
 import { useTelemetry } from "@/lib/telemetryContext";
+import { DynamicChartRenderer } from "./DynamicChartRenderer";
 
 let chatMessageSeq = 1;
 function nextChatId(prefix: string): string {
@@ -31,10 +40,69 @@ function formatNowTime(): string {
   return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+const MAX_IMAGES_PER_TURN = 3;
+
+async function compressImageFile(file: File): Promise<AgriBotImageAttachment> {
+  if (!file.type.startsWith("image/")) {
+    throw new Error(`File "${file.name}" bukan gambar yang didukung.`);
+  }
+  if (file.size > 12 * 1024 * 1024) {
+    throw new Error(`Ukuran "${file.name}" terlalu besar (maks. 12 MB).`);
+  }
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Gagal membaca file gambar."));
+    reader.onload = () => {
+      const img = new window.Image();
+      img.onerror = () => reject(new Error("Format gambar tidak dapat diproses."));
+      img.onload = () => {
+        const maxDim = 1280;
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          const ratio = Math.min(maxDim / width, maxDim / height);
+          width = Math.max(1, Math.round(width * ratio));
+          height = Math.max(1, Math.round(height * ratio));
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Canvas browser tidak tersedia untuk memproses gambar."));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        const outMime =
+          file.type === "image/png" && file.size <= 450_000
+            ? "image/png"
+            : "image/jpeg";
+        const dataUrl = canvas.toDataURL(
+          outMime,
+          outMime === "image/jpeg" ? 0.85 : undefined
+        );
+        const base64 = dataUrl.split(",")[1] || "";
+        resolve({
+          mimeType: outMime,
+          data: base64,
+          name: file.name || "lampiran.jpg",
+          previewUrl: dataUrl,
+        });
+      };
+      img.src = String(reader.result || "");
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 interface ChatMsg {
   id: string;
   sender: "user" | "bot";
   text: string;
+  images?: AgriBotImageAttachment[];
+  charts?: AgriBotChartSpec[];
   time: string;
   provider?: string;
   model?: string;
@@ -43,55 +111,51 @@ interface ChatMsg {
   suggestedActions?: SuggestedAction[];
 }
 
-interface ChatWindowProps {
-  sensors: SensorData;
-  cropDayPakcoy?: number;
-  cropDayKangkung?: number;
-  onDiagnosticsUpdate?: (
-    diagnostics: EcosystemDiagnosticReport,
-    meta: { provider: string; model: string; latencyMs: number }
-  ) => void;
+interface StarterPrompt {
+  title: string;
+  description: string;
+  prompt: string;
+  icon: React.ComponentType<{ className?: string }>;
+  isPhotoTip?: boolean;
 }
 
-const QUICK_PROMPTS = [
+const STARTER_PROMPTS: StarterPrompt[] = [
   {
-    label: "Diagnosis 3 Domain",
+    title: "Ringkas Data IoT & Grafik",
+    description: "Area & bar chart tren pH, DO, suhu, dan TDS gaya dark neon",
     prompt:
-      "Berikan diagnosis lengkap kondisi tumbuhan Pakcoy dan Kangkung, kualitas air, serta kesehatan ikan Nila dan Lele berdasarkan data sensor saat ini.",
+      "Ringkas data sensor IoT akuaponik saya hari ini dan tampilkan area chart tren air serta bar chart kondisi metrik dengan gaya dark neon.",
+    icon: BarChart3,
   },
   {
-    label: "Prediksi & Gejala Air",
-    prompt:
-      "Bagaimana prediksi kondisi air dan gejala dini apa saja yang berpotensi muncul dari tren pembacaan sensor saat ini?",
+    title: "Analisis Foto Penyakit",
+    description: "Unggah foto daun menguning, busuk akar, atau gejala pada ikan",
+    prompt: "",
+    icon: Camera,
+    isPhotoTip: true,
   },
   {
-    label: "Estimasi Panen GDD",
+    title: "Radar & Donat Ekosistem",
+    description: "Skor kelayakan ekosistem ECAD & distribusi daya aktuator",
     prompt:
-      "Kapan estimasi panen Pakcoy L4 dan Kangkung L2 berdasarkan suhu air serta pembacaan cahaya sensor LDR sekarang?",
+      "Buatkan radar chart skor kelayakan parameter air akuaponik dan donut chart beban daya aktuator dengan gaya emerald.",
+    icon: Radar,
   },
   {
-    label: "Daun Menguning / Klorosis",
+    title: "Prediksi Air & Panen GDD",
+    description: "Proyeksi hari panen Pakcoy L4 & Kangkung L2 dari data aktual",
     prompt:
-      "Jika daun tanaman mulai menguning atau pertumbuhan melambat, apa analisisnya berdasarkan pH, TDS, dan sensor cahaya LDR saat ini?",
-  },
-  {
-    label: "Ikan Megap-megap / DO",
-    prompt:
-      "Apakah kondisi oksigen terlarut (DO) dan suhu air aman untuk Ikan Nila dan Lele? Gejala awal apa yang harus diwaspadai?",
-  },
-  {
-    label: "Optimasi Nutrisi & Cahaya",
-    prompt:
-      "Bagaimana rekomendasi optimasi pH, TDS nutrisi, dan intensitas cahaya LDR untuk pertumbuhan Pakcoy L4 & Kangkung L2 saat ini?",
+      "Analisis kondisi tumbuhan, air, dan ikan saat ini, prediksi gejala dini yang perlu diwaspadai, dan hitung estimasi hari panen Pakcoy serta Kangkung.",
+    icon: TrendingUp,
   },
 ];
 
 function renderInlineMarkdown(text: string): React.ReactNode[] {
-  const tokens = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+  const tokens = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*)/g);
   return tokens.map((token, idx) => {
     if (token.startsWith("**") && token.endsWith("**") && token.length > 4) {
       return (
-        <strong key={idx} className="font-semibold">
+        <strong key={idx} className="font-semibold text-[#111827]">
           {token.slice(2, -2)}
         </strong>
       );
@@ -100,152 +164,446 @@ function renderInlineMarkdown(text: string): React.ReactNode[] {
       return (
         <code
           key={idx}
-          className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[11px] font-semibold"
+          className="px-1.5 py-0.5 rounded-md bg-[#F3F4F6] text-[#0B2C1B] font-mono text-[11.5px] font-medium"
         >
           {token.slice(1, -1)}
         </code>
+      );
+    }
+    if (token.startsWith("*") && token.endsWith("*") && token.length > 2) {
+      return (
+        <em key={idx} className="italic">
+          {token.slice(1, -1)}
+        </em>
       );
     }
     return <React.Fragment key={idx}>{token}</React.Fragment>;
   });
 }
 
-function FormattedMarkdownMessage({ text }: { text: string }) {
-  const lines = text.split(/\r?\n/);
+function tryParseEmbeddedChart(rawCode: string, lang: string): AgriBotChartSpec | null {
+  const isChartLang =
+    lang === "chart-json" || lang === "chart" || lang === "json";
+  if (!isChartLang) return null;
 
-  return (
-    <div className="space-y-1.5">
-      {lines.map((rawLine, idx) => {
-        const line = rawLine.trim();
-        if (!line) {
-          return <div key={idx} className="h-1" />;
-        }
-
-        if (line.startsWith("### ")) {
-          return (
-            <h4
-              key={idx}
-              className="text-[13px] font-bold text-[#165B39] pt-1 tracking-tight"
-            >
-              {renderInlineMarkdown(line.slice(4))}
-            </h4>
-          );
-        }
-        if (line.startsWith("## ")) {
-          return (
-            <h4
-              key={idx}
-              className="text-[13.5px] font-bold text-[#111827] pt-1 tracking-tight"
-            >
-              {renderInlineMarkdown(line.slice(3))}
-            </h4>
-          );
-        }
-        if (line.startsWith("- ") || line.startsWith("* ") || line.startsWith("• ")) {
-          return (
-            <div key={idx} className="flex items-start gap-2 pl-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#165B39] mt-1.5 shrink-0" />
-              <div className="flex-1 leading-relaxed">
-                {renderInlineMarkdown(line.slice(2))}
-              </div>
-            </div>
-          );
-        }
-
-        const numberedMatch = line.match(/^(\d+\.)\s+(.*)$/);
-        if (numberedMatch) {
-          return (
-            <div key={idx} className="flex items-start gap-2 pl-1">
-              <span className="font-mono font-bold text-[#165B39] shrink-0">
-                {numberedMatch[1]}
-              </span>
-              <div className="flex-1 leading-relaxed">
-                {renderInlineMarkdown(numberedMatch[2])}
-              </div>
-            </div>
-          );
-        }
-
-        return (
-          <p key={idx} className="leading-relaxed">
-            {renderInlineMarkdown(line)}
-          </p>
-        );
-      })}
-    </div>
-  );
+  try {
+    const parsed = JSON.parse(rawCode) as Partial<AgriBotChartSpec>;
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      typeof parsed.chartType === "string" &&
+      Array.isArray(parsed.series) &&
+      parsed.series.length > 0
+    ) {
+      return {
+        id: parsed.id || `inline-chart-${Math.random().toString(36).slice(2, 7)}`,
+        title: parsed.title || "Visualisasi Data IoT",
+        subtitle: parsed.subtitle,
+        chartType: parsed.chartType,
+        labels: Array.isArray(parsed.labels)
+          ? parsed.labels.map(String)
+          : parsed.series[0].values.map((_, i) => `#${i + 1}`),
+        series: parsed.series,
+        style: parsed.style,
+        summaryNote: parsed.summaryNote,
+      };
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 
-export function ChatWindow({
-  sensors,
-  cropDayPakcoy = 14,
-  cropDayKangkung = 17,
-  onDiagnosticsUpdate,
-}: ChatWindowProps) {
+function parseTableRow(line: string): string[] {
+  return line
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((cell) => cell.trim());
+}
+
+function isSeparatorRow(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed.includes("|")) return false;
+  const cells = parseTableRow(trimmed);
+  return cells.length > 0 && cells.every((c) => /^:?-{2,}:?$/.test(c));
+}
+
+function FormattedMarkdownMessage({ text }: { text: string }) {
+  const lines = text.split(/\r?\n/);
+  const nodes: React.ReactNode[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const rawLine = lines[i];
+    const trimmed = rawLine.trim();
+
+    // 1. Fenced Code Block (including optional inline chart-json)
+    if (trimmed.startsWith("```")) {
+      const lang = trimmed.slice(3).trim().toLowerCase();
+      const codeLines: string[] = [];
+      i += 1;
+      while (i < lines.length && !lines[i].trim().startsWith("```")) {
+        codeLines.push(lines[i]);
+        i += 1;
+      }
+      i += 1; // skip closing fence
+      const rawCode = codeLines.join("\n").trim();
+      const chartSpec = tryParseEmbeddedChart(rawCode, lang);
+      if (chartSpec) {
+        nodes.push(<DynamicChartRenderer key={`embed-${i}`} spec={chartSpec} />);
+      } else {
+        nodes.push(
+          <pre
+            key={`code-${i}`}
+            className="my-2.5 p-3.5 rounded-2xl bg-[#111827] text-slate-100 text-[11.5px] font-mono overflow-x-auto leading-relaxed"
+          >
+            <code>{rawCode}</code>
+          </pre>
+        );
+      }
+      continue;
+    }
+
+    // 2. Markdown Table
+    if (
+      trimmed.startsWith("|") &&
+      i + 1 < lines.length &&
+      isSeparatorRow(lines[i + 1])
+    ) {
+      const headers = parseTableRow(trimmed);
+      i += 2; // skip header & separator
+      const rows: string[][] = [];
+      while (i < lines.length && lines[i].trim().startsWith("|")) {
+        rows.push(parseTableRow(lines[i]));
+        i += 1;
+      }
+      nodes.push(
+        <div
+          key={`tbl-${i}`}
+          className="my-3 overflow-x-auto rounded-2xl border border-[#E5E7EB] bg-white"
+        >
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="bg-[#F8F9FA] border-b border-[#E5E7EB]">
+                {headers.map((h, hIdx) => (
+                  <th
+                    key={hIdx}
+                    className="px-3.5 py-2.5 font-semibold text-[#111827] whitespace-nowrap"
+                  >
+                    {renderInlineMarkdown(h)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#F3F4F6]">
+              {rows.map((row, rIdx) => (
+                <tr key={rIdx} className="hover:bg-[#F9FAFB]/70">
+                  {headers.map((_, cIdx) => (
+                    <td key={cIdx} className="px-3.5 py-2 text-[#374151]">
+                      {renderInlineMarkdown(row[cIdx] ?? "")}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+      continue;
+    }
+
+    // 3. Blank Line
+    if (!trimmed) {
+      nodes.push(<div key={`sp-${i}`} className="h-1.5" />);
+      i += 1;
+      continue;
+    }
+
+    // 4. Headings
+    if (trimmed.startsWith("### ")) {
+      nodes.push(
+        <h4
+          key={`h3-${i}`}
+          className="text-[13.5px] font-bold text-[#165B39] pt-2 tracking-tight"
+        >
+          {renderInlineMarkdown(trimmed.slice(4))}
+        </h4>
+      );
+      i += 1;
+      continue;
+    }
+    if (trimmed.startsWith("## ") || trimmed.startsWith("# ")) {
+      const sliceLen = trimmed.startsWith("## ") ? 3 : 2;
+      nodes.push(
+        <h3
+          key={`h2-${i}`}
+          className="text-[14.5px] font-bold text-[#111827] pt-2 tracking-tight"
+        >
+          {renderInlineMarkdown(trimmed.slice(sliceLen))}
+        </h3>
+      );
+      i += 1;
+      continue;
+    }
+
+    // 5. Blockquote
+    if (trimmed.startsWith("> ")) {
+      nodes.push(
+        <blockquote
+          key={`bq-${i}`}
+          className="pl-3.5 py-1 my-1 border-l-2 border-[#165B39] text-[#4B5563] italic text-[12.5px]"
+        >
+          {renderInlineMarkdown(trimmed.slice(2))}
+        </blockquote>
+      );
+      i += 1;
+      continue;
+    }
+
+    // 6. Bullets
+    if (
+      trimmed.startsWith("- ") ||
+      trimmed.startsWith("* ") ||
+      trimmed.startsWith("• ")
+    ) {
+      nodes.push(
+        <div key={`ul-${i}`} className="flex items-start gap-2.5 pl-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#165B39] mt-2 shrink-0" />
+          <div className="flex-1 text-[13px] text-[#1F2937] leading-relaxed">
+            {renderInlineMarkdown(trimmed.slice(2))}
+          </div>
+        </div>
+      );
+      i += 1;
+      continue;
+    }
+
+    // 7. Numbered Lists
+    const numberedMatch = trimmed.match(/^(\d+\.)\s+(.*)$/);
+    if (numberedMatch) {
+      nodes.push(
+        <div key={`ol-${i}`} className="flex items-start gap-2 pl-1">
+          <span className="font-mono text-[12px] font-bold text-[#165B39] mt-0.5 shrink-0">
+            {numberedMatch[1]}
+          </span>
+          <div className="flex-1 text-[13px] text-[#1F2937] leading-relaxed">
+            {renderInlineMarkdown(numberedMatch[2])}
+          </div>
+        </div>
+      );
+      i += 1;
+      continue;
+    }
+
+    // 8. Horizontal Rule
+    if (/^-{3,}$/.test(trimmed)) {
+      nodes.push(<hr key={`hr-${i}`} className="my-3 border-[#E5E7EB]" />);
+      i += 1;
+      continue;
+    }
+
+    // 9. Standard Paragraph
+    nodes.push(
+      <p key={`p-${i}`} className="text-[13px] text-[#1F2937] leading-relaxed">
+        {renderInlineMarkdown(trimmed)}
+      </p>
+    );
+    i += 1;
+  }
+
+  return <div className="space-y-1.5">{nodes}</div>;
+}
+
+export function ChatWindow() {
   const { actuators, setActuatorState, systemMeta } = useTelemetry();
 
-  const [messages, setMessages] = useState<ChatMsg[]>([
-    {
-      id: "welcome-1",
-      sender: "bot",
-      text: "Halo! Saya **AgriBot Gemini**, asisten pakar akuaponik cerdas UrbanGrow.\n\nSaya memantau telemetri sensor node ESP32 Anda secara real-time (**cahaya LDR, pH air, suhu, TDS, oksigen terlarut DO, dan level tandon**) untuk:\n- **Diagnosis 3 Domain**: Kondisi tumbuhan Pakcoy & Kangkung, kualitas air, dan kesehatan Ikan Nila & Lele.\n- **Prediksi Proaktif**: Tren air ke depan, gejala awal anomali sebelum ikan/tanaman stres, dan estimasi hari panen GDD.\n\nSilakan ketik pertanyaan atau klik topik cepat di bawah.",
-      time: "Sekarang",
-      provider: "gemini",
-      model: "gemini-3.5-flash-lite",
-      category: "general",
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState<string>("");
+  const [pendingImages, setPendingImages] = useState<AgriBotImageAttachment[]>([]);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const [pendingActionKey, setPendingActionKey] = useState<string | null>(null);
-  const [actionFeedback, setActionFeedback] = useState<Record<string, { ok: boolean; msg: string }>>({});
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [actionFeedback, setActionFeedback] = useState<
+    Record<string, { ok: boolean; msg: string }>
+  >({});
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [activeModelLabel, setActiveModelLabel] = useState<string>(
+    "Gemini Multimodal • IoT Vision"
+  );
 
-  const scrollToBottom = () => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const dragCounterRef = useRef<number>(0);
+
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  }, []);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, isTyping]);
+    if (messages.length > 0 || isTyping) {
+      scrollToBottom();
+    }
+  }, [messages, isTyping, scrollToBottom]);
 
-  const handleSend = async (textToSend?: string) => {
-    const q = (textToSend ?? input).trim();
-    if (!q || isTyping) return;
+  // Auto-resize composer textarea cleanly like ChatGPT/Gemini
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 136)}px`;
+  }, [input]);
+
+  // Close lightbox with Escape
+  useEffect(() => {
+    if (!lightboxUrl) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxUrl(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightboxUrl]);
+
+  const appendImageFiles = useCallback(
+    async (fileList: FileList | File[]) => {
+      const files = Array.from(fileList);
+      if (files.length === 0) return;
+      setUploadError(null);
+
+      const remainingSlots = MAX_IMAGES_PER_TURN - pendingImages.length;
+      if (remainingSlots <= 0) {
+        setUploadError(`Maksimal ${MAX_IMAGES_PER_TURN} gambar per pesan.`);
+        return;
+      }
+
+      const toProcess = files.slice(0, remainingSlots);
+      if (files.length > remainingSlots) {
+        setUploadError(
+          `Hanya ${remainingSlots} gambar tambahan yang dimuat (maks. ${MAX_IMAGES_PER_TURN} per pesan).`
+        );
+      }
+
+      const nextAttachments: AgriBotImageAttachment[] = [];
+      for (const file of toProcess) {
+        try {
+          const compressed = await compressImageFile(file);
+          nextAttachments.push(compressed);
+        } catch (err) {
+          setUploadError(
+            err instanceof Error ? err.message : "Gagal memproses lampiran gambar."
+          );
+        }
+      }
+
+      if (nextAttachments.length > 0) {
+        setPendingImages((prev) =>
+          [...prev, ...nextAttachments].slice(0, MAX_IMAGES_PER_TURN)
+        );
+      }
+    },
+    [pendingImages.length]
+  );
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      await appendImageFiles(e.target.files);
+    }
+    e.target.value = "";
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = Array.from(e.clipboardData?.items || []);
+    const imageFiles = items
+      .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+      .map((item) => item.getAsFile())
+      .filter((f): f is File => f !== null);
+
+    if (imageFiles.length > 0) {
+      e.preventDefault();
+      await appendImageFiles(imageFiles);
+    }
+  };
+
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current += 1;
+    if (e.dataTransfer.types.includes("Files")) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = Math.max(0, dragCounterRef.current - 1);
+    if (dragCounterRef.current === 0) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = 0;
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      await appendImageFiles(e.dataTransfer.files);
+    }
+  };
+
+  const removePendingImage = (idx: number) => {
+    setPendingImages((prev) => prev.filter((_, i) => i !== idx));
+    setUploadError(null);
+  };
+
+  const handleSend = async (textOverride?: string) => {
+    const text = (textOverride ?? input).trim();
+    const imagesToSend = textOverride ? [] : [...pendingImages];
+
+    if ((!text && imagesToSend.length === 0) || isTyping) return;
 
     const userMsg: ChatMsg = {
       id: nextChatId("u"),
       sender: "user",
-      text: q,
+      text,
+      images: imagesToSend.length > 0 ? imagesToSend : undefined,
       time: formatNowTime(),
     };
 
     const historyPayload: AgriBotChatTurn[] = messages
-      .filter((m) => m.id !== "welcome-1")
       .slice(-6)
       .map((m) => ({
         role: m.sender === "user" ? "user" : "assistant",
-        text: m.text,
+        text: m.text || (m.images?.length ? "[Mengirim lampiran foto untuk analisis]" : ""),
       }));
 
     setMessages((prev) => [...prev, userMsg]);
-    if (!textToSend) setInput("");
+    if (!textOverride) {
+      setInput("");
+      setPendingImages([]);
+    }
+    setUploadError(null);
     setIsTyping(true);
 
     const res = await sendAgriBotChat({
-      message: q,
+      message: text,
       history: historyPayload,
-      cropDayPakcoy,
-      cropDayKangkung,
+      images: imagesToSend.length > 0 ? imagesToSend : undefined,
     });
     const latencyMs = res.latencyMs ?? 0;
 
-    if (res.diagnostics && onDiagnosticsUpdate) {
-      onDiagnosticsUpdate(res.diagnostics, {
-        provider: res.provider,
-        model: res.model,
-        latencyMs,
-      });
+    if (res.model && res.provider === "gemini") {
+      setActiveModelLabel(`${res.model} • IoT Vision`);
     }
 
     setMessages((prev) => [
@@ -254,6 +612,7 @@ export function ChatWindow({
         id: nextChatId("b"),
         sender: "bot",
         text: res.reply,
+        charts: res.charts ?? [],
         time: formatNowTime(),
         provider: res.provider,
         model: res.model,
@@ -287,264 +646,476 @@ export function ChatWindow({
     }
   };
 
-  const handleResetChat = () => {
-    setActionFeedback({});
-    setMessages([
-      {
-        id: "welcome-1",
-        sender: "bot",
-        text: "Percakapan telah direset. Siap membantu diagnosis tumbuhan, air, ikan, serta prediksi panen dan gejala dini akuaponik Anda.",
-        time: "Sekarang",
-        provider: "gemini",
-        model: "gemini-3.5-flash-lite",
-        category: "general",
-      },
-    ]);
-  };
-
-  const formatCategory = (cat?: string) => {
-    switch (cat) {
-      case "diagnosis":
-        return "Diagnosis";
-      case "prediction":
-        return "Prediksi";
-      case "advisory":
-        return "Saran Tindakan";
-      default:
-        return "Asisten";
+  const handleCopyReply = async (msgId: string, content: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedId(msgId);
+      setTimeout(() => setCopiedId((prev) => (prev === msgId ? null : prev)), 1800);
+    } catch {
+      // Clipboard API restricted
     }
   };
 
+  const handleResetChat = () => {
+    setMessages([]);
+    setPendingImages([]);
+    setActionFeedback({});
+    setUploadError(null);
+    setInput("");
+  };
+
+  const canSend =
+    !isTyping && (input.trim().length > 0 || pendingImages.length > 0);
+
   return (
-    <div className="rounded-[28px] bg-white border border-[#E5E7EB] p-5 sm:p-6 shadow-xs flex flex-col h-[640px]">
-      {/* 1. Chat Window Header Strip */}
-      <div className="flex items-center justify-between pb-3 border-b border-[#F3F4F6]">
-        <div className="flex items-center gap-2.5">
-          <div className="h-9 w-9 rounded-full bg-[#165B39] text-white flex items-center justify-center shadow-xs shrink-0">
+    <div
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+      className="relative rounded-[24px] lg:rounded-[28px] bg-white border border-[#E5E7EB] shadow-xs flex flex-col overflow-hidden h-[calc(100dvh-160px)] min-h-[520px] max-h-[820px] lg:h-full lg:max-h-none lg:min-h-0"
+    >
+      {/* Drag-and-Drop Multimodal Overlay */}
+      {isDragging && (
+        <div className="absolute inset-0 z-30 bg-[#165B39]/10 backdrop-blur-[2px] border-2 border-dashed border-[#165B39] rounded-[24px] lg:rounded-[28px] flex flex-col items-center justify-center p-6 pointer-events-none">
+          <div className="h-14 w-14 rounded-2xl bg-[#165B39] text-white flex items-center justify-center shadow-lg mb-3">
+            <UploadCloud className="h-7 w-7" />
+          </div>
+          <p className="text-sm font-bold text-[#0B2C1B] text-center">
+            Lepaskan foto tanaman atau ikan di sini
+          </p>
+          <p className="text-xs text-[#4B5563] mt-1 text-center">
+            AgriBot akan mendiagnosis gejala visual &amp; mencocokkannya dengan data IoT
+          </p>
+        </div>
+      )}
+
+      {/* Hidden File Input for Image Upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif"
+        multiple
+        onChange={handleFileChange}
+        className="hidden"
+        aria-label="Pilih gambar tanaman atau ikan"
+      />
+
+      {/* 1. Minimal Gemini/ChatGPT Top Bar */}
+      <div className="shrink-0 px-4 sm:px-6 py-3 border-b border-[#F3F4F6] flex items-center justify-between gap-3 bg-white">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-[#165B39] to-[#0B2C1B] text-white flex items-center justify-center shadow-2xs shrink-0">
             <Sparkles className="h-4 w-4" />
           </div>
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-bold text-sm text-[#111827]">
-                AgriBot Telemetry Copilot
-              </h3>
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-[#DCFCE7] text-[#166534]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#166534] animate-pulse" />
-                {systemMeta.edgeOnline ? "ESP32 Online • Live" : "Telemetri Real-Time"}
-              </span>
-            </div>
-            <p className="text-[11px] text-[#6B7280]">
-              Terhubung ke Gemini API dengan injeksi telemetri ESP32 real-time
-            </p>
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <h1 className="text-sm font-bold text-[#111827] tracking-tight">
+              AgriBot
+            </h1>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#F8F9FA] border border-[#E5E7EB] text-[10.5px] font-mono text-[#4B5563] truncate">
+              <span
+                className={`h-1.5 w-1.5 rounded-full shrink-0 ${
+                  systemMeta.edgeOnline
+                    ? "bg-[#165B39] animate-pulse"
+                    : "bg-[#4EAB7C]"
+                }`}
+              />
+              <span className="truncate">{activeModelLabel}</span>
+            </span>
           </div>
         </div>
 
         <button
+          type="button"
           onClick={handleResetChat}
-          className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] text-[#6B7280] hover:text-[#111827] flex items-center justify-center transition-colors cursor-pointer shrink-0"
-          title="Reset Percakapan"
+          disabled={messages.length === 0 || isTyping}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F8F9FA] disabled:opacity-40 text-xs font-medium text-[#374151] transition cursor-pointer disabled:cursor-default shrink-0"
+          title="Mulai obrolan baru"
         >
-          <Trash2 className="h-3.5 w-3.5" />
+          <SquarePen className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Obrolan Baru</span>
         </button>
       </div>
 
-      {/* 1b. Live ESP32 Sensor Context Strip */}
-      <div className="py-2 px-3 mt-2.5 rounded-2xl bg-[#F8F9FA] border border-[#E5E7EB] flex flex-wrap items-center gap-2 text-[10.5px] font-mono">
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold bg-[#DCFCE7] text-[#166534] border border-[#165B39]/25">
-          <Sun className="h-3 w-3 text-[#D97706]" />
-          <span>
-            LDR {Math.round(sensors.lightIntensity)} lux (LIVE ESP32)
-          </span>
-        </span>
-        <span className="text-[#4B5563]">
-          pH <strong className="text-[#111827]">{sensors.ph.toFixed(2)}</strong>
-        </span>
-        <span className="text-[#D1D5DB]">•</span>
-        <span className="text-[#4B5563]">
-          Suhu <strong className="text-[#111827]">{sensors.waterTemperature.toFixed(1)}°C</strong>
-        </span>
-        <span className="text-[#D1D5DB]">•</span>
-        <span className="text-[#4B5563]">
-          TDS <strong className="text-[#111827]">{Math.round(sensors.tds)} ppm</strong>
-        </span>
-        <span className="text-[#D1D5DB]">•</span>
-        <span className="text-[#4B5563]">
-          DO <strong className="text-[#111827]">{sensors.dissolvedOxygen.toFixed(2)} mg/L</strong>
-        </span>
+      {/* 2. Pure Centered Conversation Area (Scrollable) */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-2.5 sm:py-4">
+        <div className="max-w-3xl mx-auto w-full min-h-full flex flex-col">
+          {messages.length === 0 ? (
+            /* Empty Welcome Canvas matching ChatGPT / Gemini */
+            <div className="my-auto w-full flex flex-col items-center py-1 sm:py-3">
+              <div className="h-9 w-9 sm:h-11 sm:w-11 rounded-2xl bg-gradient-to-br from-[#165B39] via-[#124B2E] to-[#0B2C1B] text-white flex items-center justify-center shadow-sm mb-2 sm:mb-3">
+                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
+              </div>
+
+              <h2 className="text-lg sm:text-[22px] font-bold tracking-tight text-[#111827] text-center leading-tight">
+                Halo, ada yang bisa AgriBot bantu?
+              </h2>
+              <p className="text-[11.5px] sm:text-[13px] text-[#6B7280] text-center max-w-lg mt-1 leading-snug">
+                Unggah foto daun atau ikan untuk diagnosis gejala penyakit, atau minta ringkasan grafik IoT dalam gaya apa pun.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-2xl mt-3.5 sm:mt-5">
+                {STARTER_PROMPTS.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.title}
+                      type="button"
+                      disabled={isTyping}
+                      onClick={() => {
+                        if (item.isPhotoTip) {
+                          fileInputRef.current?.click();
+                        } else {
+                          void handleSend(item.prompt);
+                        }
+                      }}
+                      className="group text-left p-2.5 sm:p-3 rounded-2xl border border-[#E5E7EB] bg-[#F8F9FA]/70 hover:bg-white hover:border-[#165B39]/40 hover:shadow-xs transition-all flex items-start gap-2.5 cursor-pointer"
+                    >
+                      <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-xl bg-white border border-[#E5E7EB] group-hover:border-[#165B39]/30 group-hover:bg-[#DCFCE7]/50 text-[#165B39] flex items-center justify-center shrink-0 transition-colors">
+                        <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold text-[#111827] group-hover:text-[#165B39] transition-colors leading-tight">
+                          {item.title}
+                        </div>
+                        <div className="text-[11px] text-[#6B7280] mt-0.5 leading-snug line-clamp-2">
+                          {item.description}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            /* Active Message Stream */
+            <div className="space-y-6 pb-2">
+              {messages.map((m) =>
+                m.sender === "user" ? (
+                  <div key={m.id} className="flex flex-col items-end gap-2">
+                    {m.images && m.images.length > 0 && (
+                      <div className="flex flex-wrap justify-end gap-2 max-w-[88%] sm:max-w-[75%]">
+                        {m.images.map((img, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() =>
+                              setLightboxUrl(
+                                img.previewUrl ||
+                                  `data:${img.mimeType};base64,${img.data}`
+                              )
+                            }
+                            className="relative h-28 w-28 sm:h-36 sm:w-36 rounded-2xl overflow-hidden border border-[#E5E7EB] shadow-2xs hover:opacity-95 transition cursor-zoom-in"
+                          >
+                            <Image
+                              src={
+                                img.previewUrl ||
+                                `data:${img.mimeType};base64,${img.data}`
+                              }
+                              alt={img.name || "Lampiran foto"}
+                              fill
+                              unoptimized
+                              className="object-cover"
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {m.text && (
+                      <div className="max-w-[88%] sm:max-w-[78%] px-4 py-2.5 rounded-[22px] rounded-tr-[6px] bg-[#165B39] text-white text-[13px] leading-relaxed shadow-2xs whitespace-pre-wrap">
+                        {m.text}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div key={m.id} className="flex items-start gap-3 sm:gap-3.5">
+                    <div className="h-7 w-7 rounded-full bg-[#DCFCE7] border border-[#165B39]/15 text-[#165B39] flex items-center justify-center shrink-0 mt-0.5">
+                      <Sparkles className="h-3.5 w-3.5" />
+                    </div>
+
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="flex items-center justify-between gap-2 text-[10.5px] font-mono text-[#9CA3AF]">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-semibold text-[#165B39]">
+                            AgriBot
+                          </span>
+                          {m.model && (
+                            <span className="truncate">• {m.model}</span>
+                          )}
+                          {m.latencyMs !== undefined && m.latencyMs > 0 && (
+                            <span>• {m.latencyMs}ms</span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyReply(m.id, m.text)}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-[#F3F4F6] text-[#6B7280] transition cursor-pointer shrink-0"
+                          title="Salin jawaban"
+                        >
+                          {copiedId === m.id ? (
+                            <>
+                              <Check className="h-3 w-3 text-[#165B39]" />
+                              <span className="text-[#165B39]">Disalin</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-3 w-3" />
+                              <span>Salin</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      <FormattedMarkdownMessage text={m.text} />
+
+                      {/* Dynamic Interactive Multi-Style Charts */}
+                      {m.charts && m.charts.length > 0 && (
+                        <div className="space-y-3 pt-1">
+                          {m.charts.map((chartSpec, cIdx) => (
+                            <DynamicChartRenderer
+                              key={`${m.id}-chart-${chartSpec.id || cIdx}-${cIdx}`}
+                              spec={chartSpec}
+                            />
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Discreet Actionable Relay Suggestions */}
+                      {m.suggestedActions && m.suggestedActions.length > 0 && (
+                        <div className="pt-2.5 mt-2 border-t border-[#F3F4F6] flex flex-wrap items-center gap-2">
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-[#9CA3AF] mr-1">
+                            Saran Relay:
+                          </span>
+                          {m.suggestedActions.map((act) => {
+                            const key = `${m.id}:${act.actuatorId}`;
+                            const liveActuator = actuators[act.actuatorId];
+                            const alreadyMatches =
+                              liveActuator &&
+                              liveActuator.isOn === act.targetState;
+                            const isPending = pendingActionKey === key;
+                            const feedback = actionFeedback[key];
+
+                            return (
+                              <div key={key} className="inline-flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  disabled={alreadyMatches || isPending}
+                                  onClick={() =>
+                                    handleExecuteSuggestedAction(m.id, act)
+                                  }
+                                  title={act.reason}
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold transition cursor-pointer ${
+                                    alreadyMatches
+                                      ? "bg-[#DCFCE7] text-[#166534] border border-[#165B39]/25 cursor-default"
+                                      : "bg-[#165B39] hover:bg-[#124B2E] text-white shadow-2xs"
+                                  }`}
+                                >
+                                  {isPending ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : alreadyMatches ? (
+                                    <Check className="h-3 w-3" />
+                                  ) : (
+                                    <Power className="h-3 w-3" />
+                                  )}
+                                  <span>
+                                    {alreadyMatches
+                                      ? `${act.label} (Aktif)`
+                                      : act.label}
+                                  </span>
+                                </button>
+                                {feedback && !feedback.ok && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] text-rose-600">
+                                    <AlertCircle className="h-3 w-3 shrink-0" />
+                                    <span>{feedback.msg}</span>
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              )}
+
+              {isTyping && (
+                <div className="flex items-start gap-3 sm:gap-3.5">
+                  <div className="h-7 w-7 rounded-full bg-[#DCFCE7] border border-[#165B39]/15 text-[#165B39] flex items-center justify-center shrink-0 animate-pulse">
+                    <Sparkles className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="py-1.5 flex items-center gap-2 text-xs text-[#6B7280]">
+                    <span className="flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#165B39] animate-bounce" />
+                      <span
+                        className="h-1.5 w-1.5 rounded-full bg-[#165B39] animate-bounce"
+                        style={{ animationDelay: "150ms" }}
+                      />
+                      <span
+                        className="h-1.5 w-1.5 rounded-full bg-[#165B39] animate-bounce"
+                        style={{ animationDelay: "300ms" }}
+                      />
+                    </span>
+                    <span className="font-mono text-[11px]">
+                      AgriBot sedang menganalisis...
+                    </span>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* 2. Chat Messages Area */}
-      <div className="flex-1 overflow-y-auto space-y-3.5 py-4 pr-1">
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className={`flex gap-3 ${
-              m.sender === "user" ? "justify-end" : "justify-start"
-            }`}
-          >
-            {m.sender === "bot" && (
-              <div className="h-8 w-8 rounded-full bg-[#DCFCE7] text-[#166534] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
-                <Bot className="h-4 w-4" />
+      {/* 3. Anchored Rounded Gemini/ChatGPT Pill Composer */}
+      <div className="shrink-0 px-3 sm:px-6 pb-3 sm:pb-4 pt-1 bg-white">
+        <div className="max-w-3xl mx-auto w-full">
+          {uploadError && (
+            <div className="mb-2 px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-[11px] text-rose-700 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                <span>{uploadError}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setUploadError(null)}
+                className="text-rose-500 hover:text-rose-700 cursor-pointer"
+                aria-label="Tutup peringatan unggahan"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+
+          <div className="rounded-[24px] border border-[#E5E7EB] bg-[#F8F9FA] focus-within:bg-white focus-within:border-[#165B39] focus-within:ring-2 focus-within:ring-[#165B39]/10 transition-all px-3.5 pt-2.5 pb-2 shadow-2xs">
+            {/* Image Attachment Preview Tray */}
+            {pendingImages.length > 0 && (
+              <div className="flex items-center gap-2.5 pb-2.5 mb-2 border-b border-[#E5E7EB]/80 overflow-x-auto">
+                {pendingImages.map((img, idx) => (
+                  <div
+                    key={idx}
+                    className="relative h-16 w-16 rounded-xl overflow-hidden border border-[#E5E7EB] bg-white shrink-0 group"
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        img.previewUrl && setLightboxUrl(img.previewUrl)
+                      }
+                      className="block h-full w-full cursor-zoom-in"
+                      title={img.name || "Pratinjau foto"}
+                    >
+                      <Image
+                        src={
+                          img.previewUrl ||
+                          `data:${img.mimeType};base64,${img.data}`
+                        }
+                        alt={img.name || "Lampiran foto"}
+                        fill
+                        unoptimized
+                        className="object-cover"
+                      />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removePendingImage(idx)}
+                      aria-label="Hapus lampiran gambar"
+                      className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/70 hover:bg-black text-white flex items-center justify-center transition cursor-pointer"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+                <span className="text-[10.5px] font-mono text-[#6B7280] pl-1 shrink-0">
+                  {pendingImages.length}/{MAX_IMAGES_PER_TURN} foto siap dianalisis
+                </span>
               </div>
             )}
 
-            <div
-              className={`max-w-[88%] sm:max-w-[78%] p-4 rounded-[20px] text-xs shadow-xs ${
-                m.sender === "user"
-                  ? "bg-[#165B39] text-white rounded-tr-none font-medium"
-                  : "bg-[#F8F9FA] border border-[#E5E7EB] text-[#111827] rounded-tl-none"
-              }`}
-            >
-              {m.sender === "bot" && (m.provider || m.category) && (
-                <div className="flex flex-wrap items-center gap-1.5 mb-2 pb-2 border-b border-[#E5E7EB]/80 text-[10px] font-mono">
-                  <span
-                    className={`px-2 py-0.5 rounded-full font-bold ${
-                      m.provider === "gemini"
-                        ? "bg-[#DCFCE7] text-[#166534]"
-                        : "bg-amber-100 text-amber-800"
-                    }`}
-                  >
-                    {m.provider === "gemini" ? "✨ Gemini" : "⚙️ ECAD Engine"}
-                    {m.model ? ` • ${m.model}` : ""}
-                  </span>
-                  {m.category && (
-                    <span className="px-2 py-0.5 rounded-full bg-white border border-[#E5E7EB] text-[#4B5563]">
-                      {formatCategory(m.category)}
-                    </span>
-                  )}
-                  {m.latencyMs !== undefined && (
-                    <span className="text-[#9CA3AF] ml-auto">{m.latencyMs}ms</span>
-                  )}
-                </div>
-              )}
+            <textarea
+              ref={textareaRef}
+              rows={1}
+              value={input}
+              disabled={isTyping}
+              onChange={(e) => setInput(e.target.value)}
+              onPaste={handlePaste}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  void handleSend();
+                }
+              }}
+              placeholder="Tanya AgriBot, tempel / unggah foto daun atau ikan, atau minta grafik IoT..."
+              className="w-full resize-none bg-transparent text-base sm:text-[13.5px] text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none leading-relaxed max-h-[136px] disabled:opacity-60"
+            />
 
-              <FormattedMarkdownMessage text={m.text} />
+            <div className="flex items-center justify-between gap-2 pt-1.5">
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={isTyping || pendingImages.length >= MAX_IMAGES_PER_TURN}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#DCFCE7]/60 hover:border-[#165B39]/30 hover:text-[#165B39] disabled:opacity-45 text-xs font-medium text-[#4B5563] transition cursor-pointer disabled:cursor-default"
+                  title="Unggah foto daun tanaman atau ikan (PNG/JPG/WEBP, bisa juga drag & drop atau Ctrl+V)"
+                >
+                  <ImagePlus className="h-4 w-4 shrink-0" />
+                  <span>Unggah Foto</span>
+                </button>
+              </div>
 
-              {/* One-Click Interactive Suggested Actuator Actions */}
-              {m.sender === "bot" && m.suggestedActions && m.suggestedActions.length > 0 && (
-                <div className="mt-3 pt-2.5 border-t border-[#E5E7EB] space-y-2">
-                  <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#6B7280]">
-                    Tindakan Relay Disarankan
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {m.suggestedActions.map((act) => {
-                      const key = `${m.id}:${act.actuatorId}`;
-                      const liveActuator = actuators[act.actuatorId];
-                      const alreadyMatches =
-                        liveActuator && liveActuator.isOn === act.targetState;
-                      const isPending = pendingActionKey === key;
-                      const feedback = actionFeedback[key];
-
-                      return (
-                        <div key={key} className="space-y-1">
-                          <button
-                            type="button"
-                            disabled={alreadyMatches || isPending}
-                            onClick={() => handleExecuteSuggestedAction(m.id, act)}
-                            title={act.reason}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition cursor-pointer ${
-                              alreadyMatches
-                                ? "bg-[#DCFCE7] text-[#166534] border border-[#165B39]/25 cursor-default"
-                                : "bg-[#165B39] hover:bg-[#124B2E] text-white shadow-2xs"
-                            }`}
-                          >
-                            {isPending ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : alreadyMatches ? (
-                              <Check className="h-3 w-3" />
-                            ) : (
-                              <Power className="h-3 w-3" />
-                            )}
-                            <span>
-                              {alreadyMatches ? `${act.label} (Aktif)` : act.label}
-                            </span>
-                          </button>
-                          {feedback && !feedback.ok && (
-                            <div className="flex items-center gap-1 text-[10px] text-rose-600">
-                              <AlertCircle className="h-3 w-3 shrink-0" />
-                              <span>{feedback.msg}</span>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <span
-                className={`text-[10px] block mt-2 text-right font-mono ${
-                  m.sender === "user" ? "text-white/70" : "text-[#9CA3AF]"
-                }`}
+              <button
+                type="button"
+                disabled={!canSend}
+                onClick={() => void handleSend()}
+                aria-label="Kirim pesan"
+                className="h-8 w-8 rounded-full bg-[#165B39] hover:bg-[#124B2E] disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF] text-white flex items-center justify-center active:scale-95 transition cursor-pointer disabled:cursor-default shrink-0"
               >
-                {m.time}
-              </span>
+                <Send className="h-3.5 w-3.5" />
+              </button>
             </div>
           </div>
-        ))}
 
-        {isTyping && (
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-full bg-[#DCFCE7] text-[#166534] flex items-center justify-center shrink-0">
-              <Bot className="h-4 w-4" />
-            </div>
-            <div className="px-4 py-3 rounded-[18px] rounded-tl-none bg-[#F8F9FA] border border-[#E5E7EB] flex items-center gap-2 text-xs text-[#4B5563]">
-              <span className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-[#165B39] animate-bounce" />
-                <span
-                  className="h-2 w-2 rounded-full bg-[#165B39] animate-bounce"
-                  style={{ animationDelay: "150ms" }}
-                />
-                <span
-                  className="h-2 w-2 rounded-full bg-[#165B39] animate-bounce"
-                  style={{ animationDelay: "300ms" }}
-                />
-              </span>
-              <span className="font-mono text-[11px] text-[#6B7280]">
-                Menganalisis sensor &amp; memanggil Gemini AI...
-              </span>
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
+          <p className="text-[10px] text-[#9CA3AF] text-center mt-1.5 font-mono truncate">
+            Terhubung telemetri real-time {systemMeta.edgeNode} • Mendukung analisis foto penyakit &amp; grafik dinamis
+          </p>
+        </div>
       </div>
 
-      {/* 3. Quick Prompts Chips */}
-      <div className="pt-2.5 pb-2 border-t border-[#F3F4F6] flex flex-wrap gap-1.5">
-        {QUICK_PROMPTS.map((qp) => (
-          <button
-            key={qp.label}
-            type="button"
-            disabled={isTyping}
-            onClick={() => handleSend(qp.prompt)}
-            className="px-3 py-1.5 rounded-full bg-[#F8F9FA] border border-[#E5E7EB] hover:bg-[#DCFCE7] hover:text-[#166534] hover:border-[#166534]/30 disabled:opacity-50 text-[#4B5563] text-[11px] font-medium transition cursor-pointer"
+      {/* Full-Resolution Image Preview Lightbox Portal */}
+      {lightboxUrl &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            onClick={() => setLightboxUrl(null)}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Pratinjau gambar lampiran"
           >
-            {qp.label}
-          </button>
-        ))}
-      </div>
-
-      {/* 4. Input Bar */}
-      <div className="flex items-center gap-2 pt-1">
-        <input
-          type="text"
-          value={input}
-          disabled={isTyping}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSend()}
-          placeholder="Tanya AgriBot: diagnosis tanaman/air/ikan, prediksi panen, atau gejala dini..."
-          className="flex-1 px-4 py-2.5 rounded-full border border-[#E5E7EB] text-xs text-[#111827] focus:outline-none focus:border-[#165B39] focus:ring-1 focus:ring-[#165B39] bg-[#F8F9FA] placeholder:text-[#9CA3AF] disabled:opacity-60"
-        />
-        <button
-          type="button"
-          disabled={isTyping || !input.trim()}
-          onClick={() => handleSend()}
-          className="h-10 w-10 rounded-full bg-[#165B39] hover:bg-[#0F3F27] disabled:opacity-50 text-white flex items-center justify-center active:scale-95 transition-all shadow-xs cursor-pointer shrink-0"
-          aria-label="Kirim pesan"
-        >
-          <Send className="h-4 w-4" />
-        </button>
-      </div>
+            <button
+              type="button"
+              onClick={() => setLightboxUrl(null)}
+              aria-label="Tutup pratinjau"
+              className="absolute top-4 right-4 h-10 w-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition cursor-pointer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-4xl max-h-[85vh] flex items-center justify-center"
+            >
+              <Image
+                src={lightboxUrl}
+                alt="Pratinjau penuh lampiran"
+                width={1280}
+                height={960}
+                unoptimized
+                className="max-w-full max-h-[85vh] w-auto h-auto object-contain rounded-2xl shadow-2xl"
+              />
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { fetchFromBackend } from "./apiConfig";
 import {
   AgriBotChatResponse,
   AgriBotChatTurn,
+  AgriBotImageAttachment,
   EcosystemDiagnosticReport,
 } from "./types";
 
@@ -84,6 +85,7 @@ export async function fetchAgriBotDiagnostics(
 export async function sendAgriBotChat(payload: {
   message: string;
   history?: AgriBotChatTurn[];
+  images?: AgriBotImageAttachment[];
   cropDayPakcoy?: number;
   cropDayKangkung?: number;
 }): Promise<AgriBotChatResponse> {
@@ -93,15 +95,26 @@ export async function sendAgriBotChat(payload: {
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        message: payload.message,
+        history: payload.history,
+        images: payload.images?.map((img) => ({
+          mimeType: img.mimeType,
+          data: img.data,
+          name: img.name,
+        })),
+        cropDayPakcoy: payload.cropDayPakcoy,
+        cropDayKangkung: payload.cropDayKangkung,
+      }),
     },
-    18000
+    30000
   );
   const latencyMs = Math.round(performance.now() - startedAt);
 
   if (res.ok && res.data && res.data.reply) {
     return {
       ...res.data,
+      charts: Array.isArray(res.data.charts) ? res.data.charts : [],
       latencyMs,
     };
   }
@@ -109,12 +122,13 @@ export async function sendAgriBotChat(payload: {
   return {
     success: false,
     reply:
-      "Maaf, koneksi ke server AI backend sedang terputus sementara. Pastikan layanan backend UrbanGrow berjalan (`moon run backend:dev`) atau periksa `NEXT_PUBLIC_API_URL`, lalu coba kirim ulang pertanyaan Anda.",
+      "Maaf, koneksi ke server AI backend sedang terputus sementara. Pastikan layanan backend UrbanGrow berjalan atau periksa koneksi jaringan, lalu coba kirim ulang pertanyaan Anda.",
     provider: "offline_fallback",
     model: "offline-guard",
     category: "general",
     latencyMs,
     suggestedActions: [],
+    charts: [],
     diagnostics: {
       timestamp: new Date().toISOString(),
       overallStatus: "WARNING",

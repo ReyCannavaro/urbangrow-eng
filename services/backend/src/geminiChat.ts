@@ -61,6 +61,67 @@ export interface EcosystemDiagnosticReport {
   }>;
 }
 
+export type AgriBotChartType =
+  | "line"
+  | "area"
+  | "bar"
+  | "horizontal_bar"
+  | "pie"
+  | "donut"
+  | "radar"
+  | "scatter"
+  | "composed"
+  | "radial"
+  | "heatmap";
+
+export type AgriBotChartTheme =
+  | "light"
+  | "dark"
+  | "emerald"
+  | "ocean"
+  | "sunset"
+  | "neon"
+  | "minimal"
+  | "brutalist";
+
+export interface AgriBotChartSeries {
+  name: string;
+  unit?: string;
+  color?: string;
+  type?: "line" | "area" | "bar";
+  values: number[];
+  points?: Array<{ x: number; y: number; label?: string }>;
+}
+
+export interface AgriBotChartStyle {
+  theme?: AgriBotChartTheme;
+  curve?: "smooth" | "linear" | "step";
+  palette?: string[];
+  showGrid?: boolean;
+  showValues?: boolean;
+  showLegend?: boolean;
+  xLabel?: string;
+  yLabel?: string;
+  unit?: string;
+}
+
+export interface AgriBotChartSpec {
+  id: string;
+  title: string;
+  subtitle?: string;
+  chartType: AgriBotChartType;
+  labels: string[];
+  series: AgriBotChartSeries[];
+  style?: AgriBotChartStyle;
+  summaryNote?: string;
+}
+
+export interface AgriBotImageAttachment {
+  mimeType: string;
+  data: string;
+  name?: string;
+}
+
 export interface ChatHistoryTurn {
   role: "user" | "assistant" | "bot" | "model";
   text: string;
@@ -69,6 +130,7 @@ export interface ChatHistoryTurn {
 export interface AgriBotChatRequest {
   message: string;
   history?: ChatHistoryTurn[];
+  images?: AgriBotImageAttachment[];
   cropDayPakcoy?: number;
   cropDayKangkung?: number;
 }
@@ -81,6 +143,7 @@ export interface AgriBotChatResponse {
   category: "diagnosis" | "prediction" | "advisory" | "general";
   diagnostics: EcosystemDiagnosticReport;
   suggestedActions: EcosystemDiagnosticReport["suggestedActions"];
+  charts?: AgriBotChartSpec[];
 }
 
 function worstSeverity(a: HealthSeverity, b: HealthSeverity): HealthSeverity {
@@ -163,6 +226,155 @@ function computeHarvestItem(
     growthStage,
     lightEfficiencyPct: Math.round(lightEfficiency * 100),
   };
+}
+
+const VALID_CHART_TYPES = new Set<AgriBotChartType>([
+  "line",
+  "area",
+  "bar",
+  "horizontal_bar",
+  "pie",
+  "donut",
+  "radar",
+  "scatter",
+  "composed",
+  "radial",
+  "heatmap",
+]);
+
+const VALID_CHART_THEMES = new Set<AgriBotChartTheme>([
+  "light",
+  "dark",
+  "emerald",
+  "ocean",
+  "sunset",
+  "neon",
+  "minimal",
+  "brutalist",
+]);
+
+interface SampledHistoryPoint {
+  timeWib: string;
+  ph: number;
+  waterTemperature: number;
+  tds: number;
+  dissolvedOxygen: number;
+  lightIntensity: number;
+  airTemperature: number;
+  humidity: number;
+  waterLevel: number;
+}
+
+function sanitizeChartSpecs(rawCharts: unknown): AgriBotChartSpec[] {
+  if (!Array.isArray(rawCharts)) return [];
+  const cleaned: AgriBotChartSpec[] = [];
+
+  for (let i = 0; i < Math.min(rawCharts.length, 4); i++) {
+    const item = rawCharts[i];
+    if (!item || typeof item !== "object") continue;
+    const raw = item as Record<string, unknown>;
+
+    const chartTypeRaw = String(raw.chartType || "line").toLowerCase() as AgriBotChartType;
+    const chartType: AgriBotChartType = VALID_CHART_TYPES.has(chartTypeRaw)
+      ? chartTypeRaw
+      : "line";
+
+    const rawSeriesList = Array.isArray(raw.series) ? raw.series : [];
+    const series: AgriBotChartSeries[] = [];
+
+    for (let sIdx = 0; sIdx < Math.min(rawSeriesList.length, 8); sIdx++) {
+      const sRaw = rawSeriesList[sIdx] as Record<string, unknown> | null;
+      if (!sRaw || typeof sRaw !== "object") continue;
+
+      const values = Array.isArray(sRaw.values)
+        ? sRaw.values
+            .map((v) => Number(v))
+            .filter((v) => Number.isFinite(v))
+        : [];
+
+      const points = Array.isArray(sRaw.points)
+        ? sRaw.points
+            .map((p) => {
+              if (!p || typeof p !== "object") return null;
+              const pt = p as Record<string, unknown>;
+              const x = Number(pt.x);
+              const y = Number(pt.y);
+              if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+              return {
+                x,
+                y,
+                label: typeof pt.label === "string" ? pt.label : undefined,
+              };
+            })
+            .filter((p): p is NonNullable<typeof p> => p !== null)
+        : undefined;
+
+      if (values.length === 0 && (!points || points.length === 0)) continue;
+
+      const sType = sRaw.type;
+      series.push({
+        name: typeof sRaw.name === "string" && sRaw.name.trim() ? sRaw.name.trim() : `Seri ${sIdx + 1}`,
+        unit: typeof sRaw.unit === "string" ? sRaw.unit : undefined,
+        color:
+          typeof sRaw.color === "string" && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(sRaw.color.trim())
+            ? sRaw.color.trim()
+            : undefined,
+        type: sType === "line" || sType === "area" || sType === "bar" ? sType : undefined,
+        values,
+        points,
+      });
+    }
+
+    if (series.length === 0) continue;
+
+    const labels = Array.isArray(raw.labels)
+      ? raw.labels.map((l) => String(l))
+      : series[0].values.map((_, idx) => `#${idx + 1}`);
+
+    const rawStyle =
+      raw.style && typeof raw.style === "object"
+        ? (raw.style as Record<string, unknown>)
+        : {};
+    const rawTheme = String(rawStyle.theme || "emerald").toLowerCase() as AgriBotChartTheme;
+    const theme: AgriBotChartTheme = VALID_CHART_THEMES.has(rawTheme)
+      ? rawTheme
+      : "emerald";
+
+    const palette = Array.isArray(rawStyle.palette)
+      ? rawStyle.palette
+          .map((c) => (typeof c === "string" ? c.trim() : ""))
+          .filter((c) => /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(c))
+      : undefined;
+
+    cleaned.push({
+      id: typeof raw.id === "string" && raw.id.trim() ? raw.id.trim() : `chart-${i + 1}`,
+      title:
+        typeof raw.title === "string" && raw.title.trim()
+          ? raw.title.trim()
+          : "Ringkasan Telemetri IoT",
+      subtitle: typeof raw.subtitle === "string" ? raw.subtitle : undefined,
+      chartType,
+      labels,
+      series,
+      style: {
+        theme,
+        curve:
+          rawStyle.curve === "linear" || rawStyle.curve === "step" || rawStyle.curve === "smooth"
+            ? rawStyle.curve
+            : "smooth",
+        palette: palette && palette.length > 0 ? palette : undefined,
+        showGrid: typeof rawStyle.showGrid === "boolean" ? rawStyle.showGrid : true,
+        showValues: typeof rawStyle.showValues === "boolean" ? rawStyle.showValues : false,
+        showLegend: typeof rawStyle.showLegend === "boolean" ? rawStyle.showLegend : true,
+        xLabel: typeof rawStyle.xLabel === "string" ? rawStyle.xLabel : undefined,
+        yLabel: typeof rawStyle.yLabel === "string" ? rawStyle.yLabel : undefined,
+        unit: typeof rawStyle.unit === "string" ? rawStyle.unit : undefined,
+      },
+      summaryNote: typeof raw.summaryNote === "string" ? raw.summaryNote : undefined,
+    });
+  }
+
+  return cleaned;
 }
 
 export class AgriBotEngine {
@@ -486,12 +698,23 @@ export class AgriBotEngine {
 
   private static buildFallbackReply(
     message: string,
-    diag: EcosystemDiagnosticReport
+    diag: EcosystemDiagnosticReport,
+    hasImages: boolean = false
   ): string {
     const q = message.toLowerCase();
     const s = diag.sensors;
     const { pakcoy, kangkung } = diag.predictions.harvest;
     const ldrBadge = "Sensor LDR ESP32";
+
+    if (hasImages) {
+      return [
+        `### 🔍 Foto Diterima — Sinkronisasi Telemetri & Evaluasi Awal`,
+        `Gambar berhasil diterima (${ldrBadge} saat ini: **${s.lightIntensity} lux**, pH **${s.ph}**, TDS **${s.tds} ppm**, Suhu **${s.waterTemperature}°C**, DO **${s.dissolvedOxygen} mg/L**).`,
+        `- **Analisis Visual AI Penuh**: Pemeriksaan pola bercak daun / gejala eksternal ikan memerlukan model Vision Gemini aktif pada backend.`,
+        `- **Korelasi Parameter IoT Saat Ini**:\n  - Tumbuhan: ${diag.diagnosis.plant.details[0]}\n  - Kualitas Air: ${diag.diagnosis.water.details[0]}\n  - Ikan Nila & Lele: ${diag.diagnosis.fish.details[0]}`,
+        `**Rekomendasi**: ${diag.diagnosis.plant.recommendation}`,
+      ].join("\n\n");
+    }
 
     const asksHarvest =
       q.includes("panen") || q.includes("pakcoy") || q.includes("kangkung") || q.includes("gdd");
@@ -568,28 +791,216 @@ export class AgriBotEngine {
     ].join("\n\n");
   }
 
+  private static buildFallbackCharts(
+    message: string,
+    diag: EcosystemDiagnosticReport,
+    sampledHistory: SampledHistoryPoint[]
+  ): AgriBotChartSpec[] {
+    const q = message.toLowerCase();
+    const wantsChart =
+      q.includes("grafik") ||
+      q.includes("chart") ||
+      q.includes("diagram") ||
+      q.includes("plot") ||
+      q.includes("visual") ||
+      q.includes("ringkas") ||
+      q.includes("statistik");
+    if (!wantsChart) return [];
+
+    let theme: AgriBotChartTheme = "emerald";
+    if (q.includes("neon") || q.includes("cyber")) theme = "neon";
+    else if (q.includes("dark") || q.includes("gelap") || q.includes("malam")) theme = "dark";
+    else if (q.includes("ocean") || q.includes("biru") || q.includes("laut")) theme = "ocean";
+    else if (q.includes("sunset") || q.includes("hangat") || q.includes("oranye")) theme = "sunset";
+    else if (q.includes("minimal")) theme = "minimal";
+    else if (q.includes("brutal")) theme = "brutalist";
+    else if (q.includes("light") || q.includes("terang")) theme = "light";
+
+    let chartType: AgriBotChartType = "line";
+    if (q.includes("donut") || q.includes("donat")) chartType = "donut";
+    else if (q.includes("pie") || q.includes("lingkaran")) chartType = "pie";
+    else if (q.includes("radar") || q.includes("jaring")) chartType = "radar";
+    else if (q.includes("scatter") || q.includes("sebar") || q.includes("korelasi")) chartType = "scatter";
+    else if (q.includes("horizontal")) chartType = "horizontal_bar";
+    else if (q.includes("bar") || q.includes("batang") || q.includes("kolom")) chartType = "bar";
+    else if (q.includes("area")) chartType = "area";
+    else if (q.includes("radial") || q.includes("gauge")) chartType = "radial";
+    else if (q.includes("heatmap")) chartType = "heatmap";
+    else if (q.includes("kombinasi") || q.includes("composed")) chartType = "composed";
+
+    const s = diag.sensors;
+    const labels = sampledHistory.map((h) => h.timeWib);
+
+    if (chartType === "pie" || chartType === "donut") {
+      const snap = simulator.getSnapshot();
+      const relayLabels = Object.values(snap.actuators).map((a) => a.name);
+      const relayWatts = Object.values(snap.actuators).map((a) => (a.isOn ? a.powerWatts : 2));
+      return [
+        {
+          id: "fallback-pie",
+          title: "Distribusi Beban Daya Aktuator IoT",
+          subtitle: "Proporsi daya perangkat keras aktif pada node ESP32-GROW-01",
+          chartType,
+          labels: relayLabels,
+          series: [{ name: "Daya Aktif", unit: "W", values: relayWatts }],
+          style: { theme, showValues: true, showLegend: true, unit: "W" },
+        },
+      ];
+    }
+
+    if (chartType === "radar" || chartType === "radial") {
+      const phScore = Math.max(0, Math.min(100, Math.round(100 - Math.abs(s.ph - 7.0) * 35)));
+      const doScore = Math.max(0, Math.min(100, Math.round((s.dissolvedOxygen / 8.0) * 100)));
+      const tempScore = Math.max(0, Math.min(100, Math.round(100 - Math.abs(s.waterTemperature - 24.5) * 12)));
+      const tdsScore = Math.max(0, Math.min(100, Math.round(100 - Math.abs(s.tds - 580) * 0.12)));
+      const luxScore = Math.max(25, Math.min(100, Math.round((s.lightIntensity / 1200) * 100)));
+      return [
+        {
+          id: "fallback-radar",
+          title: "Indeks Kesehatan Multi-Parameter Akuaponik (%)",
+          subtitle: "Skor kelayakan ekosistem berdasarkan standar ECAD v2.0",
+          chartType,
+          labels: ["pH Air", "Oksigen DO", "Suhu Air", "TDS Nutrisi", "Cahaya LDR", "Level Air"],
+          series: [
+            {
+              name: "Kondisi Aktual",
+              unit: "%",
+              values: [phScore, doScore, tempScore, tdsScore, luxScore, Math.round(s.waterLevel)],
+            },
+            ...(chartType === "radar"
+              ? [{ name: "Target Optimal", unit: "%", values: [95, 95, 95, 95, 90, 95] }]
+              : []),
+          ],
+          style: { theme, showGrid: true, showLegend: true, unit: "%" },
+        },
+      ];
+    }
+
+    if (chartType === "scatter") {
+      return [
+        {
+          id: "fallback-scatter",
+          title: "Korelasi Suhu Air vs Oksigen Terlarut (DO)",
+          subtitle: `${sampledHistory.length} titik pembacaan terbaru ESP32-GROW-01`,
+          chartType: "scatter",
+          labels,
+          series: [
+            {
+              name: "Suhu vs DO",
+              unit: "mg/L",
+              values: sampledHistory.map((h) => h.dissolvedOxygen),
+              points: sampledHistory.map((h) => ({
+                x: h.waterTemperature,
+                y: h.dissolvedOxygen,
+                label: h.timeWib,
+              })),
+            },
+          ],
+          style: { theme, showGrid: true, xLabel: "Suhu Air (°C)", yLabel: "DO (mg/L)" },
+        },
+      ];
+    }
+
+    if (chartType === "bar" || chartType === "horizontal_bar") {
+      return [
+        {
+          id: "fallback-bar",
+          title: "Ringkasan Telemetri Sensor IoT Terkini",
+          subtitle: "Pembacaan langsung node ESP32-GROW-01",
+          chartType,
+          labels: ["pH (×10)", "Suhu (°C)", "TDS (÷10)", "DO (×10)", "Cahaya (÷10 lux)", "Tandon (%)"],
+          series: [
+            {
+              name: "Nilai Terukur (Ternormalisasi)",
+              values: [
+                Number((s.ph * 10).toFixed(1)),
+                Number(s.waterTemperature.toFixed(1)),
+                Math.round(s.tds / 10),
+                Number((s.dissolvedOxygen * 10).toFixed(1)),
+                Math.round(s.lightIntensity / 10),
+                Math.round(s.waterLevel),
+              ],
+            },
+          ],
+          style: { theme, showGrid: true, showValues: true },
+        },
+      ];
+    }
+
+    return [
+      {
+        id: "fallback-timeseries",
+        title: "Ringkasan Tren Telemetri IoT Real-Time",
+        subtitle: `Riwayat ${sampledHistory.length} sampel terbaru ESP32-GROW-01 (WIB)`,
+        chartType,
+        labels,
+        series: [
+          { name: "pH Air", unit: "pH", values: sampledHistory.map((h) => h.ph), type: "line" },
+          {
+            name: "Oksigen DO",
+            unit: "mg/L",
+            values: sampledHistory.map((h) => h.dissolvedOxygen),
+            type: "line",
+          },
+          {
+            name: "Suhu Air",
+            unit: "°C",
+            values: sampledHistory.map((h) => h.waterTemperature),
+            type: "bar",
+          },
+        ],
+        style: { theme, curve: "smooth", showGrid: true, showLegend: true },
+      },
+    ];
+  }
+
   static async chat(req: AgriBotChatRequest): Promise<AgriBotChatResponse> {
     const diagnostics = this.buildDiagnostics(
       req.cropDayPakcoy ?? 14,
       req.cropDayKangkung ?? 17
     );
-    const category = this.detectCategory(req.message);
+    const snap = simulator.getSnapshot();
+    const rawHistory = simulator.getHistory();
+    const stride = Math.max(1, Math.floor(rawHistory.length / 12));
+    const sampledHistory: SampledHistoryPoint[] = rawHistory
+      .filter((_, i) => i % stride === 0 || i === rawHistory.length - 1)
+      .slice(-12)
+      .map((pt) => ({
+        timeWib: new Date(pt.timestamp).toLocaleTimeString("id-ID", {
+          timeZone: "Asia/Jakarta",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        }),
+        ph: pt.sensors.ph,
+        waterTemperature: pt.sensors.waterTemperature,
+        tds: pt.sensors.tds,
+        dissolvedOxygen: pt.sensors.dissolvedOxygen,
+        lightIntensity: pt.sensors.lightIntensity,
+        airTemperature: pt.sensors.airTemperature,
+        humidity: pt.sensors.humidity,
+        waterLevel: pt.sensors.waterLevel,
+      }));
+
+    const hasImages = Array.isArray(req.images) && req.images.length > 0;
+    const category = this.detectCategory(req.message || "diagnosis gambar");
     const configuredModel = (process.env.GEMINI_MODEL || "gemini-3.5-flash-lite").trim();
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!this.isValidGeminiKey(apiKey)) {
       return {
         success: true,
-        reply: this.buildFallbackReply(req.message, diagnostics),
+        reply: this.buildFallbackReply(req.message, diagnostics, hasImages),
         provider: "ecad_local_fallback",
         model: "ecad-rule-engine-v2",
         category,
         diagnostics,
         suggestedActions: diagnostics.suggestedActions,
+        charts: this.buildFallbackCharts(req.message, diagnostics, sampledHistory),
       };
     }
 
-    // Prioritize fast responsive flash-lite models for real-time chat UX, then heavier fallbacks
+    // Prioritize fast responsive flash-lite models for real-time multimodal chat UX
     const rawCandidates = [
       configuredModel === "gemini-2.5-flash" ? "gemini-3.5-flash-lite" : configuredModel,
       "gemini-3.5-flash-lite",
@@ -605,12 +1016,40 @@ export class AgriBotEngine {
       timeStyle: "short",
     });
 
+    const summarizeMetric = (key: keyof typeof snap.sensors) => {
+      const vals = rawHistory.map((pt) => pt.sensors[key]);
+      if (vals.length === 0) return { min: snap.sensors[key], max: snap.sensors[key], avg: snap.sensors[key] };
+      const sum = vals.reduce((acc, v) => acc + v, 0);
+      return {
+        min: Number(Math.min(...vals).toFixed(2)),
+        max: Number(Math.max(...vals).toFixed(2)),
+        avg: Number((sum / vals.length).toFixed(2)),
+      };
+    };
+
     const telemetryContextForAi = {
       timestamp: diagnostics.timestamp,
       overallStatus: diagnostics.overallStatus,
       edgeNode: "ESP32-GROW-01",
       edgeOnline: true,
       sensors: diagnostics.sensors,
+      sensorSummaryStats: {
+        sampleCount: rawHistory.length,
+        ph: summarizeMetric("ph"),
+        waterTemperature: summarizeMetric("waterTemperature"),
+        tds: summarizeMetric("tds"),
+        dissolvedOxygen: summarizeMetric("dissolvedOxygen"),
+        lightIntensity: summarizeMetric("lightIntensity"),
+        waterLevel: summarizeMetric("waterLevel"),
+      },
+      recentTimeSeries: sampledHistory,
+      actuators: Object.values(snap.actuators).map((a) => ({
+        id: a.id,
+        name: a.name,
+        code: a.code,
+        isOn: a.isOn,
+        powerWatts: a.powerWatts,
+      })),
       diagnosis: diagnostics.diagnosis,
       predictions: diagnostics.predictions,
       suggestedActions: diagnostics.suggestedActions,
@@ -618,16 +1057,22 @@ export class AgriBotEngine {
 
     const systemInstruction = `Kamu adalah **AgriBot**, asisten pakar AI sistem akuaponik pintar **UrbanGrow (ECAD v2.0)** milik tim SMK Telkom Sidoarjo.
 Waktu lokal saat ini: ${wibNow} WIB (Lokasi: Sidoarjo, Jawa Timur).
-Mandat utamamu menjawab pertanyaan petani/user tentang:
-1. Diagnosis kondisi **tumbuhan** (Pakcoy L4 & Kangkung L2), **kualitas air**, dan **ikan** (Nila L3 & Lele L1).
-2. Prediksi **kondisi air kedepan**, **estimasi panen**, dan **gejala dini kondisi air** sebelum terjadi gagal panen/kematian ikan.
+Mandat utamamu:
+1. Diagnosis kondisi & **penyakit tumbuhan** (Pakcoy L4 & Kangkung L2), **kualitas air**, serta **kesehatan & penyakit ikan** (Nila L3 & Lele L1) — termasuk **analisis visual foto/gambar** jika user mengunggah gambar daun, batang, akar, ikan, atau kondisi kolam!
+2. Prediksi kondisi air ke depan, estimasi panen GDD, dan gejala dini kegagalan ekosistem.
+3. Meringkas data IoT dan membuat **grafik/visualisasi dinamis dalam bentuk dan style apa pun** sesuai permintaan user!
 
 ATURAN KETAT:
-- Selalu gunakan waktu lokal WIB jika menyebut jam, jangan UTC.
-- Selalu dasarkan jawaban pada **DATA TELEMETRI REAL-TIME** di bawah (sebutkan angkanya secara akurat!).
-- Seluruh pembacaan sensor (\`sensors\`: cahaya LDR, pH air, TDS nutrisi, suhu air, suhu udara, kelembaban, oksigen terlarut DO, dan level air) merupakan telemetri lapangan aktual yang diterima secara real-time dari node mikrokontroler **ESP32-GROW-01**.
-- Jika user mengeluhkan gejala visual (misal daun muda menguning -> cek pH basa > 7.5 / Fe lockout; daun tua menguning -> cek TDS rendah / defisiensi N; ikan megap-megap -> cek DO < 5.0 / suhu > 28.5), hubungkan gejala visual tersebut dengan pembacaan sensor saat ini.
-- Jawab dalam **Bahasa Indonesia yang rapi, terstruktur (pakai poin markdown & bold), hangat, namun berbasis sains akuaponik**.
+- Selalu gunakan waktu lokal WIB jika menyebut jam.
+- Selalu dasarkan angka pada **DATA TELEMETRI REAL-TIME & HISTORI** di bawah (jangan mengarang angka sensor).
+- **Jika user mengunggah gambar**: lakukan analisis patologi visual mendetail terhadap gambar tersebut (misal: klorosis tepi daun, defisiensi Fe/N/K, bercak jamur, kutu/hama, busuk akar, white spot/Ich, fin rot, jamur kapas, bercak merah hemoragik, mata menonjol, atau air keruh algae), jelaskan tingkat keyakinanmu, kaitkan dengan data telemetri IoT aktual di bawah, dan berikan langkah perawatan praktis. Jika gambar buram atau bukan tanaman/ikan, jelaskan dengan jujur.
+- **Jika user meminta grafik, chart, diagram, plot, visualisasi, statistik, atau ringkasan data IoT**: sertakan array \`"charts"\` pada output JSON menggunakan data nyata dari \`recentTimeSeries\`, \`sensorSummaryStats\`, \`actuators\`, atau \`predictions.harvest\`.
+  - Pilih \`chartType\` paling sesuai atau persis sesuai permintaan user: \`"line"\`, \`"area"\`, \`"bar"\`, \`"horizontal_bar"\`, \`"pie"\`, \`"donut"\`, \`"radar"\`, \`"scatter"\`, \`"composed"\`, \`"radial"\`, atau \`"heatmap"\`.
+  - Pilih \`style\` sesuai permintaan gaya/nuansa user (\`"theme"\`: \`"light"\` | \`"dark"\` | \`"emerald"\` | \`"ocean"\` | \`"sunset"\` | \`"neon"\` | \`"minimal"\` | \`"brutalist"\`, plus \`"curve"\`: \`"smooth"\` | \`"linear"\` | \`"step"\`, dan opsional \`"palette"\` array hex color seperti \`["#165B39", "#0284C7", "#F59E0B"]\`).
+  - Untuk \`scatter\`, isi \`points: [{ "x": <num>, "y": <num>, "label": "<waktu>" }]\` pada series.
+  - Untuk \`radar\` atau \`radial\`, normalisasikan skor ke skala \`0-100\` (\`unit: "%"\`) agar sumbu terbaca seimbang.
+- Jika user tidak meminta grafik atau visualisasi data, isi \`"charts": []\`.
+- Jawab dalam **Bahasa Indonesia yang rapi, terstruktur (pakai heading markdown \`###\`, poin, bold, tabel markdown bila membantu), hangat, dan berbasis sains akuaponik**.
 
 DATA KONTEKS EKOSISTEM SAAT INI:
 ${JSON.stringify(telemetryContextForAi, null, 2)}
@@ -635,7 +1080,25 @@ ${JSON.stringify(telemetryContextForAi, null, 2)}
 KELUARKAN RESPONSE HARUS BERUPA JSON VALID DENGAN STRUKTUR:
 {
   "reply": "String markdown jawaban lengkap dalam Bahasa Indonesia",
-  "category": "diagnosis" | "prediction" | "advisory" | "general"
+  "category": "diagnosis" | "prediction" | "advisory" | "general",
+  "charts": [
+    {
+      "id": "chart-1",
+      "title": "Judul Grafik",
+      "subtitle": "Subjudul singkat sumber data ESP32-GROW-01",
+      "chartType": "line",
+      "labels": ["13:20", "13:22"],
+      "series": [
+        { "name": "Nama Metrik", "unit": "pH", "type": "line", "values": [6.95, 6.96] }
+      ],
+      "style": {
+        "theme": "emerald",
+        "curve": "smooth",
+        "showGrid": true,
+        "showLegend": true
+      }
+    }
+  ]
 }`;
 
     const recentTurns = (req.history || []).slice(-6).map((turn) => ({
@@ -643,9 +1106,27 @@ KELUARKAN RESPONSE HARUS BERUPA JSON VALID DENGAN STRUKTUR:
       parts: [{ text: turn.text }],
     }));
 
+    const userParts: Array<Record<string, unknown>> = [];
+    for (const img of (req.images || []).slice(0, 3)) {
+      const cleanBase64 = img.data.replace(/^data:[^;]+;base64,/, "").trim();
+      if (cleanBase64) {
+        userParts.push({
+          inline_data: {
+            mime_type: img.mimeType || "image/jpeg",
+            data: cleanBase64,
+          },
+        });
+      }
+    }
+    userParts.push({
+      text:
+        req.message.trim() ||
+        "Tolong analisis kondisi atau potensi penyakit tumbuhan/ikan dari gambar ini serta hubungkan dengan data sensor IoT saat ini.",
+    });
+
     const contents = [
       ...recentTurns,
-      { role: "user", parts: [{ text: req.message }] },
+      { role: "user", parts: userParts },
     ];
 
     for (const candidateModel of modelCandidates) {
@@ -662,11 +1143,11 @@ KELUARKAN RESPONSE HARUS BERUPA JSON VALID DENGAN STRUKTUR:
             contents,
             generationConfig: {
               temperature: 0.35,
-              maxOutputTokens: 1024,
+              maxOutputTokens: 3200,
               responseMimeType: "application/json",
             },
           }),
-          signal: AbortSignal.timeout(8000),
+          signal: AbortSignal.timeout(25000),
         });
 
         if (!response.ok) {
@@ -687,6 +1168,7 @@ KELUARKAN RESPONSE HARUS BERUPA JSON VALID DENGAN STRUKTUR:
 
         let parsedReply = rawText;
         let parsedCategory = category;
+        let parsedCharts: AgriBotChartSpec[] = [];
 
         try {
           const cleanedJson = rawText
@@ -706,6 +1188,9 @@ KELUARKAN RESPONSE HARUS BERUPA JSON VALID DENGAN STRUKTUR:
           ) {
             parsedCategory = obj.category;
           }
+          if (Array.isArray(obj.charts)) {
+            parsedCharts = sanitizeChartSpecs(obj.charts);
+          }
         } catch {
           // Gemini returned markdown directly; keep rawText cleanly
         }
@@ -718,6 +1203,7 @@ KELUARKAN RESPONSE HARUS BERUPA JSON VALID DENGAN STRUKTUR:
           category: parsedCategory,
           diagnostics,
           suggestedActions: diagnostics.suggestedActions,
+          charts: parsedCharts,
         };
       } catch (err: any) {
         console.warn(`[GEMINI-CHAT] Model ${candidateModel} failed: ${err?.message || "Unknown error"}`);
@@ -726,12 +1212,13 @@ KELUARKAN RESPONSE HARUS BERUPA JSON VALID DENGAN STRUKTUR:
 
     return {
       success: true,
-      reply: this.buildFallbackReply(req.message, diagnostics),
+      reply: this.buildFallbackReply(req.message, diagnostics, hasImages),
       provider: "ecad_local_fallback",
       model: "ecad-rule-engine-v2",
       category,
       diagnostics,
       suggestedActions: diagnostics.suggestedActions,
+      charts: this.buildFallbackCharts(req.message, diagnostics, sampledHistory),
     };
   }
 }
