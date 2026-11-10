@@ -4,3 +4,7 @@ projects:
   backend: 'services/backend'
   ai-engine: 'services/ai-engine'
   simulator: 'apps/iot-simulator'
+
+vcs:
+  client: 'git'
+  defaultBranch: 'main'
