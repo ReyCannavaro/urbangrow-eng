@@ -366,15 +366,23 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
     }
   }, [applyBackendSnapshot, stepSimulation]);
 
-  // Initial history load
+  // Initial and periodic database history load from VPS SQLite
   useEffect(() => {
-    async function loadInit() {
-      const res = await fetchFromBackend<{ data?: HistorySample[] }>("/api/sensors/history", {}, 2500);
-      if (res.ok && res.data?.data && res.data.data.length > 0) {
+    let cancelled = false;
+    async function loadHistoryFromDatabase() {
+      const res = await fetchFromBackend<{ data?: HistorySample[] }>("/api/sensors/history", {}, 3000);
+      if (!cancelled && res.ok && res.data?.data && res.data.data.length > 0) {
         setHistory(res.data.data);
       }
     }
-    void loadInit();
+    void loadHistoryFromDatabase();
+    const historyTimer = setInterval(() => {
+      void loadHistoryFromDatabase();
+    }, 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(historyTimer);
+    };
   }, []);
 
   // Periodic 1500ms HTTP sync (guarantees steady state even behind HTTP-only reverse proxies)

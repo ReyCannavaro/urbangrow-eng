@@ -67,7 +67,7 @@ export function EdgeTimeTrackerCard() {
         {/* Pause/Play Button */}
         <button
           onClick={() => setIsRunning(!isRunning)}
-          className="h-10 w-10 rounded-full bg-white text-[#111827] flex items-center justify-center shadow-md hover:bg-stone-100 active:scale-95 transition-all cursor-pointer"
+          className="h-10 w-10 rounded-full bg-white text-[#111827] flex items-center justify-center border border-[#E5E7EB] hover:bg-[#F9FAFB] transition-colors cursor-pointer"
           title={isRunning ? "Jeda Timer" : "Lanjutkan Timer"}
         >
           {isRunning ? (
@@ -80,7 +80,7 @@ export function EdgeTimeTrackerCard() {
         {/* Reset / Stop Button */}
         <button
           onClick={() => setSeconds(0)}
-          className="h-10 w-10 rounded-full bg-[#E11D48] text-white flex items-center justify-center shadow-md hover:bg-[#BE123C] active:scale-95 transition-all cursor-pointer"
+          className="h-10 w-10 rounded-full bg-[#E11D48] text-white flex items-center justify-center hover:bg-[#BE123C] transition-colors cursor-pointer"
           title="Reset Waktu Siklus"
         >
           <RotateCcw className="h-4 w-4" />

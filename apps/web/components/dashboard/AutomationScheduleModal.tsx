@@ -33,11 +33,10 @@ const ACTUATOR_LABELS: Record<string, string> = {
 };
 
 const METRIC_LABELS: Record<string, string> = {
-  dissolvedOxygen: "Oksigen Terlarut DO (mg/L)",
   waterTemperature: "Suhu Air Kolam (°C)",
   ph: "pH Air Kolam",
+  tds: "Nutrisi TDS (ppm)",
   lightIntensity: "Intensitas Cahaya LDR (lux)",
-  waterLevel: "Level Air Tandon (%)",
 };
 
 export function AutomationScheduleModal({
@@ -49,9 +48,9 @@ export function AutomationScheduleModal({
   const [title, setTitle] = useState("");
   const [triggerType, setTriggerType] = useState<"time" | "sensor_threshold">("time");
   const [scheduleTime, setScheduleTime] = useState("12:00");
-  const [sensorMetric, setSensorMetric] = useState("dissolvedOxygen");
-  const [operator, setOperator] = useState<"<" | ">">("<");
-  const [thresholdValue, setThresholdValue] = useState("5.5");
+  const [sensorMetric, setSensorMetric] = useState("waterTemperature");
+  const [operator, setOperator] = useState<"<" | ">">(">");
+  const [thresholdValue, setThresholdValue] = useState("27.5");
   const [actuatorId, setActuatorId] = useState("feeder");
   const [targetState, setTargetState] = useState(true);
   const [notes, setNotes] = useState("");

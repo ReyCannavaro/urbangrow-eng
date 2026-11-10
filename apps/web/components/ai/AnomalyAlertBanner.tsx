@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { AlertOctagon, CheckCircle2, ArrowRight, Bot, X } from "lucide-react";
+import { AlertOctagon, CheckCircle2, ArrowRight, ArrowUpRight, Bot, X } from "lucide-react";
 import Link from "next/link";
 import { AnomalyPrediction } from "../../lib/aiApi";
 import { useTelemetry } from "@/lib/telemetryContext";
@@ -34,7 +34,7 @@ export function AnomalyAlertBanner({ anomaly }: Props) {
       )}
 
       {!anomaly || !anomaly.is_anomaly ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-[#165B39]/20 bg-white px-5 py-3.5 text-xs shadow-2xs">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-[#E5E7EB] bg-white px-5 py-3.5 text-xs shadow-2xs">
           <div className="flex items-center gap-3 text-[#166534]">
             <div className="h-7 w-7 rounded-full bg-[#DCFCE7] flex items-center justify-center shrink-0">
               <CheckCircle2 className="h-4 w-4 text-[#165B39]" />
@@ -45,11 +45,11 @@ export function AnomalyAlertBanner({ anomaly }: Props) {
           </div>
           <Link
             href="/agribot"
-            className="inline-flex items-center gap-1.5 rounded-full bg-[#DCFCE7] hover:bg-[#BBF7D0] px-3 py-1.5 font-semibold text-[#165B39] transition"
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] hover:border-[#D1D5DB] px-3.5 py-1.5 font-semibold text-[#165B39] transition-colors group"
           >
             <Bot className="h-3.5 w-3.5" />
             <span>Konsultasi AgriBot</span>
-            <ArrowRight className="h-3.5 w-3.5" />
+            <ArrowUpRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:rotate-45" />
           </Link>
         </div>
       ) : (
