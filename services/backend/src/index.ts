@@ -6,6 +6,9 @@ import { SafetyInterlockManager } from "./safety";
 import { AiEngineClient } from "./aiClient";
 import { TelemetryWebSocketManager } from "./websocket";
 import { AgriBotEngine } from "./geminiChat";
+import { getDatabaseStatus, initDatabase } from "./db/sqlite";
+
+initDatabase();
 
 const PORT = Number(process.env.PORT || 3000);
 
@@ -86,6 +89,7 @@ export const app = new Elysia()
       status: "running",
       mode: snap.system.mode,
       edgeOnline: snap.system.edgeOnline,
+      database: getDatabaseStatus(),
       endpoints: {
         health: "GET /health",
         current: "GET /api/sensors/current",
@@ -112,6 +116,7 @@ export const app = new Elysia()
     status: "ok",
     service: "urbangrow-backend",
     uptimeSeconds: Math.floor(process.uptime()),
+    database: getDatabaseStatus(),
     timestamp: new Date().toISOString(),
   }))
 
@@ -380,6 +385,7 @@ export const app = new Elysia()
   .get("/api/ai/cohort", () => ({
     success: true,
     cohort: AgriBotEngine.getCohortConfig(),
+    history: AgriBotEngine.getCohortHistory(10),
     diagnostics: AgriBotEngine.buildDiagnostics(),
   }))
   .post(
@@ -390,6 +396,7 @@ export const app = new Elysia()
       return {
         success: true,
         cohort,
+        history: AgriBotEngine.getCohortHistory(10),
         diagnostics,
       };
     },

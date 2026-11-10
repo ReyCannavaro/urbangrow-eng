@@ -66,6 +66,7 @@ jobs:
             services/backend/src/websocket.ts \
             services/backend/src/safety.ts \
             services/backend/src/aiClient.ts \
+            services/backend/src/db/sqlite.ts \
             services/backend/src/geminiChat.ts
 
       - name: Lint Web Frontend

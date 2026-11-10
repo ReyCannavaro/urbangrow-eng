@@ -1,4 +1,9 @@
 import { simulator, SensorReading, SensorSource } from "./simulator";
+import {
+  getCohortAuditHistory,
+  loadActivePredictionCohort,
+  saveActivePredictionCohort,
+} from "./db/sqlite";
 
 export type HealthSeverity = "OPTIMAL" | "WARNING" | "CRITICAL";
 
@@ -543,47 +548,53 @@ function sanitizeChartSpecs(rawCharts: unknown): AgriBotChartSpec[] {
 }
 
 export class AgriBotEngine {
-  private static activeCohort: PredictionCohortConfig = {
-    fishMode: "both",
-    nila: {
-      enabled: true,
-      species: "nila",
-      count: 35,
-      stockingDate: addDaysIso(-18),
-      initialLengthCm: 6.5,
-      targetHarvestLengthCm: 22.0,
-    },
-    lele: {
-      enabled: true,
-      species: "lele",
-      count: 45,
-      stockingDate: addDaysIso(-16),
-      initialLengthCm: 7.0,
-      targetHarvestLengthCm: 26.0,
-    },
-    pakcoy: {
-      seedingDate: addDaysIso(-14),
-      plantCount: 20,
-    },
-    kangkung: {
-      seedingDate: addDaysIso(-12),
-      plantCount: 24,
-    },
-    updatedAt: new Date().toISOString(),
-  };
+  private static createDefaultCohort(): PredictionCohortConfig {
+    return {
+      fishMode: "both",
+      nila: {
+        enabled: true,
+        species: "nila",
+        count: 35,
+        stockingDate: addDaysIso(-18),
+        initialLengthCm: 6.5,
+        targetHarvestLengthCm: 22.0,
+      },
+      lele: {
+        enabled: true,
+        species: "lele",
+        count: 45,
+        stockingDate: addDaysIso(-16),
+        initialLengthCm: 7.0,
+        targetHarvestLengthCm: 26.0,
+      },
+      pakcoy: {
+        seedingDate: addDaysIso(-14),
+        plantCount: 20,
+      },
+      kangkung: {
+        seedingDate: addDaysIso(-12),
+        plantCount: 24,
+      },
+      updatedAt: new Date().toISOString(),
+    };
+  }
 
   static getCohortConfig(): PredictionCohortConfig {
-    return this.activeCohort;
+    return loadActivePredictionCohort(() => this.createDefaultCohort());
+  }
+
+  static getCohortHistory(limit: number = 15) {
+    return getCohortAuditHistory(limit);
   }
 
   static updateCohortConfig(patch: Partial<PredictionCohortConfig>): PredictionCohortConfig {
-    const prev = this.activeCohort;
+    const prev = this.getCohortConfig();
     const nextFishMode =
       patch.fishMode === "nila" || patch.fishMode === "lele" || patch.fishMode === "both"
         ? patch.fishMode
         : prev.fishMode;
 
-    this.activeCohort = {
+    const nextConfig: PredictionCohortConfig = {
       fishMode: nextFishMode,
       nila: {
         ...prev.nila,
@@ -607,14 +618,15 @@ export class AgriBotEngine {
       },
       updatedAt: new Date().toISOString(),
     };
-    return this.activeCohort;
+
+    return saveActivePredictionCohort(nextConfig, true);
   }
 
   static buildDiagnostics(
     cropDayPakcoy?: number,
     cropDayKangkung?: number
   ): EcosystemDiagnosticReport {
-    const cohort = this.activeCohort;
+    const cohort = this.getCohortConfig();
     const effectivePakcoyDays =
       cropDayPakcoy !== undefined
         ? cropDayPakcoy

@@ -267,6 +267,16 @@ describe("Hybrid IoT Bridge, Actuator Sync & AgriBot AI Tests", () => {
     expect(updatedJson.diagnostics.predictions.harvest.pakcoy.plantCount).toBe(28);
     expect(updatedJson.diagnostics.predictions.harvest.pakcoy.daysSincePlanting).toBe(0);
     expect(updatedJson.diagnostics.predictions.harvest.kangkung.plantCount).toBe(32);
+    expect(Array.isArray(updatedJson.history)).toBe(true);
+    expect(updatedJson.history.length).toBeGreaterThanOrEqual(1);
+    expect(updatedJson.history[0].nilaCount).toBe(50);
+
+    const healthRes = await app.handle(new Request("http://localhost/health"));
+    expect(healthRes.status).toBe(200);
+    const healthJson = await healthRes.json();
+    expect(healthJson.database.engine).toBe("sqlite");
+    expect(healthJson.database.ready).toBe(true);
+    expect(healthJson.database.tables).toContain("prediction_cohorts");
   });
 });
 

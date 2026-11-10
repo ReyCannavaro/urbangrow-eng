@@ -361,7 +361,10 @@ export async function fetchAgriBotDiagnostics(
   );
 
   if (res.ok && res.data && res.data.diagnosis && res.data.predictions) {
-    const activeCohort = storedCohort ?? res.data.cohort ?? getDefaultPredictionCohort();
+    const activeCohort = res.data.cohort ?? storedCohort ?? getDefaultPredictionCohort();
+    if (res.data.cohort) {
+      writeStoredPredictionCohort(res.data.cohort);
+    }
     const sensors = res.data.sensors;
     const fishPredictions: EcosystemDiagnosticReport["predictions"]["fish"] = {};
     if (activeCohort.nila.enabled) {
