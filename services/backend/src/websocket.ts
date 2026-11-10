@@ -7,7 +7,8 @@ export interface WebSocketClient {
 
 export class TelemetryWebSocketManager {
   private static clients: Set<WebSocketClient> = new Set();
-  private static heartbeatInterval: any = null;
+  private static heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+  private static broadcastInterval: ReturnType<typeof setInterval> | null = null;
 
   static addClient(client: WebSocketClient) {
     this.clients.add(client);
@@ -19,22 +20,38 @@ export class TelemetryWebSocketManager {
     if (!this.heartbeatInterval) {
       this.startHeartbeat();
     }
-  }
-
-  static removeClient(client: WebSocketClient) {
-    this.clients.delete(client);
-    console.log(`[WS-TELEMETRY] Client disconnected: ${client.id} (Remaining: ${this.clients.size})`);
-
-    if (this.clients.size === 0 && this.heartbeatInterval) {
-      clearInterval(this.heartbeatInterval);
-      this.heartbeatInterval = null;
+    if (!this.broadcastInterval) {
+      this.startBroadcastLoop();
     }
   }
 
-  static broadcastTelemetry() {
+  static removeClient(clientOrId: WebSocketClient | string) {
+    if (typeof clientOrId === "string") {
+      for (const c of this.clients) {
+        if (c.id === clientOrId) {
+          this.clients.delete(c);
+          break;
+        }
+      }
+    } else {
+      for (const c of this.clients) {
+        if (c.id === clientOrId.id) {
+          this.clients.delete(c);
+          break;
+        }
+      }
+    }
+    console.log(`[WS-TELEMETRY] Client disconnected (Remaining: ${this.clients.size})`);
+
+    if (this.clients.size === 0) {
+      this.stopLoops();
+    }
+  }
+
+  static broadcastTelemetry(eventType: "telemetry" | "actuator_update" = "telemetry") {
     if (this.clients.size === 0) return;
     const payload = JSON.stringify({
-      type: "telemetry",
+      type: eventType,
       timestamp: new Date().toISOString(),
       data: simulator.getSnapshot(),
     });
@@ -42,10 +59,36 @@ export class TelemetryWebSocketManager {
     for (const client of this.clients) {
       try {
         client.send(payload);
-      } catch (err) {
+      } catch {
         this.clients.delete(client);
       }
     }
+
+    if (this.clients.size === 0) {
+      this.stopLoops();
+    }
+  }
+
+  static shutdown() {
+    this.stopLoops();
+    this.clients.clear();
+  }
+
+  private static stopLoops() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+    if (this.broadcastInterval) {
+      clearInterval(this.broadcastInterval);
+      this.broadcastInterval = null;
+    }
+  }
+
+  private static startBroadcastLoop() {
+    this.broadcastInterval = setInterval(() => {
+      this.broadcastTelemetry("telemetry");
+    }, 1500);
   }
 
   private static startHeartbeat() {
