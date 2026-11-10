@@ -1101,7 +1101,7 @@ KELUARKAN RESPONSE HARUS BERUPA JSON VALID DENGAN STRUKTUR:
   ]
 }`;
 
-    const recentTurns = (req.history || []).slice(-6).map((turn) => ({
+    const recentTurns = (req.history || []).slice(-10).map((turn) => ({
       role: turn.role === "assistant" || turn.role === "bot" || turn.role === "model" ? "model" : "user",
       parts: [{ text: turn.text }],
     }));

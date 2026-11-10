@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import {
@@ -41,6 +41,109 @@ function formatNowTime(): string {
 }
 
 const MAX_IMAGES_PER_TURN = 3;
+const AGRIBOT_SESSION_KEY = "urbangrow_agribot_session_v1";
+const EMPTY_CHAT_MESSAGES: ChatMsg[] = [];
+
+let cachedSessionRaw: string | null = null;
+let cachedSessionMessages: ChatMsg[] = EMPTY_CHAT_MESSAGES;
+const sessionListeners = new Set<() => void>();
+
+function emitSessionChange() {
+  for (const listener of sessionListeners) {
+    listener();
+  }
+}
+
+function subscribeAgriBotSession(listener: () => void): () => void {
+  sessionListeners.add(listener);
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === AGRIBOT_SESSION_KEY) {
+      listener();
+    }
+  };
+  if (typeof window !== "undefined") {
+    window.addEventListener("storage", onStorage);
+  }
+  return () => {
+    sessionListeners.delete(listener);
+    if (typeof window !== "undefined") {
+      window.removeEventListener("storage", onStorage);
+    }
+  };
+}
+
+function getAgriBotSessionSnapshot(): ChatMsg[] {
+  if (typeof window === "undefined") return EMPTY_CHAT_MESSAGES;
+  try {
+    const raw = window.sessionStorage.getItem(AGRIBOT_SESSION_KEY);
+    if (!raw) {
+      cachedSessionRaw = null;
+      cachedSessionMessages = EMPTY_CHAT_MESSAGES;
+      return EMPTY_CHAT_MESSAGES;
+    }
+    if (raw === cachedSessionRaw) {
+      return cachedSessionMessages;
+    }
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      cachedSessionRaw = raw;
+      cachedSessionMessages = parsed as ChatMsg[];
+      return cachedSessionMessages;
+    }
+  } catch {
+    // Ignore storage parse or security errors
+  }
+  return EMPTY_CHAT_MESSAGES;
+}
+
+function getAgriBotServerSnapshot(): ChatMsg[] {
+  return EMPTY_CHAT_MESSAGES;
+}
+
+function writeAgriBotSessionMessages(nextMessages: ChatMsg[]) {
+  if (typeof window === "undefined") return;
+  try {
+    if (nextMessages.length === 0) {
+      window.sessionStorage.removeItem(AGRIBOT_SESSION_KEY);
+      cachedSessionRaw = null;
+      cachedSessionMessages = EMPTY_CHAT_MESSAGES;
+      emitSessionChange();
+      return;
+    }
+    const recent = nextMessages.slice(-24);
+    let serialized = JSON.stringify(recent);
+    if (serialized.length > 1_500_000) {
+      const lightweight = recent.map((m) => ({
+        ...m,
+        images: m.images?.map((img) => ({
+          mimeType: img.mimeType,
+          data: "",
+          name: img.name,
+          previewUrl: img.previewUrl,
+        })),
+      }));
+      serialized = JSON.stringify(lightweight);
+    }
+    window.sessionStorage.setItem(AGRIBOT_SESSION_KEY, serialized);
+    cachedSessionRaw = serialized;
+    cachedSessionMessages = recent;
+    emitSessionChange();
+  } catch {
+    try {
+      const textOnly = nextMessages.slice(-24).map((m) => ({
+        ...m,
+        images: undefined,
+      }));
+      const serialized = JSON.stringify(textOnly);
+      window.sessionStorage.setItem(AGRIBOT_SESSION_KEY, serialized);
+      cachedSessionRaw = serialized;
+      cachedSessionMessages = textOnly;
+      emitSessionChange();
+    } catch {
+      // Storage unavailable
+    }
+  }
+}
 
 async function compressImageFile(file: File): Promise<AgriBotImageAttachment> {
   if (!file.type.startsWith("image/")) {
@@ -419,7 +522,19 @@ function FormattedMarkdownMessage({ text }: { text: string }) {
 export function ChatWindow() {
   const { actuators, setActuatorState, systemMeta } = useTelemetry();
 
-  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  const messages = useSyncExternalStore(
+    subscribeAgriBotSession,
+    getAgriBotSessionSnapshot,
+    getAgriBotServerSnapshot
+  );
+  const setMessages = useCallback(
+    (updater: ChatMsg[] | ((prev: ChatMsg[]) => ChatMsg[])) => {
+      const prev = getAgriBotSessionSnapshot();
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      writeAgriBotSessionMessages(next);
+    },
+    []
+  );
   const [input, setInput] = useState<string>("");
   const [pendingImages, setPendingImages] = useState<AgriBotImageAttachment[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -578,11 +693,23 @@ export function ChatWindow() {
     };
 
     const historyPayload: AgriBotChatTurn[] = messages
-      .slice(-6)
-      .map((m) => ({
-        role: m.sender === "user" ? "user" : "assistant",
-        text: m.text || (m.images?.length ? "[Mengirim lampiran foto untuk analisis]" : ""),
-      }));
+      .slice(-10)
+      .map((m) => {
+        const chartSummary =
+          m.charts && m.charts.length > 0
+            ? `\n[Grafik ditampilkan: ${m.charts
+                .map((c) => `${c.title} (${c.chartType})`)
+                .join(", ")}]`
+            : "";
+        return {
+          role: m.sender === "user" ? "user" : "assistant",
+          text:
+            (m.text ||
+              (m.images?.length
+                ? "[Mengirim lampiran foto untuk analisis]"
+                : "")) + chartSummary,
+        };
+      });
 
     setMessages((prev) => [...prev, userMsg]);
     if (!textOverride) {
@@ -655,6 +782,11 @@ export function ChatWindow() {
     setActionFeedback({});
     setUploadError(null);
     setInput("");
+    try {
+      window.sessionStorage.removeItem(AGRIBOT_SESSION_KEY);
+    } catch {
+      // Ignore storage restriction
+    }
   };
 
   const canSend =
