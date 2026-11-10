@@ -4,60 +4,13 @@ import React from "react";
 import Link from "next/link";
 import { ArrowLeft, Download, Activity, Database } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
+import { downloadTelemetryCsv } from "@/lib/operationsApi";
 
 export function AnalyticsHeader() {
   const { history } = useTelemetry();
 
-  const handleExportCSV = () => {
-    if (!history || history.length === 0) {
-      alert("Belum ada data historis yang tersedia untuk diexport.");
-      return;
-    }
-
-    const headers = [
-      "Timestamp",
-      "pH_Air",
-      "Suhu_Air_Celsius",
-      "TDS_Nutrisi_PPM",
-      "Dissolved_Oxygen_mgL",
-      "Suhu_Udara_Celsius",
-      "Kelembaban_Persen",
-      "Intensitas_Cahaya_Lux",
-      "Level_Air_Persen",
-      "Pompa_Air",
-      "Aerator",
-      "Grow_Light",
-    ];
-
-    const rows = history.map((h) => [
-      h.timestamp,
-      h.sensors.ph.toFixed(2),
-      h.sensors.waterTemperature.toFixed(2),
-      Math.round(h.sensors.tds),
-      h.sensors.dissolvedOxygen.toFixed(2),
-      h.sensors.airTemperature.toFixed(1),
-      h.sensors.humidity.toFixed(1),
-      Math.round(h.sensors.lightIntensity),
-      h.sensors.waterLevel.toFixed(1),
-      h.actuators?.waterPump ? "ON" : "OFF",
-      h.actuators?.aerator ? "ON" : "OFF",
-      h.actuators?.growLight ? "ON" : "OFF",
-    ]);
-
-    const csvContent =
-      "data:text/csv;charset=utf-8," +
-      [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute(
-      "download",
-      `UrbanGrow_Telemetry_Timeseries_${new Date().toISOString().slice(0, 10)}.csv`
-    );
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleExportCSV = async () => {
+    await downloadTelemetryCsv(history);
   };
 
   return (

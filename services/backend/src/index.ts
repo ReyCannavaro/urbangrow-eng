@@ -6,6 +6,152 @@ import { SafetyInterlockManager } from "./safety";
 import { AiEngineClient } from "./aiClient";
 import { TelemetryWebSocketManager } from "./websocket";
 import { AgriBotEngine } from "./geminiChat";
+import {
+  createAutomationSchedule,
+  deleteAutomationSchedule,
+  getActuatorLogs,
+  getDatabaseStatus,
+  getPersistedSensorReadings,
+  getPersistedSystemAlerts,
+  initDatabase,
+  listAutomationSchedules,
+  markAutomationScheduleTriggered,
+  recordActuatorLog,
+  recordSensorReading,
+  resolveAllPersistedAlerts,
+  toggleAutomationSchedule,
+  upsertSystemAlert,
+} from "./db/sqlite";
+
+initDatabase();
+
+function persistCurrentTelemetrySnapshot() {
+  const snap = simulator.getSnapshot();
+  recordSensorReading({
+    deviceId: snap.system.edgeNode || "ESP32-GROW-01",
+    ph: snap.sensors.ph,
+    tds: snap.sensors.tds,
+    waterTemperature: snap.sensors.waterTemperature,
+    airTemperature: snap.sensors.airTemperature,
+    humidity: snap.sensors.humidity,
+    lightIntensity: snap.sensors.lightIntensity,
+    dissolvedOxygen: snap.sensors.dissolvedOxygen,
+    waterLevel: snap.sensors.waterLevel,
+    recordedAt: snap.timestamp,
+  });
+}
+
+function evaluateAutomationRules() {
+  const snap = simulator.getSnapshot();
+  const schedules = listAutomationSchedules().filter((s) => s.enabled);
+  const now = new Date();
+  const wibTime = now.toLocaleTimeString("en-GB", {
+    timeZone: "Asia/Jakarta",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  for (const sched of schedules) {
+    if (sched.triggerType === "time" && sched.scheduleTime === wibTime) {
+      // Prevent re-firing within the same minute
+      if (
+        sched.lastTriggeredAt &&
+        Date.now() - Date.parse(sched.lastTriggeredAt) < 90_000
+      ) {
+        continue;
+      }
+
+      if (sched.actuatorId === "feeder") {
+        const durationMs = SafetyInterlockManager.getFeederDispenseDurationMs();
+        simulator.triggerFeedPulse(durationMs);
+        recordActuatorLog({
+          actuatorId: "feeder",
+          actuatorName: "Auto-Feeder Ikan (35g)",
+          state: true,
+          triggeredBy: "automation_schedule",
+          note: `Jadwal otomatis: ${sched.title} (${wibTime} WIB)`,
+        });
+      } else {
+        const safety = checkPumpSafetyIfEnabling(sched.actuatorId, sched.targetState);
+        if (!safety.allowed) continue;
+        const updated = simulator.setActuator(sched.actuatorId, sched.targetState, "auto");
+        if (updated) {
+          recordActuatorLog({
+            actuatorId: updated.id,
+            actuatorName: updated.name,
+            state: updated.isOn,
+            triggeredBy: "automation_schedule",
+            note: `Jadwal otomatis: ${sched.title} (${wibTime} WIB)`,
+          });
+        }
+      }
+      markAutomationScheduleTriggered(sched.id);
+      TelemetryWebSocketManager.broadcastTelemetry("actuator_update");
+    }
+
+    if (
+      sched.triggerType === "sensor_threshold" &&
+      sched.sensorMetric &&
+      sched.operator &&
+      typeof sched.thresholdValue === "number"
+    ) {
+      const currentVal = (snap.sensors as unknown as Record<string, number>)[sched.sensorMetric];
+      if (typeof currentVal !== "number") continue;
+
+      const conditionMet =
+        sched.operator === "<"
+          ? currentVal < sched.thresholdValue
+          : currentVal > sched.thresholdValue;
+
+      if (!conditionMet) continue;
+
+      const existing = simulator.getActuator(sched.actuatorId);
+      if (!existing || existing.isOn === sched.targetState) continue;
+
+      // Cooldown 2 minutes per threshold rule
+      if (
+        sched.lastTriggeredAt &&
+        Date.now() - Date.parse(sched.lastTriggeredAt) < 120_000
+      ) {
+        continue;
+      }
+
+      const safety = checkPumpSafetyIfEnabling(sched.actuatorId, sched.targetState);
+      if (!safety.allowed) continue;
+
+      const updated = simulator.setActuator(sched.actuatorId, sched.targetState, "auto");
+      if (updated) {
+        markAutomationScheduleTriggered(sched.id);
+        recordActuatorLog({
+          actuatorId: updated.id,
+          actuatorName: updated.name,
+          state: updated.isOn,
+          triggeredBy: "automation_schedule",
+          note: `Aturan sensor: ${sched.title} (${sched.sensorMetric}=${currentVal} ${sched.operator} ${sched.thresholdValue})`,
+        });
+        upsertSystemAlert({
+          id: `auto-${sched.id}-${Date.now()}`,
+          title: `Otomasi Terpicu: ${sched.title}`,
+          message: `Sensor ${sched.sensorMetric} terbaca ${currentVal} (${sched.operator} ${sched.thresholdValue}). ${updated.name} diatur ke ${updated.isOn ? "ON" : "OFF"}.`,
+          severity: "info",
+          metric: sched.sensorMetric,
+          isResolved: true,
+        });
+        TelemetryWebSocketManager.broadcastTelemetry("actuator_update");
+      }
+    }
+  }
+}
+
+persistCurrentTelemetrySnapshot();
+
+if (process.env.NODE_ENV !== "test") {
+  setInterval(() => {
+    persistCurrentTelemetrySnapshot();
+    evaluateAutomationRules();
+  }, 12_000);
+}
 
 const PORT = Number(process.env.PORT || 3000);
 
@@ -86,6 +232,7 @@ export const app = new Elysia()
       status: "running",
       mode: snap.system.mode,
       edgeOnline: snap.system.edgeOnline,
+      database: getDatabaseStatus(),
       endpoints: {
         health: "GET /health",
         current: "GET /api/sensors/current",
@@ -98,6 +245,8 @@ export const app = new Elysia()
         setActuator: "POST /api/actuators/:id/set",
         simulateAnomaly: "POST /api/simulation/anomaly",
         aiChat: "POST /api/ai/chat",
+        aiCohort: "GET /api/ai/cohort",
+        aiCohortUpdate: "POST /api/ai/cohort",
         aiDiagnostics: "GET /api/ai/diagnostics",
         aiPredictions: "GET /api/ai/predictions",
         aiPredict: "POST /api/ai/predict",
@@ -110,6 +259,7 @@ export const app = new Elysia()
     status: "ok",
     service: "urbangrow-backend",
     uptimeSeconds: Math.floor(process.uptime()),
+    database: getDatabaseStatus(),
     timestamp: new Date().toISOString(),
   }))
 
@@ -203,6 +353,15 @@ export const app = new Elysia()
       }
 
       const updated = simulator.toggleActuator(id);
+      if (updated) {
+        recordActuatorLog({
+          actuatorId: updated.id,
+          actuatorName: updated.name,
+          state: updated.isOn,
+          triggeredBy: "manual_web",
+          note: `Toggle manual menjadi ${updated.isOn ? "ON" : "OFF"}`,
+        });
+      }
       TelemetryWebSocketManager.broadcastTelemetry("actuator_update");
       return { success: true, actuator: updated };
     },
@@ -230,6 +389,15 @@ export const app = new Elysia()
       }
 
       const updated = simulator.setActuator(id, body.state, body.mode || "manual");
+      if (updated) {
+        recordActuatorLog({
+          actuatorId: updated.id,
+          actuatorName: updated.name,
+          state: updated.isOn,
+          triggeredBy: body.mode === "auto" ? "ai_recommendation" : "manual_web",
+          note: `Perintah set relay ke ${updated.isOn ? "ON" : "OFF"}`,
+        });
+      }
       TelemetryWebSocketManager.broadcastTelemetry("actuator_update");
       return { success: true, actuator: updated };
     },
@@ -297,12 +465,160 @@ export const app = new Elysia()
   .post("/api/feed/dispense", () => {
     const durationMs = SafetyInterlockManager.getFeederDispenseDurationMs();
     simulator.triggerFeedPulse(durationMs);
+    recordActuatorLog({
+      actuatorId: "feeder",
+      actuatorName: "Auto-Feeder Ikan (35g)",
+      state: true,
+      triggeredBy: "manual_web",
+      note: "Dispensasi pakan pelet manual 35g (pulse 3000ms)",
+    });
     TelemetryWebSocketManager.broadcastTelemetry("actuator_update");
     return {
       success: true,
       duration_ms: durationMs,
       message: "Pakan berhasil didistribusikan (35g pelet)",
     };
+  })
+
+  // 7b. Automation Schedules & Sensor Threshold Rules (SQLite Persisted)
+  .get("/api/schedules", () => ({
+    success: true,
+    schedules: listAutomationSchedules(),
+  }))
+  .post(
+    "/api/schedules",
+    ({ body }) => {
+      const created = createAutomationSchedule({
+        title: body.title,
+        triggerType: body.triggerType,
+        scheduleTime: body.scheduleTime,
+        sensorMetric: body.sensorMetric,
+        operator: body.operator,
+        thresholdValue: body.thresholdValue,
+        actuatorId: body.actuatorId,
+        targetState: body.targetState,
+        notes: body.notes,
+      });
+      return {
+        success: true,
+        schedule: created,
+        schedules: listAutomationSchedules(),
+      };
+    },
+    {
+      body: t.Object({
+        title: t.String({ minLength: 2, maxLength: 100 }),
+        triggerType: t.Union([t.Literal("time"), t.Literal("sensor_threshold")]),
+        scheduleTime: t.Optional(t.String()),
+        sensorMetric: t.Optional(t.String()),
+        operator: t.Optional(t.Union([t.Literal("<"), t.Literal(">")])),
+        thresholdValue: t.Optional(t.Number()),
+        actuatorId: t.String(),
+        targetState: t.Optional(t.Boolean()),
+        notes: t.Optional(t.String()),
+      }),
+    }
+  )
+  .patch(
+    "/api/schedules/:id/toggle",
+    ({ params: { id }, set }) => {
+      const updated = toggleAutomationSchedule(id);
+      if (!updated) {
+        set.status = 404;
+        return { success: false, message: "Jadwal tidak ditemukan" };
+      }
+      return {
+        success: true,
+        schedule: updated,
+        schedules: listAutomationSchedules(),
+      };
+    },
+    {
+      params: t.Object({ id: t.String() }),
+    }
+  )
+  .delete(
+    "/api/schedules/:id",
+    ({ params: { id } }) => {
+      const deleted = deleteAutomationSchedule(id);
+      return {
+        success: deleted,
+        schedules: listAutomationSchedules(),
+      };
+    },
+    {
+      params: t.Object({ id: t.String() }),
+    }
+  )
+
+  // 7c. Persisted Actuator Audit Logs, System Alerts & CSV Telemetry Export
+  .get("/api/logs/actuators", ({ query }) => ({
+    success: true,
+    logs: getActuatorLogs(query.limit ? Number(query.limit) : 40),
+  }))
+  .get("/api/logs/alerts", () => {
+    const liveAlerts = simulator.evaluateAlerts();
+    for (const alt of liveAlerts) {
+      upsertSystemAlert({
+        id: alt.id,
+        title: alt.metric ? `Peringatan Parameter ${alt.metric.toUpperCase()}` : "Peringatan Sistem",
+        message: alt.message,
+        severity: alt.severity,
+        metric: alt.metric || "system",
+        isResolved: alt.isResolved,
+      });
+    }
+    return {
+      success: true,
+      alerts: getPersistedSystemAlerts(50),
+    };
+  })
+  .post("/api/logs/alerts/resolve-all", () => {
+    resolveAllPersistedAlerts();
+    return {
+      success: true,
+      alerts: getPersistedSystemAlerts(50),
+    };
+  })
+  .get("/api/sensors/export.csv", ({ set }) => {
+    persistCurrentTelemetrySnapshot();
+    const rows = getPersistedSensorReadings(500);
+    const headers = [
+      "ID",
+      "Timestamp_UTC",
+      "Device_ID",
+      "pH_Air",
+      "TDS_PPM",
+      "Suhu_Air_C",
+      "Suhu_Udara_C",
+      "Kelembaban_Persen",
+      "Cahaya_LDR_Lux",
+      "Dissolved_Oxygen_mgL",
+      "Level_Air_Persen",
+    ];
+    const csvLines = [
+      headers.join(","),
+      ...rows.map((r) =>
+        [
+          r.id,
+          r.recordedAt,
+          r.deviceId,
+          r.ph.toFixed(2),
+          Math.round(r.tds),
+          r.waterTemperature.toFixed(2),
+          r.airTemperature.toFixed(1),
+          r.humidity.toFixed(1),
+          Math.round(r.lightIntensity),
+          r.dissolvedOxygen.toFixed(2),
+          r.waterLevel.toFixed(1),
+        ].join(",")
+      ),
+    ];
+
+    set.headers["Content-Type"] = "text/csv; charset=utf-8";
+    set.headers["Content-Disposition"] =
+      `attachment; filename="UrbanGrow_Database_Telemetry_${new Date().toISOString().slice(0, 10)}.csv"`;
+    return csvLines.join("\n");
   })
 
   // 8. Direct APK download for mobile testing
@@ -375,13 +691,65 @@ export const app = new Elysia()
   )
 
   // 10. Structured AI Diagnostics & Predictions (Plant, Water, Fish, Trends, GDD Harvest)
+  .get("/api/ai/cohort", () => ({
+    success: true,
+    cohort: AgriBotEngine.getCohortConfig(),
+    history: AgriBotEngine.getCohortHistory(10),
+    diagnostics: AgriBotEngine.buildDiagnostics(),
+  }))
+  .post(
+    "/api/ai/cohort",
+    ({ body }) => {
+      const cohort = AgriBotEngine.updateCohortConfig(body as any);
+      const diagnostics = AgriBotEngine.buildDiagnostics();
+      return {
+        success: true,
+        cohort,
+        history: AgriBotEngine.getCohortHistory(10),
+        diagnostics,
+      };
+    },
+    {
+      body: t.Object({
+        fishMode: t.Optional(t.Union([t.Literal("both"), t.Literal("nila"), t.Literal("lele")])),
+        nila: t.Optional(
+          t.Object({
+            count: t.Optional(t.Number({ minimum: 1, maximum: 500 })),
+            stockingDate: t.Optional(t.String()),
+            initialLengthCm: t.Optional(t.Number({ minimum: 1, maximum: 50 })),
+            targetHarvestLengthCm: t.Optional(t.Number({ minimum: 5, maximum: 80 })),
+          })
+        ),
+        lele: t.Optional(
+          t.Object({
+            count: t.Optional(t.Number({ minimum: 1, maximum: 500 })),
+            stockingDate: t.Optional(t.String()),
+            initialLengthCm: t.Optional(t.Number({ minimum: 1, maximum: 50 })),
+            targetHarvestLengthCm: t.Optional(t.Number({ minimum: 5, maximum: 80 })),
+          })
+        ),
+        pakcoy: t.Optional(
+          t.Object({
+            seedingDate: t.Optional(t.String()),
+            plantCount: t.Optional(t.Number({ minimum: 1, maximum: 500 })),
+          })
+        ),
+        kangkung: t.Optional(
+          t.Object({
+            seedingDate: t.Optional(t.String()),
+            plantCount: t.Optional(t.Number({ minimum: 1, maximum: 500 })),
+          })
+        ),
+      }),
+    }
+  )
   .get(
     "/api/ai/diagnostics",
     ({ query }) => ({
       success: true,
       ...AgriBotEngine.buildDiagnostics(
-        query.pakcoyDay ? Number(query.pakcoyDay) : 14,
-        query.kangkungDay ? Number(query.kangkungDay) : 17
+        query.pakcoyDay ? Number(query.pakcoyDay) : undefined,
+        query.kangkungDay ? Number(query.kangkungDay) : undefined
       ),
     }),
     {
@@ -395,14 +763,15 @@ export const app = new Elysia()
     "/api/ai/predictions",
     ({ query }) => {
       const report = AgriBotEngine.buildDiagnostics(
-        query.pakcoyDay ? Number(query.pakcoyDay) : 14,
-        query.kangkungDay ? Number(query.kangkungDay) : 17
+        query.pakcoyDay ? Number(query.pakcoyDay) : undefined,
+        query.kangkungDay ? Number(query.kangkungDay) : undefined
       );
       return {
         success: true,
         timestamp: report.timestamp,
         overallStatus: report.overallStatus,
         sensorSources: report.sensorSources,
+        cohort: report.cohort,
         predictions: report.predictions,
       };
     },

@@ -1,12 +1,25 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Search, Bell, Mail } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
+import { CommandPaletteModal } from "./CommandPaletteModal";
 
 export function TopNavbar({ compact = false }: { compact?: boolean }) {
   const { backendConnected, alerts, systemMeta } = useTelemetry();
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const hasActiveAlerts = alerts.some((a) => !a.isResolved);
 
@@ -28,19 +41,19 @@ export function TopNavbar({ compact = false }: { compact?: boolean }) {
         compact ? "mb-3 lg:mb-4" : "mb-6"
       }`}
     >
-      {/* Search Input Bar (Matching Donezo Pill with Shortcut Badge) */}
+      {/* Search Input Trigger Pill (Opens Global Command Palette ⌘K) */}
       <div className="flex-1 max-w-md relative">
-        <div className="relative flex items-center">
+        <button
+          type="button"
+          onClick={() => setPaletteOpen(true)}
+          className="w-full relative flex items-center text-left pl-10 pr-14 py-2 text-xs rounded-full border border-[#E5E7EB] bg-[#F8F9FA] text-[#9CA3AF] hover:bg-white hover:border-[#D1D5DB] transition-colors cursor-pointer"
+        >
           <Search className="absolute left-3.5 h-4 w-4 text-[#9CA3AF]" />
-          <input
-            type="text"
-            placeholder="Cari sensor, aktuator, atau data log..."
-            className="w-full pl-10 pr-14 py-2 text-xs rounded-full border border-[#E5E7EB] bg-[#F8F9FA] placeholder:text-[#9CA3AF] text-[#111827] focus:outline-none focus:border-[#165B39] focus:bg-white transition-colors"
-          />
-          <span className="absolute right-3 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium text-[#9CA3AF] bg-white border border-[#E5E7EB] shadow-2xs">
+          <span className="truncate">Cari sensor, aktuator, atau data log...</span>
+          <span className="absolute right-3 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium text-[#6B7280] bg-white border border-[#E5E7EB]">
             ⌘ K
           </span>
-        </div>
+        </button>
       </div>
 
       {/* Right Action Icons & User Profile */}
@@ -81,7 +94,7 @@ export function TopNavbar({ compact = false }: { compact?: boolean }) {
         {/* Mail / System Report Button */}
         <Link
           href="/analytics"
-          className="h-9 w-9 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563] hover:text-[#111827] hover:border-[#111827] transition-colors shadow-2xs"
+          className="h-9 w-9 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563] hover:text-[#111827] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] transition-colors shadow-2xs"
           title="Laporan Analitik"
         >
           <Mail className="h-4 w-4" />
@@ -90,7 +103,7 @@ export function TopNavbar({ compact = false }: { compact?: boolean }) {
         {/* Notification Bell Button */}
         <Link
           href="/alerts"
-          className="relative h-9 w-9 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563] hover:text-[#111827] hover:border-[#111827] transition-colors shadow-2xs"
+          className="relative h-9 w-9 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563] hover:text-[#111827] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] transition-colors shadow-2xs"
           title="Notifikasi"
         >
           <Bell className="h-4 w-4" />
@@ -114,6 +127,11 @@ export function TopNavbar({ compact = false }: { compact?: boolean }) {
           </div>
         </div>
       </div>
+
+      <CommandPaletteModal
+        isOpen={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+      />
     </header>
   );
 }

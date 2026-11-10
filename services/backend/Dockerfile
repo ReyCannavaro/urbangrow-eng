@@ -15,6 +15,7 @@ FROM oven/bun:1.3-alpine AS runner
 WORKDIR /app
 
 COPY --from=builder /app ./
+RUN mkdir -p /app/data && chown -R bun:bun /app/data
 
 USER bun
 EXPOSE 3000

@@ -21,6 +21,13 @@ jobs:
     steps:
       - name: Checkout Codebase
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure Base Ref for Moonrepo
+        run: |
+          git fetch origin main:refs/remotes/origin/main || true
+          git branch -f main origin/main 2>/dev/null || true
 
       - name: Setup Bun Runtime
         uses: oven-sh/setup-bun@v2
@@ -66,6 +73,7 @@ jobs:
             services/backend/src/websocket.ts \
             services/backend/src/safety.ts \
             services/backend/src/aiClient.ts \
+            services/backend/src/db/sqlite.ts \
             services/backend/src/geminiChat.ts
 
       - name: Lint Web Frontend

@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import {
   Send,
   Sparkles,
-  SquarePen,
+  RotateCcw,
   ImagePlus,
   X,
   Power,
@@ -41,6 +41,109 @@ function formatNowTime(): string {
 }
 
 const MAX_IMAGES_PER_TURN = 3;
+const AGRIBOT_SESSION_KEY = "urbangrow_agribot_session_v1";
+const EMPTY_CHAT_MESSAGES: ChatMsg[] = [];
+
+let cachedSessionRaw: string | null = null;
+let cachedSessionMessages: ChatMsg[] = EMPTY_CHAT_MESSAGES;
+const sessionListeners = new Set<() => void>();
+
+function emitSessionChange() {
+  for (const listener of sessionListeners) {
+    listener();
+  }
+}
+
+function subscribeAgriBotSession(listener: () => void): () => void {
+  sessionListeners.add(listener);
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === AGRIBOT_SESSION_KEY) {
+      listener();
+    }
+  };
+  if (typeof window !== "undefined") {
+    window.addEventListener("storage", onStorage);
+  }
+  return () => {
+    sessionListeners.delete(listener);
+    if (typeof window !== "undefined") {
+      window.removeEventListener("storage", onStorage);
+    }
+  };
+}
+
+function getAgriBotSessionSnapshot(): ChatMsg[] {
+  if (typeof window === "undefined") return EMPTY_CHAT_MESSAGES;
+  try {
+    const raw = window.sessionStorage.getItem(AGRIBOT_SESSION_KEY);
+    if (!raw) {
+      cachedSessionRaw = null;
+      cachedSessionMessages = EMPTY_CHAT_MESSAGES;
+      return EMPTY_CHAT_MESSAGES;
+    }
+    if (raw === cachedSessionRaw) {
+      return cachedSessionMessages;
+    }
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      cachedSessionRaw = raw;
+      cachedSessionMessages = parsed as ChatMsg[];
+      return cachedSessionMessages;
+    }
+  } catch {
+    // Ignore storage parse or security errors
+  }
+  return EMPTY_CHAT_MESSAGES;
+}
+
+function getAgriBotServerSnapshot(): ChatMsg[] {
+  return EMPTY_CHAT_MESSAGES;
+}
+
+function writeAgriBotSessionMessages(nextMessages: ChatMsg[]) {
+  if (typeof window === "undefined") return;
+  try {
+    if (nextMessages.length === 0) {
+      window.sessionStorage.removeItem(AGRIBOT_SESSION_KEY);
+      cachedSessionRaw = null;
+      cachedSessionMessages = EMPTY_CHAT_MESSAGES;
+      emitSessionChange();
+      return;
+    }
+    const recent = nextMessages.slice(-24);
+    let serialized = JSON.stringify(recent);
+    if (serialized.length > 1_500_000) {
+      const lightweight = recent.map((m) => ({
+        ...m,
+        images: m.images?.map((img) => ({
+          mimeType: img.mimeType,
+          data: "",
+          name: img.name,
+          previewUrl: img.previewUrl,
+        })),
+      }));
+      serialized = JSON.stringify(lightweight);
+    }
+    window.sessionStorage.setItem(AGRIBOT_SESSION_KEY, serialized);
+    cachedSessionRaw = serialized;
+    cachedSessionMessages = recent;
+    emitSessionChange();
+  } catch {
+    try {
+      const textOnly = nextMessages.slice(-24).map((m) => ({
+        ...m,
+        images: undefined,
+      }));
+      const serialized = JSON.stringify(textOnly);
+      window.sessionStorage.setItem(AGRIBOT_SESSION_KEY, serialized);
+      cachedSessionRaw = serialized;
+      cachedSessionMessages = textOnly;
+      emitSessionChange();
+    } catch {
+      // Storage unavailable
+    }
+  }
+}
 
 async function compressImageFile(file: File): Promise<AgriBotImageAttachment> {
   if (!file.type.startsWith("image/")) {
@@ -419,7 +522,19 @@ function FormattedMarkdownMessage({ text }: { text: string }) {
 export function ChatWindow() {
   const { actuators, setActuatorState, systemMeta } = useTelemetry();
 
-  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  const messages = useSyncExternalStore(
+    subscribeAgriBotSession,
+    getAgriBotSessionSnapshot,
+    getAgriBotServerSnapshot
+  );
+  const setMessages = useCallback(
+    (updater: ChatMsg[] | ((prev: ChatMsg[]) => ChatMsg[])) => {
+      const prev = getAgriBotSessionSnapshot();
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      writeAgriBotSessionMessages(next);
+    },
+    []
+  );
   const [input, setInput] = useState<string>("");
   const [pendingImages, setPendingImages] = useState<AgriBotImageAttachment[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -431,9 +546,6 @@ export function ChatWindow() {
   >({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
-  const [activeModelLabel, setActiveModelLabel] = useState<string>(
-    "Gemini Multimodal • IoT Vision"
-  );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -581,11 +693,23 @@ export function ChatWindow() {
     };
 
     const historyPayload: AgriBotChatTurn[] = messages
-      .slice(-6)
-      .map((m) => ({
-        role: m.sender === "user" ? "user" : "assistant",
-        text: m.text || (m.images?.length ? "[Mengirim lampiran foto untuk analisis]" : ""),
-      }));
+      .slice(-10)
+      .map((m) => {
+        const chartSummary =
+          m.charts && m.charts.length > 0
+            ? `\n[Grafik ditampilkan: ${m.charts
+                .map((c) => `${c.title} (${c.chartType})`)
+                .join(", ")}]`
+            : "";
+        return {
+          role: m.sender === "user" ? "user" : "assistant",
+          text:
+            (m.text ||
+              (m.images?.length
+                ? "[Mengirim lampiran foto untuk analisis]"
+                : "")) + chartSummary,
+        };
+      });
 
     setMessages((prev) => [...prev, userMsg]);
     if (!textOverride) {
@@ -601,10 +725,6 @@ export function ChatWindow() {
       images: imagesToSend.length > 0 ? imagesToSend : undefined,
     });
     const latencyMs = res.latencyMs ?? 0;
-
-    if (res.model && res.provider === "gemini") {
-      setActiveModelLabel(`${res.model} • IoT Vision`);
-    }
 
     setMessages((prev) => [
       ...prev,
@@ -662,6 +782,11 @@ export function ChatWindow() {
     setActionFeedback({});
     setUploadError(null);
     setInput("");
+    try {
+      window.sessionStorage.removeItem(AGRIBOT_SESSION_KEY);
+    } catch {
+      // Ignore storage restriction
+    }
   };
 
   const canSend =
@@ -707,32 +832,20 @@ export function ChatWindow() {
           <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-[#165B39] to-[#0B2C1B] text-white flex items-center justify-center shadow-2xs shrink-0">
             <Sparkles className="h-4 w-4" />
           </div>
-          <div className="flex items-center gap-2 flex-wrap min-w-0">
-            <h1 className="text-sm font-bold text-[#111827] tracking-tight">
-              AgriBot
-            </h1>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#F8F9FA] border border-[#E5E7EB] text-[10.5px] font-mono text-[#4B5563] truncate">
-              <span
-                className={`h-1.5 w-1.5 rounded-full shrink-0 ${
-                  systemMeta.edgeOnline
-                    ? "bg-[#165B39] animate-pulse"
-                    : "bg-[#4EAB7C]"
-                }`}
-              />
-              <span className="truncate">{activeModelLabel}</span>
-            </span>
-          </div>
+          <h1 className="text-sm font-bold text-[#111827] tracking-tight">
+            AgriBot
+          </h1>
         </div>
 
         <button
           type="button"
           onClick={handleResetChat}
           disabled={messages.length === 0 || isTyping}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F8F9FA] disabled:opacity-40 text-xs font-medium text-[#374151] transition cursor-pointer disabled:cursor-default shrink-0"
-          title="Mulai obrolan baru"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] hover:border-[#D1D5DB] disabled:opacity-40 text-xs font-medium text-[#374151] transition-colors cursor-pointer disabled:cursor-default shrink-0"
+          title="Mulai ulang obrolan"
         >
-          <SquarePen className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Obrolan Baru</span>
+          <RotateCcw className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Mulai Ulang Obrolan</span>
         </button>
       </div>
 
@@ -768,13 +881,13 @@ export function ChatWindow() {
                           void handleSend(item.prompt);
                         }
                       }}
-                      className="group text-left p-2.5 sm:p-3 rounded-2xl border border-[#E5E7EB] bg-[#F8F9FA]/70 hover:bg-white hover:border-[#165B39]/40 hover:shadow-xs transition-all flex items-start gap-2.5 cursor-pointer"
+                      className="text-left p-2.5 sm:p-3 rounded-2xl border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] hover:border-[#D1D5DB] transition-colors flex items-start gap-2.5 cursor-pointer"
                     >
-                      <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-xl bg-white border border-[#E5E7EB] group-hover:border-[#165B39]/30 group-hover:bg-[#DCFCE7]/50 text-[#165B39] flex items-center justify-center shrink-0 transition-colors">
+                      <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-xl bg-[#F8F9FA] border border-[#E5E7EB] text-[#165B39] flex items-center justify-center shrink-0">
                         <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       </div>
                       <div className="min-w-0">
-                        <div className="text-xs font-semibold text-[#111827] group-hover:text-[#165B39] transition-colors leading-tight">
+                        <div className="text-xs font-semibold text-[#111827] leading-tight">
                           {item.title}
                         </div>
                         <div className="text-[11px] text-[#6B7280] mt-0.5 leading-snug line-clamp-2">
@@ -1055,7 +1168,7 @@ export function ChatWindow() {
                   type="button"
                   disabled={isTyping || pendingImages.length >= MAX_IMAGES_PER_TURN}
                   onClick={() => fileInputRef.current?.click()}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#DCFCE7]/60 hover:border-[#165B39]/30 hover:text-[#165B39] disabled:opacity-45 text-xs font-medium text-[#4B5563] transition cursor-pointer disabled:cursor-default"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] hover:border-[#D1D5DB] disabled:opacity-45 text-xs font-medium text-[#4B5563] transition-colors cursor-pointer disabled:cursor-default"
                   title="Unggah foto daun tanaman atau ikan (PNG/JPG/WEBP, bisa juga drag & drop atau Ctrl+V)"
                 >
                   <ImagePlus className="h-4 w-4 shrink-0" />
@@ -1068,7 +1181,7 @@ export function ChatWindow() {
                 disabled={!canSend}
                 onClick={() => void handleSend()}
                 aria-label="Kirim pesan"
-                className="h-8 w-8 rounded-full bg-[#165B39] hover:bg-[#124B2E] disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF] text-white flex items-center justify-center active:scale-95 transition cursor-pointer disabled:cursor-default shrink-0"
+                className="h-8 w-8 rounded-full bg-[#165B39] hover:bg-[#145032] disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF] text-white flex items-center justify-center transition-colors cursor-pointer disabled:cursor-default shrink-0"
               >
                 <Send className="h-3.5 w-3.5" />
               </button>

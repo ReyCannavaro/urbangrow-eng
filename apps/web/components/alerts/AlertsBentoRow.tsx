@@ -24,7 +24,7 @@ export function AlertsBentoRow({ activeCount }: AlertsBentoRowProps) {
             Integritas Keamanan Sistem
           </span>
           <div
-            className="h-8 w-8 rounded-full bg-white flex items-center justify-center text-[#165B39] shadow-xs group-hover:scale-105 transition-transform"
+            className="h-8 w-8 rounded-full bg-white flex items-center justify-center text-[#165B39] shadow-xs"
             title="Sistem Keamanan ECAD"
           >
             <ShieldCheck className="h-4 w-4 stroke-[2.5]" />

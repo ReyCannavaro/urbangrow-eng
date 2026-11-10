@@ -8,3 +8,8 @@
 .env.local
 .env.*.local
 !.env.example
+
+# runtime SQLite database files
+services/backend/data/*.sqlite
+services/backend/data/*.sqlite-wal
+services/backend/data/*.sqlite-shm
