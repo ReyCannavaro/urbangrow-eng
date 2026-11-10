@@ -15,6 +15,7 @@ import { AnomalyAlertBanner } from "@/components/ai/AnomalyAlertBanner";
 import { fetchAnomalyInference, AnomalyPrediction } from "@/lib/aiApi";
 import { fetchAutomationSchedules } from "@/lib/operationsApi";
 import { AutomationSchedule } from "@/lib/types";
+import { RevealOnView } from "@/components/motion/RevealOnView";
 
 export default function DashboardPage() {
   const { dispenseFeed, feedActive } = useTelemetry();
@@ -45,7 +46,10 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* 1. Page Title & Action Controls */}
-      <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
+      <section
+        style={{ "--ug-delay": "0ms" } as React.CSSProperties}
+        className="ug-enter flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1"
+      >
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-[#111827]">
             Dashboard
@@ -78,26 +82,40 @@ export default function DashboardPage() {
       </section>
 
       {/* Real-time AI Anomaly Alert Banner */}
-      <AnomalyAlertBanner anomaly={anomaly} />
+      <div style={{ "--ug-delay": "45ms" } as React.CSSProperties} className="ug-enter">
+        <AnomalyAlertBanner anomaly={anomaly} />
+      </div>
 
-      {/* 2. Row 1: 4 Metric Cards */}
+      {/* 2. Row 1: Metric Cards */}
       <MetricCardsRow />
 
-      {/* 3. Row 2: Analytics, Reminders & Actuator Controls */}
+      {/* 3. Row 2: Analytics, Reminders & Actuator Controls (Scroll-Revealed) */}
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        <CycleAnalyticsCard />
-        <AutomationReminderCard
-          schedules={schedules}
-          onManageSchedules={() => setScheduleModalOpen(true)}
-        />
-        <RelayActuatorsCard />
+        <RevealOnView delayMs={0}>
+          <CycleAnalyticsCard />
+        </RevealOnView>
+        <RevealOnView delayMs={80}>
+          <AutomationReminderCard
+            schedules={schedules}
+            onManageSchedules={() => setScheduleModalOpen(true)}
+          />
+        </RevealOnView>
+        <RevealOnView delayMs={160} className="md:col-span-2 lg:col-span-1">
+          <RelayActuatorsCard />
+        </RevealOnView>
       </section>
 
-      {/* 4. Row 3: Biological Pairing, Biofilter Donut, and Edge Time Tracker */}
+      {/* 4. Row 3: Biological Pairing, Biofilter Donut, and Edge Time Tracker (Scroll-Revealed) */}
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        <BiologicalPairingCard />
-        <BiofilterDonutCard />
-        <EdgeTimeTrackerCard />
+        <RevealOnView delayMs={0}>
+          <BiologicalPairingCard />
+        </RevealOnView>
+        <RevealOnView delayMs={80}>
+          <BiofilterDonutCard />
+        </RevealOnView>
+        <RevealOnView delayMs={160} className="md:col-span-2 lg:col-span-1">
+          <EdgeTimeTrackerCard />
+        </RevealOnView>
       </section>
 
       {/* Persistent SQLite Automation Schedule Modal */}

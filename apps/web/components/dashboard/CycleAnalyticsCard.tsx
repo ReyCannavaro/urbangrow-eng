@@ -4,9 +4,11 @@ import React from "react";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
+import { useInViewOnce } from "@/components/motion/RevealOnView";
 
 export function CycleAnalyticsCard() {
   const { sensors, history } = useTelemetry();
+  const { ref, inView } = useInViewOnce<HTMLDivElement>(0.15);
 
   const liveStability = Math.max(
     55,
@@ -51,7 +53,10 @@ export function CycleAnalyticsCard() {
   ];
 
   return (
-    <div className="rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs flex flex-col justify-between h-[280px]">
+    <div
+      ref={ref}
+      className="rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs flex flex-col justify-between h-[280px]"
+    >
       {/* Card Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -71,13 +76,18 @@ export function CycleAnalyticsCard() {
         </Link>
       </div>
 
-      {/* 7-Day Capsule Bars (Matching Donezo Project Analytics) */}
+      {/* 7-Day Capsule Bars (Animated upward wave when scrolled into view) */}
       <div className="flex items-end justify-between h-36 px-2 pt-4">
         {days.map((item, idx) => (
           <div key={idx} className="flex flex-col items-center gap-2 h-full justify-end relative group">
             {/* Tooltip Badge above Monday */}
             {item.badge && (
-              <div className="absolute -top-3 z-10 px-2 py-0.5 rounded-full bg-white border border-[#E5E7EB] text-[#165B39] font-mono text-[9px] font-bold shadow-2xs whitespace-nowrap">
+              <div
+                style={{ transitionDelay: inView ? "360ms" : "0ms" }}
+                className={`absolute -top-3 z-10 px-2 py-0.5 rounded-full bg-white border border-[#E5E7EB] text-[#165B39] font-mono text-[9px] font-bold shadow-2xs whitespace-nowrap transition-[opacity,transform] duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                  inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+                }`}
+              >
                 {item.badge}
               </div>
             )}
@@ -87,8 +97,11 @@ export function CycleAnalyticsCard() {
               style={{
                 height: item.height,
                 backgroundColor: item.color || undefined,
+                transform: inView ? "scaleY(1)" : "scaleY(0.06)",
+                opacity: inView ? 1 : 0.15,
+                transitionDelay: inView ? `${idx * 65}ms` : "0ms",
               }}
-              className={`w-7 rounded-full transition-all duration-300 ${
+              className={`w-7 rounded-full origin-bottom transition-[transform,opacity,height] duration-600 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                 item.isHatched ? "bg-hatched-diagonal border border-dashed border-[#CBD5E1]" : ""
               }`}
             />

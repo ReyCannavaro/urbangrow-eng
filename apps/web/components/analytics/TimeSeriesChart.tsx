@@ -7,6 +7,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { SensorData, HistorySample } from "@/lib/types";
+import { useInViewOnce } from "@/components/motion/RevealOnView";
 
 interface TimeSeriesChartProps {
   history: HistorySample[];
@@ -89,6 +90,7 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
   const [selectedMetric, setSelectedMetric] = useState<MetricKey>("all");
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { ref: chartRevealRef, inView: chartInView } = useInViewOnce<HTMLDivElement>(0.15);
 
   const dataSamples = history && history.length >= 2 ? history : [];
 
@@ -247,7 +249,10 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
       : null;
 
   return (
-    <div className="rounded-[28px] bg-white border border-[#E5E7EB] p-6 sm:p-7 shadow-xs space-y-6">
+    <div
+      ref={chartRevealRef}
+      className="rounded-[28px] bg-white border border-[#E5E7EB] p-6 sm:p-7 shadow-xs space-y-6"
+    >
       {/* 1. Header with Title & Filter Pills */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -522,17 +527,19 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
             </g>
           )}
 
-          {/* Time-series Splines */}
-          {(selectedMetric === "all" || selectedMetric === "do") &&
-            renderLine(METRICS.do, selectedMetric === "do")}
-          {(selectedMetric === "all" || selectedMetric === "temp") &&
-            renderLine(METRICS.temp, selectedMetric === "temp")}
-          {(selectedMetric === "all" || selectedMetric === "ph") &&
-            renderLine(METRICS.ph, selectedMetric === "ph")}
-          {(selectedMetric === "all" || selectedMetric === "tds") &&
-            renderLine(METRICS.tds, selectedMetric === "tds")}
-          {selectedMetric === "lux" &&
-            renderLine(METRICS.lux, true)}
+          {/* Time-series Splines (Sweep reveal left-to-right when viewed) */}
+          <g className={chartInView ? "ug-chart-reveal" : "opacity-0"}>
+            {(selectedMetric === "all" || selectedMetric === "do") &&
+              renderLine(METRICS.do, selectedMetric === "do")}
+            {(selectedMetric === "all" || selectedMetric === "temp") &&
+              renderLine(METRICS.temp, selectedMetric === "temp")}
+            {(selectedMetric === "all" || selectedMetric === "ph") &&
+              renderLine(METRICS.ph, selectedMetric === "ph")}
+            {(selectedMetric === "all" || selectedMetric === "tds") &&
+              renderLine(METRICS.tds, selectedMetric === "tds")}
+            {selectedMetric === "lux" &&
+              renderLine(METRICS.lux, true)}
+          </g>
 
           {/* Interactive Crosshair Line on Hover */}
           {hoverIndex !== null && dataSamples.length >= 2 && (

@@ -73,7 +73,8 @@ export function MetricCardsRow() {
         {/* 1. THE INVERTED HERO ANCHOR CARD */}
         <Link
           href="/analytics"
-          className="rounded-[24px] bg-[#165B39] hover:bg-[#145233] text-white p-5 shadow-xs flex flex-col justify-between h-[164px] relative overflow-hidden transition-colors group"
+          style={{ "--ug-delay": "90ms" } as React.CSSProperties}
+          className="ug-enter rounded-[24px] bg-[#165B39] hover:bg-[#145233] text-white p-5 shadow-xs flex flex-col justify-between h-[164px] relative overflow-hidden transition-colors group"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-white/90">
@@ -105,7 +106,8 @@ export function MetricCardsRow() {
         {/* 2. SUHU AIR KOLAM */}
         <Link
           href="/ecosystem"
-          className="rounded-[24px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] p-5 shadow-xs flex flex-col justify-between h-[164px] transition-colors group"
+          style={{ "--ug-delay": "145ms" } as React.CSSProperties}
+          className="ug-enter rounded-[24px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] p-5 shadow-xs flex flex-col justify-between h-[164px] transition-colors group"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#111827] block">
@@ -134,7 +136,8 @@ export function MetricCardsRow() {
         {/* 3. KADAR pH & TDS */}
         <Link
           href="/analytics"
-          className="rounded-[24px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] p-5 shadow-xs flex flex-col justify-between h-[164px] transition-colors group"
+          style={{ "--ug-delay": "200ms" } as React.CSSProperties}
+          className="ug-enter rounded-[24px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] p-5 shadow-xs flex flex-col justify-between h-[164px] transition-colors group"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#111827] block">
@@ -163,7 +166,10 @@ export function MetricCardsRow() {
       {/* Secondary Telemetry & AgriBot Shortcut Strip */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {/* LDR Light Sensor (Clean White Card) */}
-        <div className="rounded-[20px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] px-4 py-3 flex items-center justify-between gap-3 transition-colors">
+        <div
+          style={{ "--ug-delay": "255ms" } as React.CSSProperties}
+          className="ug-enter rounded-[20px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] px-4 py-3 flex items-center justify-between gap-3 transition-colors"
+        >
           <div className="flex items-center gap-3 min-w-0">
             <div className="h-9 w-9 rounded-xl bg-[#FEF3C7] text-[#D97706] flex items-center justify-center shrink-0">
               <Sun className="h-4 w-4" />
@@ -181,7 +187,10 @@ export function MetricCardsRow() {
         </div>
 
         {/* Air Temp & Humidity */}
-        <div className="rounded-[20px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] px-4 py-3 flex items-center justify-between gap-3 transition-colors">
+        <div
+          style={{ "--ug-delay": "305ms" } as React.CSSProperties}
+          className="ug-enter rounded-[20px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] px-4 py-3 flex items-center justify-between gap-3 transition-colors"
+        >
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-[#E0F2FE] text-[#0284C7] flex items-center justify-center shrink-0">
               <ThermometerSun className="h-4 w-4" />
@@ -200,7 +209,8 @@ export function MetricCardsRow() {
         {/* Direct AgriBot Copilot Shortcut */}
         <Link
           href="/agribot"
-          className="rounded-[20px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] px-4 py-3 flex items-center justify-between gap-3 transition-colors group"
+          style={{ "--ug-delay": "355ms" } as React.CSSProperties}
+          className="ug-enter rounded-[20px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] px-4 py-3 flex items-center justify-between gap-3 transition-colors group"
         >
           <div className="flex items-center gap-3 min-w-0">
             <div className="h-9 w-9 rounded-xl bg-[#165B39] text-white flex items-center justify-center shrink-0">

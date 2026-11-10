@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useId } from "react";
+import React, { useEffect, useId, useState } from "react";
 import { useTelemetry } from "@/lib/telemetryContext";
+import { useInViewOnce } from "@/components/motion/RevealOnView";
 
 function polarPoint(cx: number, cy: number, radius: number, progressDeg: number) {
-  const rad = (progressDeg * Math.PI) / 180;
+  const clamped = Math.max(-20, Math.min(200, progressDeg));
+  const rad = (clamped * Math.PI) / 180;
   return {
     x: Number((cx - radius * Math.cos(rad)).toFixed(3)),
     y: Number((cy - radius * Math.sin(rad)).toFixed(3)),
@@ -18,6 +20,7 @@ function describeClockwiseArc(
   fromDeg: number,
   toDeg: number
 ) {
+  if (toDeg <= fromDeg + 0.05) return "";
   const start = polarPoint(cx, cy, radius, fromDeg);
   const end = polarPoint(cx, cy, radius, toDeg);
   const largeArc = toDeg - fromDeg > 180 ? 1 : 0;
@@ -29,6 +32,38 @@ export function BiofilterDonutCard() {
   const clipId = `nitrification-clip-${uid}`;
   const hatchId = `residu-hatch-${uid}`;
   const { sensors, actuators } = useTelemetry();
+  const { ref, inView } = useInViewOnce<HTMLDivElement>(0.15);
+  const [sweep, setSweep] = useState(0);
+
+  useEffect(() => {
+    if (!inView) return;
+
+    const prefersReduced =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+    let rafId = 0;
+    const durationMs = 880;
+    const startTime = performance.now();
+
+    const tick = (now: number) => {
+      if (prefersReduced) {
+        setSweep(1);
+        return;
+      }
+      const elapsed = now - startTime;
+      const t = Math.min(1, elapsed / durationMs);
+      // Smooth quintic deceleration
+      const eased = 1 - Math.pow(1 - t, 3);
+      setSweep(eased);
+      if (t < 1) {
+        rafId = requestAnimationFrame(tick);
+      }
+    };
+
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [inView]);
 
   // Compute nitrification breakdown strictly within [60%, 98.5%] from live ECAD telemetry
   const phDeviation = Math.abs((sensors.ph ?? 6.95) - 7.0);
@@ -73,8 +108,43 @@ export function BiofilterDonutCard() {
   const nitrateEndDeg = (nitratePct / 100) * 180;
   const nitrificationEndDeg = ((nitratePct + nitrificationPct) / 100) * 180;
 
+  // Progressive clockwise sweep cursor (-14° over left cap -> 194° past right cap)
+  const sweepCursor = -14 + sweep * 208;
+  const animNitratePath = describeClockwiseArc(
+    cx,
+    cy,
+    rMid,
+    -14,
+    Math.min(nitrateEndDeg + 0.35, sweepCursor)
+  );
+  const animNitrificationPath =
+    sweepCursor > nitrateEndDeg
+      ? describeClockwiseArc(
+          cx,
+          cy,
+          rMid,
+          nitrateEndDeg,
+          Math.min(nitrificationEndDeg + 0.35, sweepCursor)
+        )
+      : "";
+  const animResiduePath =
+    sweepCursor > nitrificationEndDeg
+      ? describeClockwiseArc(
+          cx,
+          cy,
+          rMid,
+          nitrificationEndDeg,
+          Math.min(194, sweepCursor)
+        )
+      : "";
+
+  const animatedEfficiency = (totalEfficiency * sweep).toFixed(1);
+
   return (
-    <div className="rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs flex flex-col justify-between h-[300px]">
+    <div
+      ref={ref}
+      className="rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs flex flex-col justify-between h-[300px]"
+    >
       <div>
         <span className="text-xs font-semibold text-[#111827]">
           Efisiensi Siklus Nitrifikasi
@@ -84,7 +154,7 @@ export function BiofilterDonutCard() {
         </p>
       </div>
 
-      {/* Concentric Semicircular Gauge with Exact Polar Angles */}
+      {/* Concentric Semicircular Gauge with Clockwise Motion & Exact Polar Angles */}
       <div className="relative flex flex-col items-center justify-center my-auto">
         <svg viewBox="0 0 200 110" className="w-56 overflow-visible" role="img" aria-label={`Efisiensi siklus nitrifikasi ${totalEfficiency}%`}>
           <defs>
@@ -105,45 +175,48 @@ export function BiofilterDonutCard() {
 
           {/* Clipped concentric track segments */}
           <g clipPath={`url(#${clipId})`}>
-            {/* Base track */}
+            {/* Subtle base track */}
             <path d={pillTrackPath} fill="#F1F5F9" />
 
             {/* Segment 3: Residu (hatched, right remainder) */}
-            <path
-              d={describeClockwiseArc(cx, cy, rMid, nitrificationEndDeg, 194)}
-              fill="none"
-              stroke={`url(#${hatchId})`}
-              strokeWidth="22"
-              strokeLinecap="butt"
-              className="transition-all duration-500"
-            />
+            {animResiduePath && (
+              <path
+                d={animResiduePath}
+                fill="none"
+                stroke={`url(#${hatchId})`}
+                strokeWidth="22"
+                strokeLinecap="butt"
+              />
+            )}
 
             {/* Segment 2: Active Nitrifikasi */}
-            <path
-              d={describeClockwiseArc(cx, cy, rMid, nitrateEndDeg, nitrificationEndDeg + 0.35)}
-              fill="none"
-              stroke="#4EAB7C"
-              strokeWidth="22"
-              strokeLinecap="butt"
-              className="transition-all duration-500"
-            />
+            {animNitrificationPath && (
+              <path
+                d={animNitrificationPath}
+                fill="none"
+                stroke="#4EAB7C"
+                strokeWidth="22"
+                strokeLinecap="butt"
+              />
+            )}
 
             {/* Segment 1: Deep Pine Nitrat Absorbed */}
-            <path
-              d={describeClockwiseArc(cx, cy, rMid, -14, nitrateEndDeg + 0.35)}
-              fill="none"
-              stroke="#165B39"
-              strokeWidth="22"
-              strokeLinecap="butt"
-              className="transition-all duration-500"
-            />
+            {animNitratePath && (
+              <path
+                d={animNitratePath}
+                fill="none"
+                stroke="#165B39"
+                strokeWidth="22"
+                strokeLinecap="butt"
+              />
+            )}
           </g>
         </svg>
 
         {/* Center Readout aligned cleanly inside inner radius */}
         <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex flex-col items-center text-center pointer-events-none">
           <span className="text-3xl font-bold tracking-tight text-[#111827] num-tabular leading-none">
-            {totalEfficiency.toFixed(1)}
+            {animatedEfficiency}
             <span className="text-lg font-normal text-[#9CA3AF]">%</span>
           </span>
           <span className="text-[10px] font-medium text-[#9CA3AF] mt-1">
