@@ -1,32 +1,207 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Bot, RefreshCw, Sparkles, Trash2, Sprout } from "lucide-react";
-import { SensorData } from "@/lib/types";
+import {
+  Send,
+  Bot,
+  Sparkles,
+  Trash2,
+  Sun,
+  Power,
+  Check,
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
+import {
+  SensorData,
+  EcosystemDiagnosticReport,
+  SuggestedAction,
+  AgriBotChatTurn,
+} from "@/lib/types";
+import { sendAgriBotChat } from "@/lib/aiApi";
+import { useTelemetry } from "@/lib/telemetryContext";
+
+let chatMessageSeq = 1;
+function nextChatId(prefix: string): string {
+  chatMessageSeq += 1;
+  return `${prefix}-${chatMessageSeq}`;
+}
+
+function formatNowTime(): string {
+  return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
 
 interface ChatMsg {
   id: string;
   sender: "user" | "bot";
   text: string;
   time: string;
+  provider?: string;
+  model?: string;
+  category?: string;
+  latencyMs?: number;
+  suggestedActions?: SuggestedAction[];
 }
 
 interface ChatWindowProps {
   sensors: SensorData;
+  cropDayPakcoy?: number;
+  cropDayKangkung?: number;
+  onDiagnosticsUpdate?: (
+    diagnostics: EcosystemDiagnosticReport,
+    meta: { provider: string; model: string; latencyMs: number }
+  ) => void;
 }
 
-export function ChatWindow({ sensors }: ChatWindowProps) {
+const QUICK_PROMPTS = [
+  {
+    label: "Diagnosis 3 Domain",
+    prompt:
+      "Berikan diagnosis lengkap kondisi tumbuhan Pakcoy dan Kangkung, kualitas air, serta kesehatan ikan Nila dan Lele berdasarkan data sensor saat ini.",
+  },
+  {
+    label: "Prediksi & Gejala Air",
+    prompt:
+      "Bagaimana prediksi kondisi air dan gejala dini apa saja yang berpotensi muncul dari tren pembacaan sensor saat ini?",
+  },
+  {
+    label: "Estimasi Panen GDD",
+    prompt:
+      "Kapan estimasi panen Pakcoy L4 dan Kangkung L2 berdasarkan suhu air serta pembacaan cahaya sensor LDR sekarang?",
+  },
+  {
+    label: "Daun Menguning / Klorosis",
+    prompt:
+      "Jika daun tanaman mulai menguning atau pertumbuhan melambat, apa analisisnya berdasarkan pH, TDS, dan sensor cahaya LDR saat ini?",
+  },
+  {
+    label: "Ikan Megap-megap / DO",
+    prompt:
+      "Apakah kondisi oksigen terlarut (DO) dan suhu air aman untuk Ikan Nila dan Lele? Gejala awal apa yang harus diwaspadai?",
+  },
+  {
+    label: "Status Sensor LDR vs Dummy",
+    prompt:
+      "Jelaskan mana sensor yang saat ini terbaca LIVE dari ESP32 (LDR) dan mana yang menggunakan mode auto-dummy.",
+  },
+];
+
+function renderInlineMarkdown(text: string): React.ReactNode[] {
+  const tokens = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+  return tokens.map((token, idx) => {
+    if (token.startsWith("**") && token.endsWith("**") && token.length > 4) {
+      return (
+        <strong key={idx} className="font-semibold">
+          {token.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (token.startsWith("`") && token.endsWith("`") && token.length > 2) {
+      return (
+        <code
+          key={idx}
+          className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[11px] font-semibold"
+        >
+          {token.slice(1, -1)}
+        </code>
+      );
+    }
+    return <React.Fragment key={idx}>{token}</React.Fragment>;
+  });
+}
+
+function FormattedMarkdownMessage({ text }: { text: string }) {
+  const lines = text.split(/\r?\n/);
+
+  return (
+    <div className="space-y-1.5">
+      {lines.map((rawLine, idx) => {
+        const line = rawLine.trim();
+        if (!line) {
+          return <div key={idx} className="h-1" />;
+        }
+
+        if (line.startsWith("### ")) {
+          return (
+            <h4
+              key={idx}
+              className="text-[13px] font-bold text-[#165B39] pt-1 tracking-tight"
+            >
+              {renderInlineMarkdown(line.slice(4))}
+            </h4>
+          );
+        }
+        if (line.startsWith("## ")) {
+          return (
+            <h4
+              key={idx}
+              className="text-[13.5px] font-bold text-[#111827] pt-1 tracking-tight"
+            >
+              {renderInlineMarkdown(line.slice(3))}
+            </h4>
+          );
+        }
+        if (line.startsWith("- ") || line.startsWith("* ") || line.startsWith("• ")) {
+          return (
+            <div key={idx} className="flex items-start gap-2 pl-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#165B39] mt-1.5 shrink-0" />
+              <div className="flex-1 leading-relaxed">
+                {renderInlineMarkdown(line.slice(2))}
+              </div>
+            </div>
+          );
+        }
+
+        const numberedMatch = line.match(/^(\d+\.)\s+(.*)$/);
+        if (numberedMatch) {
+          return (
+            <div key={idx} className="flex items-start gap-2 pl-1">
+              <span className="font-mono font-bold text-[#165B39] shrink-0">
+                {numberedMatch[1]}
+              </span>
+              <div className="flex-1 leading-relaxed">
+                {renderInlineMarkdown(numberedMatch[2])}
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <p key={idx} className="leading-relaxed">
+            {renderInlineMarkdown(line)}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+export function ChatWindow({
+  sensors,
+  cropDayPakcoy = 14,
+  cropDayKangkung = 17,
+  onDiagnosticsUpdate,
+}: ChatWindowProps) {
+  const { sensorSources, actuators, setActuatorState, systemMeta } = useTelemetry();
+
   const [messages, setMessages] = useState<ChatMsg[]>([
     {
-      id: "1",
+      id: "welcome-1",
       sender: "bot",
-      text: "Halo! Saya **AgriBot**, asisten AI cerdas UrbanGrow. Saya memantau telemetri real-time mikrokontroler ESP32 Anda (pH, DO, TDS, Suhu) dan siap memberikan rekomendasi adaptasi iklim biologis, proyeksi panen, serta diagnosis kesehatan ekosistem.",
+      text: "Halo! Saya **AgriBot Gemini**, asisten pakar akuaponik cerdas UrbanGrow.\n\nSaya membaca telemetri hybrid Anda secara real-time (**sensor LDR fisik ESP32** + **auto-dummy adaptif** untuk probe pH, suhu, TDS, DO) untuk:\n- **Diagnosis 3 Domain**: Kondisi tumbuhan Pakcoy & Kangkung, kualitas air, dan kesehatan Ikan Nila & Lele.\n- **Prediksi Proaktif**: Tren air ke depan, gejala awal anomali sebelum ikan/tanaman stres, dan estimasi hari panen GDD.\n\nSilakan ketik pertanyaan atau klik topik cepat di bawah.",
       time: "Sekarang",
+      provider: "gemini",
+      model: "gemini-3.5-flash-lite",
+      category: "general",
     },
   ]);
   const [input, setInput] = useState<string>("");
   const [isTyping, setIsTyping] = useState<boolean>(false);
+  const [pendingActionKey, setPendingActionKey] = useState<string | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<Record<string, { ok: boolean; msg: string }>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const isLdrLive = sensorSources.lightIntensity === "live_iot";
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -36,97 +211,184 @@ export function ChatWindow({ sensors }: ChatWindowProps) {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  const handleSend = (textToSend?: string) => {
-    const q = textToSend || input;
-    if (!q.trim()) return;
+  const handleSend = async (textToSend?: string) => {
+    const q = (textToSend ?? input).trim();
+    if (!q || isTyping) return;
 
     const userMsg: ChatMsg = {
-      id: String(Date.now()),
+      id: nextChatId("u"),
       sender: "user",
       text: q,
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      time: formatNowTime(),
     };
 
+    const historyPayload: AgriBotChatTurn[] = messages
+      .filter((m) => m.id !== "welcome-1")
+      .slice(-6)
+      .map((m) => ({
+        role: m.sender === "user" ? "user" : "assistant",
+        text: m.text,
+      }));
+
     setMessages((prev) => [...prev, userMsg]);
-    setInput("");
+    if (!textToSend) setInput("");
     setIsTyping(true);
 
-    setTimeout(() => {
-      let reply =
-        "Berdasarkan evaluasi model bioproses ECAD, kualitas air saat ini berada dalam kondisi seimbang. Ada parameter biologis tertentu yang ingin Anda konsultasikan?";
-      const lower = q.toLowerCase();
+    const res = await sendAgriBotChat({
+      message: q,
+      history: historyPayload,
+      cropDayPakcoy,
+      cropDayKangkung,
+    });
+    const latencyMs = res.latencyMs ?? 0;
 
-      if (lower.includes("pakcoy") || lower.includes("panen")) {
-        reply = `🌱 **Estimasi Panen Pakcoy (L4)**: Umur tanaman saat ini 14 hari. Mengacu pada kestabilan suhu kolam (${sensors.waterTemperature}°C) dan fotoperiode pencahayaan LED 85W, Pakcoy diproyeksikan siap panen optimal dalam **7 hari ke depan (31 Oktober 2026)** dengan estimasi bobot 180-200g per pod.`;
-      } else if (lower.includes("kangkung")) {
-        reply =
-          "🥬 **Estimasi Panen Kangkung (L2)**: Substrat biofilter Kangkung berumur 17 hari sangat aktif menyerap senyawa nitrat organik. Biomassa tajuk daun telah mencapai standar komersial dan siap dipanen dalam **4 hari lagi (28 Oktober 2026)**.";
-      } else if (lower.includes("nila") || lower.includes("aerator") || lower.includes("oksigen") || lower.includes("do")) {
-        reply = `🐟 **Kesehatan & Oksigen Ikan Nila (L3)**: Tingkat Dissolved Oxygen (DO) kolam terukur **${sensors.dissolvedOxygen} mg/L**. Ambang minimum aman Nila adalah 5.0 mg/L, sehingga aerasi venturi bekerja optimal tanpa risiko hipoksia jaringan.`;
-      } else if (lower.includes("ph") || lower.includes("asam") || lower.includes("nutrisi") || lower.includes("tds")) {
-        reply = `⚗️ **Keseimbangan Kimiawi Air**: Kadar pH terbaca **${sensors.ph} pH** dan TDS Nutrisi **${Math.round(sensors.tds)} ppm**. Rentang ini sangat ramah bagi simbiosis bakteri nitrifikasi dan penyerapan hara makro akar tanaman.`;
-      } else if (lower.includes("tanam") || lower.includes("cara")) {
-        reply = `🌿 **Panduan Budidaya Akuaponik UrbanGrow**:
-1. Pastikan debit pompa sirkulasi stabil pada rentang 1.8 - 2.2 L/menit.
-2. Jaga durasi LED Grow Light selama 14-16 jam per hari untuk fotosintesis optimal.
-3. Beri pakan pelet terapung 35g terbagi 2 kali sehari (Pagi 07:00 & Sore 16:30).`;
-      }
+    if (res.diagnostics && onDiagnosticsUpdate) {
+      onDiagnosticsUpdate(res.diagnostics, {
+        provider: res.provider,
+        model: res.model,
+        latencyMs,
+      });
+    }
 
-      setMessages((prev) => [
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: nextChatId("b"),
+        sender: "bot",
+        text: res.reply,
+        time: formatNowTime(),
+        provider: res.provider,
+        model: res.model,
+        category: res.category,
+        latencyMs,
+        suggestedActions: res.suggestedActions,
+      },
+    ]);
+    setIsTyping(false);
+  };
+
+  const handleExecuteSuggestedAction = async (
+    messageId: string,
+    action: SuggestedAction
+  ) => {
+    const key = `${messageId}:${action.actuatorId}`;
+    setPendingActionKey(key);
+    const result = await setActuatorState(action.actuatorId, action.targetState);
+    setPendingActionKey(null);
+
+    if (result.ok) {
+      setActionFeedback((prev) => ({
         ...prev,
-        {
-          id: String(Date.now() + 1),
-          sender: "bot",
-          text: reply,
-          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        },
-      ]);
-      setIsTyping(false);
-    }, 700);
+        [key]: { ok: true, msg: "Diterapkan ke Relay!" },
+      }));
+    } else {
+      setActionFeedback((prev) => ({
+        ...prev,
+        [key]: { ok: false, msg: result.error || "Ditolak safety lock" },
+      }));
+    }
   };
 
   const handleResetChat = () => {
+    setActionFeedback({});
     setMessages([
       {
-        id: "1",
+        id: "welcome-1",
         sender: "bot",
-        text: "Percakapan telah direset. Ada hal lain seputar bioproses akuaponik yang ingin Anda tanyakan?",
+        text: "Percakapan telah direset. Siap membantu diagnosis tumbuhan, air, ikan, serta prediksi panen dan gejala dini akuaponik Anda.",
         time: "Sekarang",
+        provider: "gemini",
+        model: "gemini-3.5-flash-lite",
+        category: "general",
       },
     ]);
   };
 
+  const formatCategory = (cat?: string) => {
+    switch (cat) {
+      case "diagnosis":
+        return "Diagnosis";
+      case "prediction":
+        return "Prediksi";
+      case "advisory":
+        return "Saran Tindakan";
+      default:
+        return "Asisten";
+    }
+  };
+
   return (
-    <div className="rounded-[28px] bg-white border border-[#E5E7EB] p-5 sm:p-6 shadow-xs flex flex-col h-[560px]">
+    <div className="rounded-[28px] bg-white border border-[#E5E7EB] p-5 sm:p-6 shadow-xs flex flex-col h-[640px]">
       {/* 1. Chat Window Header Strip */}
       <div className="flex items-center justify-between pb-3 border-b border-[#F3F4F6]">
         <div className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-full bg-[#165B39] text-white flex items-center justify-center shadow-xs">
+          <div className="h-9 w-9 rounded-full bg-[#165B39] text-white flex items-center justify-center shadow-xs shrink-0">
             <Sparkles className="h-4 w-4" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h3 className="font-bold text-sm text-[#111827]">
                 AgriBot Telemetry Copilot
               </h3>
-              <span className="flex items-center gap-1 px-2 py-0.2 rounded-full bg-[#DCFCE7] text-[10px] font-mono text-[#166534] font-semibold">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#166534] animate-pulse" />
-                Live Ingest
+              <span
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold ${
+                  systemMeta.edgeOnline
+                    ? "bg-[#DCFCE7] text-[#166534]"
+                    : "bg-[#F3F4F6] text-[#4B5563]"
+                }`}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    systemMeta.edgeOnline ? "bg-[#166534] animate-pulse" : "bg-[#6B7280]"
+                  }`}
+                />
+                {systemMeta.edgeOnline ? "Hybrid Live IoT" : "Auto-Dummy"}
               </span>
             </div>
             <p className="text-[11px] text-[#6B7280]">
-              Model XGBoost terlatih dengan data 60+ siklus panen
+              Terhubung ke Gemini API dengan injeksi telemetri ESP32 real-time
             </p>
           </div>
         </div>
 
         <button
           onClick={handleResetChat}
-          className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] text-[#6B7280] hover:text-[#111827] flex items-center justify-center transition-colors cursor-pointer"
+          className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] text-[#6B7280] hover:text-[#111827] flex items-center justify-center transition-colors cursor-pointer shrink-0"
           title="Reset Percakapan"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
+      </div>
+
+      {/* 1b. Live Hybrid Sensor Context Strip */}
+      <div className="py-2 px-3 mt-2.5 rounded-2xl bg-[#F8F9FA] border border-[#E5E7EB] flex flex-wrap items-center gap-2 text-[10.5px] font-mono">
+        <span
+          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold ${
+            isLdrLive
+              ? "bg-[#DCFCE7] text-[#166534] border border-[#165B39]/25"
+              : "bg-white text-[#4B5563] border border-[#E5E7EB]"
+          }`}
+        >
+          <Sun className="h-3 w-3 text-[#D97706]" />
+          <span>
+            LDR {Math.round(sensors.lightIntensity)} lux ({isLdrLive ? "LIVE ESP32" : "Auto-Dummy"})
+          </span>
+        </span>
+        <span className="text-[#4B5563]">
+          pH <strong className="text-[#111827]">{sensors.ph.toFixed(2)}</strong>
+        </span>
+        <span className="text-[#D1D5DB]">•</span>
+        <span className="text-[#4B5563]">
+          Suhu <strong className="text-[#111827]">{sensors.waterTemperature.toFixed(1)}°C</strong>
+        </span>
+        <span className="text-[#D1D5DB]">•</span>
+        <span className="text-[#4B5563]">
+          TDS <strong className="text-[#111827]">{Math.round(sensors.tds)} ppm</strong>
+        </span>
+        <span className="text-[#D1D5DB]">•</span>
+        <span className="text-[#4B5563]">
+          DO <strong className="text-[#111827]">{sensors.dissolvedOxygen.toFixed(2)} mg/L</strong>
+        </span>
       </div>
 
       {/* 2. Chat Messages Area */}
@@ -143,20 +405,91 @@ export function ChatWindow({ sensors }: ChatWindowProps) {
                 <Bot className="h-4 w-4" />
               </div>
             )}
+
             <div
-              className={`max-w-[85%] sm:max-w-[75%] p-4 rounded-[20px] text-xs leading-relaxed shadow-xs ${
+              className={`max-w-[88%] sm:max-w-[78%] p-4 rounded-[20px] text-xs shadow-xs ${
                 m.sender === "user"
                   ? "bg-[#165B39] text-white rounded-tr-none font-medium"
                   : "bg-[#F8F9FA] border border-[#E5E7EB] text-[#111827] rounded-tl-none"
               }`}
             >
-              <div
-                dangerouslySetInnerHTML={{
-                  __html: m.text
-                    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-                    .replace(/\n/g, "<br/>"),
-                }}
-              />
+              {m.sender === "bot" && (m.provider || m.category) && (
+                <div className="flex flex-wrap items-center gap-1.5 mb-2 pb-2 border-b border-[#E5E7EB]/80 text-[10px] font-mono">
+                  <span
+                    className={`px-2 py-0.5 rounded-full font-bold ${
+                      m.provider === "gemini"
+                        ? "bg-[#DCFCE7] text-[#166534]"
+                        : "bg-amber-100 text-amber-800"
+                    }`}
+                  >
+                    {m.provider === "gemini" ? "✨ Gemini" : "⚙️ ECAD Engine"}
+                    {m.model ? ` • ${m.model}` : ""}
+                  </span>
+                  {m.category && (
+                    <span className="px-2 py-0.5 rounded-full bg-white border border-[#E5E7EB] text-[#4B5563]">
+                      {formatCategory(m.category)}
+                    </span>
+                  )}
+                  {m.latencyMs !== undefined && (
+                    <span className="text-[#9CA3AF] ml-auto">{m.latencyMs}ms</span>
+                  )}
+                </div>
+              )}
+
+              <FormattedMarkdownMessage text={m.text} />
+
+              {/* One-Click Interactive Suggested Actuator Actions */}
+              {m.sender === "bot" && m.suggestedActions && m.suggestedActions.length > 0 && (
+                <div className="mt-3 pt-2.5 border-t border-[#E5E7EB] space-y-2">
+                  <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#6B7280]">
+                    Tindakan Relay Disarankan
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {m.suggestedActions.map((act) => {
+                      const key = `${m.id}:${act.actuatorId}`;
+                      const liveActuator = actuators[act.actuatorId];
+                      const alreadyMatches =
+                        liveActuator && liveActuator.isOn === act.targetState;
+                      const isPending = pendingActionKey === key;
+                      const feedback = actionFeedback[key];
+
+                      return (
+                        <div key={key} className="space-y-1">
+                          <button
+                            type="button"
+                            disabled={alreadyMatches || isPending}
+                            onClick={() => handleExecuteSuggestedAction(m.id, act)}
+                            title={act.reason}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition cursor-pointer ${
+                              alreadyMatches
+                                ? "bg-[#DCFCE7] text-[#166534] border border-[#165B39]/25 cursor-default"
+                                : "bg-[#165B39] hover:bg-[#124B2E] text-white shadow-2xs"
+                            }`}
+                          >
+                            {isPending ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : alreadyMatches ? (
+                              <Check className="h-3 w-3" />
+                            ) : (
+                              <Power className="h-3 w-3" />
+                            )}
+                            <span>
+                              {alreadyMatches ? `${act.label} (Aktif)` : act.label}
+                            </span>
+                          </button>
+                          {feedback && !feedback.ok && (
+                            <div className="flex items-center gap-1 text-[10px] text-rose-600">
+                              <AlertCircle className="h-3 w-3 shrink-0" />
+                              <span>{feedback.msg}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <span
                 className={`text-[10px] block mt-2 text-right font-mono ${
                   m.sender === "user" ? "text-white/70" : "text-[#9CA3AF]"
@@ -173,16 +506,21 @@ export function ChatWindow({ sensors }: ChatWindowProps) {
             <div className="h-8 w-8 rounded-full bg-[#DCFCE7] text-[#166534] flex items-center justify-center shrink-0">
               <Bot className="h-4 w-4" />
             </div>
-            <div className="p-3.5 rounded-[18px] rounded-tl-none bg-[#F8F9FA] border border-[#E5E7EB] flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-[#165B39] animate-bounce" />
-              <span
-                className="h-2 w-2 rounded-full bg-[#165B39] animate-bounce"
-                style={{ animationDelay: "150ms" }}
-              />
-              <span
-                className="h-2 w-2 rounded-full bg-[#165B39] animate-bounce"
-                style={{ animationDelay: "300ms" }}
-              />
+            <div className="px-4 py-3 rounded-[18px] rounded-tl-none bg-[#F8F9FA] border border-[#E5E7EB] flex items-center gap-2 text-xs text-[#4B5563]">
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-[#165B39] animate-bounce" />
+                <span
+                  className="h-2 w-2 rounded-full bg-[#165B39] animate-bounce"
+                  style={{ animationDelay: "150ms" }}
+                />
+                <span
+                  className="h-2 w-2 rounded-full bg-[#165B39] animate-bounce"
+                  style={{ animationDelay: "300ms" }}
+                />
+              </span>
+              <span className="font-mono text-[11px] text-[#6B7280]">
+                Menganalisis sensor &amp; memanggil Gemini AI...
+              </span>
             </div>
           </div>
         )}
@@ -190,31 +528,18 @@ export function ChatWindow({ sensors }: ChatWindowProps) {
       </div>
 
       {/* 3. Quick Prompts Chips */}
-      <div className="pt-2.5 pb-2 border-t border-[#F3F4F6] flex flex-wrap gap-2">
-        <button
-          onClick={() => handleSend("Bagaimana cara budidaya akuaponik yang baik?")}
-          className="px-3 py-1.5 rounded-full bg-[#F8F9FA] border border-[#E5E7EB] hover:bg-[#DCFCE7] hover:text-[#166534] hover:border-[#166534]/30 text-[#4B5563] text-xs font-medium transition cursor-pointer"
-        >
-          Panduan Akuaponik
-        </button>
-        <button
-          onClick={() => handleSend("Kapan estimasi panen Pakcoy L4?")}
-          className="px-3 py-1.5 rounded-full bg-[#F8F9FA] border border-[#E5E7EB] hover:bg-[#DCFCE7] hover:text-[#166534] hover:border-[#166534]/30 text-[#4B5563] text-xs font-medium transition cursor-pointer"
-        >
-          Kapan panen Pakcoy?
-        </button>
-        <button
-          onClick={() => handleSend("Bagaimana status saturasi DO untuk Ikan Nila?")}
-          className="px-3 py-1.5 rounded-full bg-[#F8F9FA] border border-[#E5E7EB] hover:bg-[#DCFCE7] hover:text-[#166534] hover:border-[#166534]/30 text-[#4B5563] text-xs font-medium transition cursor-pointer"
-        >
-          DO Ikan Nila & Aerator
-        </button>
-        <button
-          onClick={() => handleSend("Apakah nilai pH saat ini aman?")}
-          className="px-3 py-1.5 rounded-full bg-[#F8F9FA] border border-[#E5E7EB] hover:bg-[#DCFCE7] hover:text-[#166534] hover:border-[#166534]/30 text-[#4B5563] text-xs font-medium transition cursor-pointer"
-        >
-          Kestabilan pH Air
-        </button>
+      <div className="pt-2.5 pb-2 border-t border-[#F3F4F6] flex flex-wrap gap-1.5">
+        {QUICK_PROMPTS.map((qp) => (
+          <button
+            key={qp.label}
+            type="button"
+            disabled={isTyping}
+            onClick={() => handleSend(qp.prompt)}
+            className="px-3 py-1.5 rounded-full bg-[#F8F9FA] border border-[#E5E7EB] hover:bg-[#DCFCE7] hover:text-[#166534] hover:border-[#166534]/30 disabled:opacity-50 text-[#4B5563] text-[11px] font-medium transition cursor-pointer"
+          >
+            {qp.label}
+          </button>
+        ))}
       </div>
 
       {/* 4. Input Bar */}
@@ -222,14 +547,17 @@ export function ChatWindow({ sensors }: ChatWindowProps) {
         <input
           type="text"
           value={input}
+          disabled={isTyping}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
-          placeholder="Tanya AgriBot tentang kualitas air, estimasi panen, atau nutrisi..."
-          className="flex-1 px-4 py-2.5 rounded-full border border-[#E5E7EB] text-xs text-[#111827] focus:outline-none focus:border-[#165B39] focus:ring-1 focus:ring-[#165B39] bg-[#F8F9FA] placeholder:text-[#9CA3AF]"
+          placeholder="Tanya AgriBot: diagnosis tanaman/air/ikan, prediksi panen, atau gejala dini..."
+          className="flex-1 px-4 py-2.5 rounded-full border border-[#E5E7EB] text-xs text-[#111827] focus:outline-none focus:border-[#165B39] focus:ring-1 focus:ring-[#165B39] bg-[#F8F9FA] placeholder:text-[#9CA3AF] disabled:opacity-60"
         />
         <button
+          type="button"
+          disabled={isTyping || !input.trim()}
           onClick={() => handleSend()}
-          className="h-10 w-10 rounded-full bg-[#165B39] hover:bg-[#0F3F27] text-white flex items-center justify-center active:scale-95 transition-all shadow-xs cursor-pointer shrink-0"
+          className="h-10 w-10 rounded-full bg-[#165B39] hover:bg-[#0F3F27] disabled:opacity-50 text-white flex items-center justify-center active:scale-95 transition-all shadow-xs cursor-pointer shrink-0"
           aria-label="Kirim pesan"
         >
           <Send className="h-4 w-4" />

@@ -1,0 +1,20 @@
+[Unit]
+Description=UrbanGrow ElysiaJS IoT & Gemini AI Backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/urbangrow/services/backend
+Environment=NODE_ENV=production
+Environment=PORT=3000
+EnvironmentFile=-/opt/urbangrow/services/backend/.env
+ExecStart=/usr/local/bin/bun run src/index.ts
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

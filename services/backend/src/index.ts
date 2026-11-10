@@ -1,48 +1,175 @@
 import { Elysia, t } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { simulator } from "./simulator";
-
 import { MqttBridgeService } from "./mqtt";
 import { SafetyInterlockManager } from "./safety";
 import { AiEngineClient } from "./aiClient";
 import { TelemetryWebSocketManager } from "./websocket";
+import { AgriBotEngine } from "./geminiChat";
+
+const PORT = Number(process.env.PORT || 3000);
+
+const TelemetryIngestBody = t.Object(
+  {
+    device_id: t.Optional(t.String()),
+    deviceId: t.Optional(t.String()),
+    timestamp: t.Optional(t.String()),
+    wifi_rssi_dbm: t.Optional(t.Number()),
+    firmware_version: t.Optional(t.String()),
+    telemetry: t.Optional(t.Record(t.String(), t.Union([t.Number(), t.Boolean(), t.String()]))),
+    ph: t.Optional(t.Number({ minimum: 0, maximum: 14 })),
+    tds_ppm: t.Optional(t.Number({ minimum: 0 })),
+    tds: t.Optional(t.Number({ minimum: 0 })),
+    water_temp_c: t.Optional(t.Number({ minimum: -10, maximum: 80 })),
+    waterTemperature: t.Optional(t.Number({ minimum: -10, maximum: 80 })),
+    air_temp_c: t.Optional(t.Number({ minimum: -20, maximum: 80 })),
+    airTemperature: t.Optional(t.Number({ minimum: -20, maximum: 80 })),
+    humidity_pct: t.Optional(t.Number({ minimum: 0, maximum: 100 })),
+    humidity: t.Optional(t.Number({ minimum: 0, maximum: 100 })),
+    lux: t.Optional(t.Number({ minimum: 0 })),
+    ldr: t.Optional(t.Number({ minimum: 0 })),
+    lightIntensity: t.Optional(t.Number({ minimum: 0 })),
+    dissolved_oxygen_mg_l: t.Optional(t.Number({ minimum: 0, maximum: 30 })),
+    dissolved_oxygen: t.Optional(t.Number({ minimum: 0, maximum: 30 })),
+    dissolvedOxygen: t.Optional(t.Number({ minimum: 0, maximum: 30 })),
+    water_level_ok: t.Optional(t.Boolean()),
+    waterLevel: t.Optional(t.Number({ minimum: 0, maximum: 100 })),
+  },
+  { additionalProperties: true }
+);
+
+function checkPumpSafetyIfEnabling(id: string, targetOn: boolean): { allowed: boolean; reason?: string } {
+  const resolvedId = simulator.resolveActuatorId(id);
+  if (resolvedId !== "waterPump" || !targetOn) {
+    return { allowed: true };
+  }
+
+  const snap = simulator.getSnapshot();
+  return SafetyInterlockManager.canActivatePump({
+    ph: snap.sensors.ph,
+    tds_ppm: snap.sensors.tds,
+    water_temp_c: snap.sensors.waterTemperature,
+    air_temp_c: snap.sensors.airTemperature,
+    humidity_pct: snap.sensors.humidity,
+    lux: snap.sensors.lightIntensity,
+    dissolved_oxygen_mg_l: snap.sensors.dissolvedOxygen,
+    water_level_ok: snap.sensors.waterLevel > 20,
+  });
+}
 
 export const app = new Elysia()
   .use(
     cors({
       origin: true,
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-      allowedHeaders: ["Content-Type", "Authorization"],
+      allowedHeaders: ["Content-Type", "Authorization", "X-Device-Token", "X-Request-Id"],
     })
   )
-  .get("/", () => ({
-    name: "UrbanGrow Backend API",
-    version: "1.0.0",
-    status: "running",
-    mode: "generative_simulation",
-    endpoints: {
-      current: "/api/sensors/current",
-      history: "/api/sensors/history",
-      alerts: "/api/alerts",
-      telemetry: "POST /api/sensors/telemetry",
-      toggleActuator: "POST /api/actuators/:id/toggle",
-      simulateAnomaly: "POST /api/simulation/anomaly",
-      mqttStatus: "/api/mqtt/status",
-    },
+  .onError(({ code, error, set }) => {
+    const statusCode =
+      code === "NOT_FOUND" ? 404 : code === "VALIDATION" ? 422 : 500;
+    set.status = statusCode;
+    const message =
+      error instanceof Error ? error.message : "Unexpected backend error";
+    console.error(`[API-ERROR] [${code}] ${message}`);
+    return {
+      success: false,
+      error: message,
+      code: statusCode,
+    };
+  })
+  .get("/", () => {
+    const snap = simulator.getSnapshot();
+    return {
+      name: "UrbanGrow Backend API",
+      version: "1.1.0",
+      status: "running",
+      mode: snap.system.mode,
+      edgeOnline: snap.system.edgeOnline,
+      endpoints: {
+        health: "GET /health",
+        current: "GET /api/sensors/current",
+        history: "GET /api/sensors/history",
+        alerts: "GET /api/alerts",
+        telemetry: "POST /api/sensors/telemetry",
+        iotCommands: "GET /api/iot/commands",
+        iotStatus: "GET /api/iot/status",
+        toggleActuator: "POST /api/actuators/:id/toggle",
+        setActuator: "POST /api/actuators/:id/set",
+        simulateAnomaly: "POST /api/simulation/anomaly",
+        aiChat: "POST /api/ai/chat",
+        aiDiagnostics: "GET /api/ai/diagnostics",
+        aiPredictions: "GET /api/ai/predictions",
+        aiPredict: "POST /api/ai/predict",
+        aiClimateScore: "GET /api/ai/climate-score",
+        wsTelemetry: "WS /api/telemetry/ws",
+      },
+    };
+  })
+  .get("/health", () => ({
+    status: "ok",
+    service: "urbangrow-backend",
+    uptimeSeconds: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
   }))
-  // Status of edge MQTT broker connection
+
+  // Edge MQTT & hybrid IoT bridge status
   .get("/api/mqtt/status", () => ({
     success: true,
     ...MqttBridgeService.getStatus(),
   }))
 
-  // Direct edge telemetry ingestion (ESP32 HTTP POST)
-  .post("/api/sensors/telemetry", ({ body }) => {
-    MqttBridgeService.handleIncomingTelemetry(body as any);
-    return { success: true, message: "Telemetry ingested" };
+  // Dedicated IoT hardware connectivity & hybrid sensor source status
+  .get("/api/iot/status", () => {
+    const snap = simulator.getSnapshot();
+    return {
+      success: true,
+      edgeOnline: snap.system.edgeOnline,
+      mode: snap.system.mode,
+      liveSensorCount: snap.system.liveSensorCount,
+      lastTelemetryAt: snap.system.lastTelemetryAt,
+      sensorSources: snap.sensorSources,
+      devices: simulator.getIotDevices(),
+      commands: simulator.getCommandsForEsp32(snap.system.edgeNode),
+    };
   })
 
-  // 1. Current real-time sensor snapshot
+  // Lightweight command polling endpoint for ESP32 hardware actuators
+  .get(
+    "/api/iot/commands",
+    ({ query }) => ({
+      success: true,
+      ...simulator.getCommandsForEsp32(query.device_id || "ESP32-GROW-01"),
+    }),
+    {
+      query: t.Object({
+        device_id: t.Optional(t.String()),
+      }),
+    }
+  )
+
+  // Flexible edge telemetry ingestion (supports partial payloads like LDR-only + auto-dummy fallback)
+  .post(
+    "/api/sensors/telemetry",
+    ({ body }) => {
+      const result = MqttBridgeService.handleIncomingTelemetry(body);
+      TelemetryWebSocketManager.broadcastTelemetry("telemetry");
+      const snap = simulator.getSnapshot();
+      return {
+        success: true,
+        message: "Telemetry ingested",
+        device_id: result.deviceId,
+        accepted_fields: result.acceptedFields,
+        sensorSources: snap.sensorSources,
+        commands: simulator.getCommandsForEsp32(result.deviceId),
+      };
+    },
+    {
+      body: TelemetryIngestBody,
+    }
+  )
+
+  // 1. Current real-time sensor snapshot (hybrid live IoT + smooth auto-dummy)
   .get("/api/sensors/current", () => simulator.getSnapshot())
 
   // 2. Historical sensor data for telemetry trend charts
@@ -58,37 +185,25 @@ export const app = new Elysia()
     alerts: simulator.evaluateAlerts(),
   }))
 
-  // 4. Actuator toggling (pump, aerator, light, dosing)
+  // 4. Actuator toggling (waterPump/pump, aerator, growLight, feeder, dosingPump)
   .post(
     "/api/actuators/:id/toggle",
     ({ params: { id }, set }) => {
-      // Check dry-run pump safety
-      if (id === "pump") {
-        const snap = simulator.getSnapshot();
-        const canPump = SafetyInterlockManager.canActivatePump({
-          ph: snap.sensors.ph,
-          tds_ppm: snap.sensors.tds,
-          water_temp_c: snap.sensors.waterTemperature,
-          air_temp_c: snap.sensors.airTemperature,
-          humidity_pct: snap.sensors.humidity,
-          lux: snap.sensors.lightIntensity,
-          dissolved_oxygen_mg_l: snap.sensors.dissolvedOxygen,
-          water_level_ok: snap.sensors.waterLevel > 20,
-        });
-
-        const currentPump = snap.actuators.find((a) => a.id === "pump");
-        // If turning ON but not allowed
-        if (!currentPump?.isOn && !canPump.allowed) {
-          set.status = 400;
-          return { success: false, message: canPump.reason };
-        }
-      }
-
-      const updated = simulator.toggleActuator(id);
-      if (!updated) {
+      const existing = simulator.getActuator(id);
+      if (!existing) {
         set.status = 404;
         return { success: false, message: `Actuator '${id}' not found` };
       }
+
+      const nextState = !existing.isOn;
+      const safety = checkPumpSafetyIfEnabling(id, nextState);
+      if (!safety.allowed) {
+        set.status = 400;
+        return { success: false, message: safety.reason };
+      }
+
+      const updated = simulator.toggleActuator(id);
+      TelemetryWebSocketManager.broadcastTelemetry("actuator_update");
       return { success: true, actuator: updated };
     },
     {
@@ -98,11 +213,43 @@ export const app = new Elysia()
     }
   )
 
+  // 4b. Explicit actuator state setter (ON/OFF command)
+  .post(
+    "/api/actuators/:id/set",
+    ({ params: { id }, body, set }) => {
+      const existing = simulator.getActuator(id);
+      if (!existing) {
+        set.status = 404;
+        return { success: false, message: `Actuator '${id}' not found` };
+      }
+
+      const safety = checkPumpSafetyIfEnabling(id, body.state);
+      if (!safety.allowed) {
+        set.status = 400;
+        return { success: false, message: safety.reason };
+      }
+
+      const updated = simulator.setActuator(id, body.state, body.mode || "manual");
+      TelemetryWebSocketManager.broadcastTelemetry("actuator_update");
+      return { success: true, actuator: updated };
+    },
+    {
+      params: t.Object({
+        id: t.String(),
+      }),
+      body: t.Object({
+        state: t.Boolean(),
+        mode: t.Optional(t.Union([t.Literal("auto"), t.Literal("manual")])),
+      }),
+    }
+  )
+
   // 5. Trigger generative anomaly mode (ph_drop, heatwave, tds_spike, none)
   .post(
     "/api/simulation/anomaly",
     ({ body }) => {
-      const result = simulator.setAnomaly(body.type as any);
+      const result = simulator.setAnomaly(body.type);
+      TelemetryWebSocketManager.broadcastTelemetry("telemetry");
       return {
         success: true,
         message: `Simulation mode changed to: ${body.type}`,
@@ -120,22 +267,44 @@ export const app = new Elysia()
       }),
     }
   )
+
   // 6. Direct sensor override from IoT hardware simulator
   .post(
     "/api/simulation/sensor-override",
     ({ body }) => {
       const updated = simulator.overrideSensors(body as any);
+      TelemetryWebSocketManager.broadcastTelemetry("telemetry");
       return { success: true, sensors: updated };
+    },
+    {
+      body: t.Object(
+        {
+          ph: t.Optional(t.Number()),
+          tds: t.Optional(t.Number()),
+          waterTemperature: t.Optional(t.Number()),
+          airTemperature: t.Optional(t.Number()),
+          humidity: t.Optional(t.Number()),
+          lightIntensity: t.Optional(t.Number()),
+          dissolvedOxygen: t.Optional(t.Number()),
+          waterLevel: t.Optional(t.Number()),
+        },
+        { additionalProperties: true }
+      ),
     }
   )
-  // 7. Manual feed dispense
+
+  // 7. Manual feed dispense (3000ms fail-safe pulse)
   .post("/api/feed/dispense", () => {
-    simulator.toggleActuator("feeder");
-    setTimeout(() => {
-      simulator.toggleActuator("feeder");
-    }, 3000);
-    return { success: true, message: "Pakan berhasil didistribusikan (35g pelet)" };
+    const durationMs = SafetyInterlockManager.getFeederDispenseDurationMs();
+    simulator.triggerFeedPulse(durationMs);
+    TelemetryWebSocketManager.broadcastTelemetry("actuator_update");
+    return {
+      success: true,
+      duration_ms: durationMs,
+      message: "Pakan berhasil didistribusikan (35g pelet)",
+    };
   })
+
   // 8. Direct APK download for mobile testing
   .get("/download/urbangrow.apk", ({ set }) => {
     const { resolve } = require("path");
@@ -144,7 +313,6 @@ export const app = new Elysia()
       import.meta.dir,
       "../../../apps/mobile/build/app/outputs/flutter-apk/app-release.apk"
     );
-    console.log("APK request! Resolved path:", apkPath, "Exists:", existsSync(apkPath));
     if (!existsSync(apkPath)) {
       set.status = 404;
       return "APK file not found on disk. Build in progress.";
@@ -154,7 +322,81 @@ export const app = new Elysia()
     set.headers["Content-Disposition"] = 'attachment; filename="UrbanGrow-v1.0.5.apk"';
     return apkFile;
   })
-  // 9. AI Engine Anomaly Evaluation Gateway
+
+  // 9. Gemini AI Chatbot Copilot (Plant/Water/Fish Diagnosis & Water/Harvest Predictions)
+  .post(
+    "/api/ai/chat",
+    async ({ body }) => {
+      return await AgriBotEngine.chat({
+        message: body.message,
+        history: body.history,
+        cropDayPakcoy: body.cropDayPakcoy,
+        cropDayKangkung: body.cropDayKangkung,
+      });
+    },
+    {
+      body: t.Object({
+        message: t.String({ minLength: 1 }),
+        history: t.Optional(
+          t.Array(
+            t.Object({
+              role: t.Union([
+                t.Literal("user"),
+                t.Literal("assistant"),
+                t.Literal("bot"),
+                t.Literal("model"),
+              ]),
+              text: t.String(),
+            })
+          )
+        ),
+        cropDayPakcoy: t.Optional(t.Number({ minimum: 0, maximum: 90 })),
+        cropDayKangkung: t.Optional(t.Number({ minimum: 0, maximum: 90 })),
+      }),
+    }
+  )
+
+  // 10. Structured AI Diagnostics & Predictions (Plant, Water, Fish, Trends, GDD Harvest)
+  .get(
+    "/api/ai/diagnostics",
+    ({ query }) => ({
+      success: true,
+      ...AgriBotEngine.buildDiagnostics(
+        query.pakcoyDay ? Number(query.pakcoyDay) : 14,
+        query.kangkungDay ? Number(query.kangkungDay) : 17
+      ),
+    }),
+    {
+      query: t.Object({
+        pakcoyDay: t.Optional(t.String()),
+        kangkungDay: t.Optional(t.String()),
+      }),
+    }
+  )
+  .get(
+    "/api/ai/predictions",
+    ({ query }) => {
+      const report = AgriBotEngine.buildDiagnostics(
+        query.pakcoyDay ? Number(query.pakcoyDay) : 14,
+        query.kangkungDay ? Number(query.kangkungDay) : 17
+      );
+      return {
+        success: true,
+        timestamp: report.timestamp,
+        overallStatus: report.overallStatus,
+        sensorSources: report.sensorSources,
+        predictions: report.predictions,
+      };
+    },
+    {
+      query: t.Object({
+        pakcoyDay: t.Optional(t.String()),
+        kangkungDay: t.Optional(t.String()),
+      }),
+    }
+  )
+
+  // 11. AI Engine Anomaly Evaluation Gateway
   .post("/api/ai/predict", async () => {
     const snap = simulator.getSnapshot();
     const result = await AiEngineClient.predictAnomaly({
@@ -168,7 +410,8 @@ export const app = new Elysia()
     });
     return { success: true, ...result };
   })
-  // 10. AI Engine Climate Adaptation Score Gateway
+
+  // 12. AI Engine Climate Adaptation Score Gateway
   .get("/api/ai/climate-score", async () => {
     const snap = simulator.getSnapshot();
     const result = await AiEngineClient.calculateClimateScore({
@@ -182,7 +425,8 @@ export const app = new Elysia()
     });
     return { success: true, ...result };
   })
-  // 11. Full-duplex WebSocket Telemetry Stream
+
+  // 13. Full-duplex WebSocket Telemetry Stream
   .ws("/api/telemetry/ws", {
     open(ws) {
       TelemetryWebSocketManager.addClient({
@@ -201,14 +445,27 @@ export const app = new Elysia()
         send: () => {},
       });
     },
-  })
-  .listen({
-    port: 3000,
-    hostname: "0.0.0.0",
   });
 
 export type App = typeof app;
 
-console.log(
-  `🌱 UrbanGrow Backend (Elysia) running at http://${app.server?.hostname}:${app.server?.port}`
-);
+if (import.meta.main) {
+  app.listen({
+    port: PORT,
+    hostname: "0.0.0.0",
+  });
+
+  console.log(
+    `🌱 UrbanGrow Backend (Elysia) running at http://${app.server?.hostname}:${app.server?.port}`
+  );
+
+  const shutdown = () => {
+    console.log("[BACKEND] Shutting down gracefully...");
+    TelemetryWebSocketManager.shutdown();
+    app.stop(true);
+    process.exit(0);
+  };
+
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
+}

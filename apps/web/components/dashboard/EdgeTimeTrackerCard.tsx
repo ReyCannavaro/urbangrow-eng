@@ -5,7 +5,7 @@ import { Pause, Play, RotateCcw, Zap } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
 
 export function EdgeTimeTrackerCard() {
-  const { actuators, backendConnected } = useTelemetry();
+  const { actuators, backendConnected, systemMeta } = useTelemetry();
   const [seconds, setSeconds] = useState(5048); // 01:24:08 baseline
   const [isRunning, setIsRunning] = useState(true);
 
@@ -34,33 +34,37 @@ export function EdgeTimeTrackerCard() {
   return (
     <div className="rounded-[24px] bg-wavy-ribbon text-white p-5 shadow-sm flex flex-col justify-between h-[300px]">
       <div>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <span className="text-xs font-semibold text-[#68C194]">
             IoT Edge Node Runtime
           </span>
-          <span className="px-2 py-0.5 rounded-full bg-white/10 text-[9px] font-mono font-medium text-white/80">
-            ESP32 DevKit V1
+          <span className="px-2 py-0.5 rounded-full bg-white/10 text-[9px] font-mono font-medium text-white/80 truncate max-w-[140px]">
+            {systemMeta.edgeOnline ? systemMeta.edgeNode : "ESP32 DevKit V1"}
           </span>
         </div>
         <p className="text-[10px] text-white/60 mt-0.5">
-          Siklus operasional kontinu mikrokontroler
+          {backendConnected && systemMeta.edgeOnline
+            ? `Live Ingest Aktif (${systemMeta.liveSensorCount} sensor fisik)`
+            : "Siklus operasional & auto-dummy fail-safe"}
         </p>
       </div>
 
-      {/* Large Digital Clock (Matching Donezo 01:24:08) */}
+      {/* Large Digital Clock */}
       <div className="my-auto py-2 text-center">
         <div className="text-4xl font-bold tracking-tight font-mono text-white num-tabular drop-shadow-sm">
           {formatTime(seconds)}
         </div>
         <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/30 border border-white/10 text-[11px] font-mono text-[#68C194]">
           <Zap className="h-3.5 w-3.5 text-[#FACC15]" />
-          <span>{totalWatts} Watt Aktif • WiFi -56 dBm</span>
+          <span>
+            {totalWatts} Watt • WiFi {systemMeta.wifiSignalDbm ?? -56} dBm
+          </span>
         </div>
       </div>
 
-      {/* Control Buttons (Matching Donezo Pause + Stop buttons) */}
+      {/* Control Buttons */}
       <div className="flex items-center justify-center gap-3 pt-2">
-        {/* Pause/Play Button (White circle) */}
+        {/* Pause/Play Button */}
         <button
           onClick={() => setIsRunning(!isRunning)}
           className="h-10 w-10 rounded-full bg-white text-[#111827] flex items-center justify-center shadow-md hover:bg-stone-100 active:scale-95 transition-all cursor-pointer"
@@ -73,7 +77,7 @@ export function EdgeTimeTrackerCard() {
           )}
         </button>
 
-        {/* Reset / Stop Button (Red circle) */}
+        {/* Reset / Stop Button */}
         <button
           onClick={() => setSeconds(0)}
           className="h-10 w-10 rounded-full bg-[#E11D48] text-white flex items-center justify-center shadow-md hover:bg-[#BE123C] active:scale-95 transition-all cursor-pointer"

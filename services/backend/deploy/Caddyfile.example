@@ -1,0 +1,7 @@
+# Caddy Reverse Proxy Configuration for UrbanGrow Backend
+# Automatic HTTPS (Let's Encrypt) + WebSocket (/api/telemetry/ws) support
+
+urbangrow-api.reycannavaro.dev {
+    encode gzip zstd
+    reverse_proxy 127.0.0.1:3000
+}

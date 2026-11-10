@@ -2,11 +2,28 @@
 
 import React from "react";
 import Link from "next/link";
-import { Search, Bell, Mail, Radio, User } from "lucide-react";
+import { Search, Bell, Mail } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
 
 export function TopNavbar() {
-  const { backendConnected, alerts } = useTelemetry();
+  const { backendConnected, alerts, systemMeta, sensorSources } = useTelemetry();
+
+  const hasActiveAlerts = alerts.some((a) => !a.isResolved);
+  const isLdrLive = sensorSources.lightIntensity === "live_iot";
+
+  const statusText = !backendConnected
+    ? "Menghubungkan..."
+    : systemMeta.edgeOnline
+    ? isLdrLive && systemMeta.liveSensorCount === 1
+      ? "ESP32 Live • LDR"
+      : `ESP32 Live (${systemMeta.liveSensorCount} Sensor)`
+    : "Tersinkron • Auto-Dummy";
+
+  const statusTooltip = !backendConnected
+    ? "Menghubungkan ke server backend UrbanGrow..."
+    : systemMeta.edgeOnline
+    ? `Node ${systemMeta.edgeNode} aktif mengirim ${systemMeta.liveSensorCount} sensor fisik; sensor lainnya auto-dummy.`
+    : "Backend terhubung dalam mode Auto-Dummy ECAD (siap menerima data ESP32 kapan saja).";
 
   return (
     <header className="bg-white rounded-[24px] border border-[#E5E7EB] p-4 sm:px-6 sm:py-3.5 shadow-xs mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -27,30 +44,36 @@ export function TopNavbar() {
 
       {/* Right Action Icons & User Profile */}
       <div className="flex items-center gap-3">
-        {/* Connection & Sync Status Indicator */}
+        {/* Connection & Hybrid IoT Sync Status Indicator */}
         <div
-          className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#E5E7EB] bg-white text-xs font-medium shadow-2xs transition-colors"
-          title={
-            backendConnected
-              ? "Sistem terhubung dan tersinkronisasi dengan backend"
-              : "Menghubungkan ke backend..."
-          }
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium shadow-2xs transition-colors ${
+            !backendConnected
+              ? "border-amber-200 bg-amber-50/70"
+              : systemMeta.edgeOnline
+              ? "border-[#165B39]/30 bg-[#DCFCE7]/50"
+              : "border-[#E5E7EB] bg-white"
+          }`}
+          title={statusTooltip}
         >
           <span
             className={`h-2 w-2 rounded-full ${
-              backendConnected
-                ? "bg-[#165B39]"
-                : "bg-amber-500 animate-pulse"
+              !backendConnected
+                ? "bg-amber-500 animate-pulse"
+                : systemMeta.edgeOnline
+                ? "bg-[#165B39] animate-pulse"
+                : "bg-[#4EAB7C]"
             }`}
           />
           <span
             className={
-              backendConnected
-                ? "text-[#165B39] font-semibold"
-                : "text-amber-600 font-medium"
+              !backendConnected
+                ? "text-amber-700 font-medium"
+                : systemMeta.edgeOnline
+                ? "text-[#165B39] font-bold"
+                : "text-[#165B39] font-semibold"
             }
           >
-            {backendConnected ? "Tersinkron" : "Menghubungkan..."}
+            {statusText}
           </span>
         </div>
 
@@ -70,12 +93,12 @@ export function TopNavbar() {
           title="Notifikasi"
         >
           <Bell className="h-4 w-4" />
-          {alerts.length > 0 && (
+          {hasActiveAlerts && (
             <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-[#E11D48] ring-2 ring-white" />
           )}
         </Link>
 
-        {/* User Profile / Farm Owner (Matching Totok Michael in Donezo) */}
+        {/* User Profile / Farm Owner */}
         <div className="flex items-center gap-2.5 pl-2">
           <div className="h-9 w-9 rounded-full bg-[#165B39] text-white flex items-center justify-center font-bold text-xs shadow-sm">
             RC

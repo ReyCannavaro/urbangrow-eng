@@ -13,7 +13,7 @@ interface TimeSeriesChartProps {
   sensors: SensorData;
 }
 
-type MetricKey = "all" | "ph" | "temp" | "tds" | "do";
+type MetricKey = "all" | "ph" | "temp" | "tds" | "do" | "lux";
 
 interface MetricConfig {
   key: keyof SensorData;
@@ -27,7 +27,7 @@ interface MetricConfig {
   format: (v: number) => string;
 }
 
-const METRICS: Record<"ph" | "temp" | "tds" | "do", MetricConfig> = {
+const METRICS: Record<"ph" | "temp" | "tds" | "do" | "lux", MetricConfig> = {
   do: {
     key: "dissolvedOxygen",
     label: "Oksigen (DO)",
@@ -72,6 +72,17 @@ const METRICS: Record<"ph" | "temp" | "tds" | "do", MetricConfig> = {
     bandIndex: 3,
     format: (v) => `${Math.round(v)} ppm`,
   },
+  lux: {
+    key: "lightIntensity",
+    label: "Cahaya LDR",
+    unit: "lux",
+    color: "#7C3AED", // Photosynthetic Violet
+    fillId: "gradient-lux",
+    min: 0,
+    max: 3000,
+    bandIndex: 4,
+    format: (v) => `${Math.round(v)} lux`,
+  },
 };
 
 export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
@@ -96,6 +107,7 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
   const tempStats = getStats("waterTemperature");
   const tdsStats = getStats("tds");
   const doStats = getStats("dissolvedOxygen");
+  const luxStats = getStats("lightIntensity");
 
   // Chart dimensions inside SVG viewBox
   const width = 900;
@@ -304,11 +316,21 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
           >
             DO Oksigen
           </button>
+          <button
+            onClick={() => setSelectedMetric("lux")}
+            className={`px-3.5 py-1.5 rounded-full font-medium transition cursor-pointer shrink-0 ${
+              selectedMetric === "lux"
+                ? "bg-[#7C3AED] text-white font-semibold shadow-xs"
+                : "text-[#4B5563] hover:text-[#111827] hover:bg-white"
+            }`}
+          >
+            Cahaya LDR
+          </button>
         </div>
       </div>
 
       {/* 2. Interactive KPI Chips Bar (Donezo Metric Strip) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {/* pH Chip */}
         <button
           onClick={() => setSelectedMetric(selectedMetric === "ph" ? "all" : "ph")}
@@ -408,6 +430,32 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
             <span className="text-xs font-normal text-[#6B7280] ml-1">mg/L</span>
           </div>
         </button>
+
+        {/* LDR Light Chip */}
+        <button
+          onClick={() => setSelectedMetric(selectedMetric === "lux" ? "all" : "lux")}
+          className={`p-3.5 rounded-[18px] border text-left transition-all cursor-pointer ${
+            selectedMetric === "lux"
+              ? "border-[#7C3AED] bg-[#F3E8FF]/50 shadow-xs ring-1 ring-[#7C3AED]"
+              : "border-[#E5E7EB] bg-[#F8F9FA] hover:bg-white hover:border-[#D1D5DB]"
+          }`}
+        >
+          <div className="flex items-center justify-between text-xs text-[#6B7280]">
+            <span className="flex items-center gap-1.5 font-medium">
+              <span className="h-2 w-2 rounded-full bg-[#7C3AED]" />
+              Cahaya LDR
+            </span>
+            <span className="font-mono text-[10px] text-[#9CA3AF]">
+              {dataSamples.length > 0 ? `${Math.round(luxStats.min)}-${Math.round(luxStats.max)}` : "300-2500"}
+            </span>
+          </div>
+          <div className="text-xl font-bold tracking-tight text-[#111827] num-tabular mt-1">
+            {typeof sensors.lightIntensity === "number"
+              ? Math.round(sensors.lightIntensity)
+              : sensors.lightIntensity}
+            <span className="text-xs font-normal text-[#6B7280] ml-1">lux</span>
+          </div>
+        </button>
       </div>
 
       {/* 3. The SVG Chart Canvas */}
@@ -438,6 +486,10 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
             <linearGradient id="gradient-do" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#4EAB7C" stopOpacity="0.4" />
               <stop offset="100%" stopColor="#4EAB7C" stopOpacity="0.0" />
+            </linearGradient>
+            <linearGradient id="gradient-lux" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#7C3AED" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="#7C3AED" stopOpacity="0.0" />
             </linearGradient>
           </defs>
 
@@ -479,6 +531,8 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
             renderLine(METRICS.ph, selectedMetric === "ph")}
           {(selectedMetric === "all" || selectedMetric === "tds") &&
             renderLine(METRICS.tds, selectedMetric === "tds")}
+          {selectedMetric === "lux" &&
+            renderLine(METRICS.lux, true)}
 
           {/* Interactive Crosshair Line on Hover */}
           {hoverIndex !== null && dataSamples.length >= 2 && (
@@ -532,6 +586,12 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
                 <span className="h-1.5 w-1.5 rounded-full bg-[#4EAB7C]" /> DO:
               </span>
               <span className="font-bold">{activeSample.sensors.dissolvedOxygen.toFixed(2)} mg/L</span>
+            </div>
+            <div className="flex items-center justify-between text-[#111827]">
+              <span className="flex items-center gap-1.5 text-[11px]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#7C3AED]" /> LDR:
+              </span>
+              <span className="font-bold">{Math.round(activeSample.sensors.lightIntensity)} lux</span>
             </div>
           </div>
         )}

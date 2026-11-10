@@ -1,75 +1,107 @@
 "use client";
 
 import React from "react";
-import { AlertOctagon, CheckCircle2, ArrowRight } from "lucide-react";
+import { AlertOctagon, CheckCircle2, ArrowRight, Bot, X } from "lucide-react";
 import Link from "next/link";
 import { AnomalyPrediction } from "../../lib/aiApi";
+import { useTelemetry } from "@/lib/telemetryContext";
 
 interface Props {
   anomaly: AnomalyPrediction | null;
 }
 
 export function AnomalyAlertBanner({ anomaly }: Props) {
-  if (!anomaly || !anomaly.is_anomaly) {
-    return (
-      <div className="flex items-center justify-between rounded-2xl border border-emerald-500/30 bg-emerald-950/20 px-5 py-3.5 text-xs backdrop-blur-md">
-        <div className="flex items-center gap-3 text-emerald-300">
-          <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-          <span>
-            <strong>Ekosistem Seimbang:</strong> Seluruh 6 parameter air (pH, TDS, DO, Suhu, RH, Lux) beroperasi pada rentang adaptasi iklim terbaik.
-          </span>
-        </div>
-        <Link
-          href="/ai-insights"
-          className="inline-flex items-center gap-1 font-semibold text-emerald-400 hover:text-emerald-300 transition"
-        >
-          Lihat AI Insights <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
-      </div>
-    );
-  }
-
-  const isCritical = anomaly.risk_level === "CRITICAL";
+  const { lastActuatorError, clearActuatorError } = useTelemetry();
 
   return (
-    <div
-      className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border px-5 py-4 text-xs backdrop-blur-md ${
-        isCritical
-          ? "border-rose-500/50 bg-rose-950/40 text-rose-200"
-          : "border-amber-500/50 bg-amber-950/40 text-amber-200"
-      }`}
-    >
-      <div className="flex items-start gap-3">
-        <div className="relative mt-0.5">
-          <span
-            className={`absolute -inset-1 rounded-full animate-ping opacity-75 ${
-              isCritical ? "bg-rose-500" : "bg-amber-500"
-            }`}
-          />
-          <AlertOctagon
-            className={`relative h-4 w-4 shrink-0 ${
-              isCritical ? "text-rose-400" : "text-amber-400"
-            }`}
-          />
+    <div className="space-y-2.5">
+      {lastActuatorError && (
+        <div className="flex items-center justify-between gap-3 rounded-[20px] border border-rose-200 bg-rose-50 px-5 py-3 text-xs text-rose-800 shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <AlertOctagon className="h-4 w-4 text-rose-600 shrink-0" />
+            <span>
+              <strong>Safety Interlock Aktuator:</strong> {lastActuatorError}
+            </span>
+          </div>
+          <button
+            onClick={clearActuatorError}
+            className="h-6 w-6 rounded-full hover:bg-rose-100 flex items-center justify-center text-rose-600 cursor-pointer"
+            aria-label="Tutup peringatan"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
         </div>
-        <div>
-          <span className="font-bold tracking-wide uppercase mr-2">
-            [{anomaly.risk_level} ALERT]
-          </span>
-          <span>{anomaly.recommended_action}</span>
-        </div>
-      </div>
+      )}
 
-      <Link
-        href="/controls"
-        className={`inline-flex items-center gap-1.5 shrink-0 rounded-xl px-3 py-1.5 font-semibold text-white shadow-xs transition ${
-          isCritical
-            ? "bg-rose-600 hover:bg-rose-500"
-            : "bg-amber-600 hover:bg-amber-500"
-        }`}
-      >
-        Tindakan Mitigasi <ArrowRight className="h-3.5 w-3.5" />
-      </Link>
+      {!anomaly || !anomaly.is_anomaly ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-[#165B39]/20 bg-white px-5 py-3.5 text-xs shadow-2xs">
+          <div className="flex items-center gap-3 text-[#166534]">
+            <div className="h-7 w-7 rounded-full bg-[#DCFCE7] flex items-center justify-center shrink-0">
+              <CheckCircle2 className="h-4 w-4 text-[#165B39]" />
+            </div>
+            <span className="text-[#111827]">
+              <strong className="text-[#165B39]">Ekosistem Seimbang:</strong> Seluruh parameter air dan sensor cahaya LDR beroperasi dalam zona adaptasi iklim optimal.
+            </span>
+          </div>
+          <Link
+            href="/agribot"
+            className="inline-flex items-center gap-1.5 rounded-full bg-[#DCFCE7] hover:bg-[#BBF7D0] px-3 py-1.5 font-semibold text-[#165B39] transition"
+          >
+            <Bot className="h-3.5 w-3.5" />
+            <span>Konsultasi AgriBot</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      ) : (
+        <div
+          className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-[20px] border px-5 py-4 text-xs shadow-xs ${
+            anomaly.risk_level === "CRITICAL"
+              ? "border-rose-200 bg-rose-50 text-rose-900"
+              : "border-amber-200 bg-amber-50 text-amber-900"
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            <div className="relative mt-0.5">
+              <span
+                className={`absolute -inset-1 rounded-full animate-ping opacity-75 ${
+                  anomaly.risk_level === "CRITICAL" ? "bg-rose-400" : "bg-amber-400"
+                }`}
+              />
+              <AlertOctagon
+                className={`relative h-4 w-4 shrink-0 ${
+                  anomaly.risk_level === "CRITICAL" ? "text-rose-600" : "text-amber-600"
+                }`}
+              />
+            </div>
+            <div>
+              <span className="font-bold tracking-wide uppercase mr-2">
+                [{anomaly.risk_level} ALERT]
+              </span>
+              <span>{anomaly.recommended_action}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              href="/agribot"
+              className="inline-flex items-center gap-1.5 rounded-full border border-current/20 bg-white px-3 py-1.5 font-semibold text-[#111827] hover:bg-[#F9FAFB] transition"
+            >
+              <Bot className="h-3.5 w-3.5 text-[#165B39]" />
+              Diagnosis AI
+            </Link>
+            <Link
+              href="/controls"
+              className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-semibold text-white shadow-xs transition ${
+                anomaly.risk_level === "CRITICAL"
+                  ? "bg-rose-600 hover:bg-rose-500"
+                  : "bg-amber-600 hover:bg-amber-500"
+              }`}
+            >
+              Mitigasi <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,25 +1,92 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { SensorData, ActuatorState, HistorySample, AlertNotification } from "./types";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import {
+  SensorData,
+  SensorSourcesMap,
+  IoTSystemMeta,
+  ActuatorState,
+  HistorySample,
+  AlertNotification,
+  BackendTelemetrySnapshot,
+} from "./types";
+import {
+  fetchFromBackend,
+  getActiveDirectBackendUrl,
+  getWebSocketEndpoint,
+} from "./apiConfig";
+
+interface ActuatorActionResult {
+  ok: boolean;
+  error?: string;
+}
 
 interface TelemetryContextType {
   sensors: SensorData;
+  sensorSources: SensorSourcesMap;
+  systemMeta: IoTSystemMeta;
   actuators: Record<string, ActuatorState>;
   history: HistorySample[];
   alerts: AlertNotification[];
   backendConnected: boolean;
-  toggleActuator: (id: string) => Promise<void>;
-  dispenseFeed: () => void;
+  toggleActuator: (id: string) => Promise<ActuatorActionResult>;
+  setActuatorState: (id: string, state: boolean) => Promise<ActuatorActionResult>;
+  dispenseFeed: () => Promise<void>;
   feedActive: boolean;
   setAnomaly: (type: string) => Promise<void>;
   anomalyMode: string;
+  lastActuatorError: string | null;
+  clearActuatorError: () => void;
 }
 
-const API_ENDPOINTS = [
-  "", // 1. Next.js proxy rewrite (same-origin /api/...)
-  "http://localhost:3000", // 2. Direct backend localhost
-  "https://tremendous-finger-live-chance.trycloudflare.com", // 3. Cloudflare tunnel fallback
+const DEFAULT_SENSOR_SOURCES: SensorSourcesMap = {
+  ph: "auto_dummy",
+  tds: "auto_dummy",
+  waterTemperature: "auto_dummy",
+  airTemperature: "auto_dummy",
+  humidity: "auto_dummy",
+  lightIntensity: "auto_dummy",
+  dissolvedOxygen: "auto_dummy",
+  waterLevel: "auto_dummy",
+};
+
+const DEFAULT_SYSTEM_META: IoTSystemMeta = {
+  status: "optimal",
+  mode: "auto_dummy_simulation",
+  anomalyMode: "none",
+  uptimeSeconds: 0,
+  edgeNode: "ESP32-Virtual-Feed-01",
+  edgeOnline: false,
+  liveSensorCount: 0,
+  lastTelemetryAt: null,
+  wifiSignalDbm: -56,
+};
+
+const DEFAULT_INFO_ALERTS: AlertNotification[] = [
+  {
+    id: "alt-1",
+    title: "pH Air Terjaga Optimal",
+    message: "Kadar pH air stabil pada 6.95 (rentang aman 6.5 - 7.5)",
+    time: "10:30",
+    severity: "info",
+    isResolved: true,
+  },
+  {
+    id: "alt-2",
+    title: "Pompa Sirkulasi Aktif",
+    message: "Resirkulasi tertutup berjalan normal menuju talang NFT Level 4",
+    time: "07:00",
+    severity: "info",
+    isResolved: true,
+  },
+  {
+    id: "alt-3",
+    title: "Mode Hybrid IoT Siaga",
+    message: "Sensor yang belum dikalibrasi menggunakan auto-dummy ECAD secara otomatis.",
+    time: "06:00",
+    severity: "info",
+    isResolved: true,
+  },
 ];
 
 const TelemetryContext = createContext<TelemetryContextType | undefined>(undefined);
@@ -46,8 +113,9 @@ function generateInitialHistory(): HistorySample[] {
       actuators: {
         waterPump: true,
         aerator: true,
-        growLight: true,
-        feeder: false,
+        growLight: false,
+        feeder: true,
+        dosingPump: false,
       },
     });
   }
@@ -56,15 +124,18 @@ function generateInitialHistory(): HistorySample[] {
 
 export function TelemetryProvider({ children }: { children: React.ReactNode }) {
   const [sensors, setSensors] = useState<SensorData>({
-    ph: 6.94,
+    ph: 6.95,
     tds: 540,
     waterTemperature: 24.3,
     airTemperature: 27.2,
     humidity: 65.4,
     lightIntensity: 680,
-    dissolvedOxygen: 7.32,
+    dissolvedOxygen: 7.28,
     waterLevel: 92.4,
   });
+
+  const [sensorSources, setSensorSources] = useState<SensorSourcesMap>(DEFAULT_SENSOR_SOURCES);
+  const [systemMeta, setSystemMeta] = useState<IoTSystemMeta>(DEFAULT_SYSTEM_META);
 
   const [actuators, setActuators] = useState<Record<string, ActuatorState>>({
     waterPump: {
@@ -73,6 +144,7 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
       code: "RELAY-01",
       type: "pump",
       isOn: true,
+      mode: "auto",
       powerWatts: 45,
       voltage: "12V DC",
     },
@@ -82,6 +154,7 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
       code: "RELAY-02",
       type: "aerator",
       isOn: true,
+      mode: "auto",
       powerWatts: 18,
       voltage: "12V DC",
     },
@@ -91,6 +164,7 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
       code: "RELAY-03",
       type: "light",
       isOn: false,
+      mode: "auto",
       powerWatts: 85,
       voltage: "12V DC",
     },
@@ -100,44 +174,126 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
       code: "RELAY-04",
       type: "feeder",
       isOn: true,
+      mode: "auto",
+      powerWatts: 12,
+      voltage: "12V DC",
+    },
+    dosingPump: {
+      id: "dosingPump",
+      name: "pH Buffer Dosing Pump",
+      code: "RELAY-05",
+      type: "dosing",
+      isOn: false,
+      mode: "auto",
       powerWatts: 12,
       voltage: "12V DC",
     },
   });
 
   const [history, setHistory] = useState<HistorySample[]>(generateInitialHistory);
-  const [alerts, setAlerts] = useState<AlertNotification[]>([
-    {
-      id: "alt-1",
-      title: "pH Air Terjaga Optimal",
-      message: "Kadar pH air stabil pada 6.94 (rentang aman 6.5 - 7.5)",
-      time: "10:30",
-      severity: "info",
-      isResolved: true,
-    },
-    {
-      id: "alt-2",
-      title: "Pompa Sirkulasi Aktif",
-      message: "Resirkulasi tertutup berjalan normal dengan debit 4.2 L/min",
-      time: "07:00",
-      severity: "info",
-      isResolved: true,
-    },
-    {
-      id: "alt-3",
-      title: "Pakan Ikan Pagi Keluar",
-      message: "35g pelet terapung berhasil didistribusikan ke kolam Level 3 & Level 1",
-      time: "06:00",
-      severity: "info",
-      isResolved: true,
-    },
-  ]);
-
+  const [alerts, setAlerts] = useState<AlertNotification[]>(DEFAULT_INFO_ALERTS);
   const [backendConnected, setBackendConnected] = useState<boolean>(false);
   const [anomalyMode, setAnomalyMode] = useState<string>("none");
   const [feedActive, setFeedActive] = useState<boolean>(false);
+  const [lastActuatorError, setLastActuatorError] = useState<string | null>(null);
+  const wsConnectedRef = useRef<boolean>(false);
 
-  // Client-side organic drift simulation fallback when backend is unreachable
+  const clearActuatorError = useCallback(() => {
+    setLastActuatorError(null);
+  }, []);
+
+  const applyBackendSnapshot = useCallback((json: BackendTelemetrySnapshot) => {
+    if (!json || typeof json !== "object") return;
+
+    setBackendConnected(true);
+
+    const incomingSensors = json.sensors;
+    if (incomingSensors) {
+      setSensors(incomingSensors);
+      setHistory((prevH) => {
+        const ts = json.timestamp || new Date().toISOString();
+        const last = prevH[prevH.length - 1];
+        if (last && last.timestamp === ts) {
+          return prevH;
+        }
+        return [
+          ...prevH.slice(-59),
+          {
+            timestamp: ts,
+            sensors: incomingSensors,
+            actuators: Object.fromEntries(
+              Object.entries(json.actuators || {}).map(([k, v]) => [k, Boolean(v?.isOn)])
+            ),
+          },
+        ];
+      });
+    }
+
+    if (json.sensorSources) {
+      setSensorSources({ ...DEFAULT_SENSOR_SOURCES, ...json.sensorSources });
+    }
+
+    if (json.system) {
+      setSystemMeta((prev) => ({ ...prev, ...json.system }));
+      if (json.system.anomalyMode) {
+        setAnomalyMode(json.system.anomalyMode);
+      }
+    }
+
+    if (json.actuators) {
+      setActuators((prev) => {
+        const updated = { ...prev };
+        Object.entries(json.actuators || {}).forEach(([id, act]) => {
+          updated[id] = {
+            id,
+            name: act.name || updated[id]?.name || id,
+            code:
+              act.code ||
+              updated[id]?.code ||
+              (id === "waterPump"
+                ? "RELAY-01"
+                : id === "aerator"
+                ? "RELAY-02"
+                : id === "growLight"
+                ? "RELAY-03"
+                : id === "feeder"
+                ? "RELAY-04"
+                : "RELAY-05"),
+            type: act.type || updated[id]?.type || "pump",
+            isOn: Boolean(act.isOn),
+            mode: act.mode || updated[id]?.mode || "auto",
+            powerWatts: act.powerWatts || updated[id]?.powerWatts || 20,
+            voltage: act.voltage || updated[id]?.voltage || "12V DC",
+          };
+        });
+        return updated;
+      });
+    }
+
+    if (Array.isArray(json.alerts)) {
+      if (json.alerts.length > 0) {
+        setAlerts(
+          json.alerts.map((a, idx) => ({
+            id: a.id || `alt-${idx}-${a.metric || "sys"}`,
+            title: a.metric ? `Peringatan ${String(a.metric).toUpperCase()}` : "Alert Sistem",
+            message: a.message,
+            time: a.timestamp
+              ? new Date(a.timestamp).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "Sekarang",
+            severity: a.severity || "warning",
+            isResolved: a.isResolved ?? false,
+          }))
+        );
+      } else {
+        setAlerts(DEFAULT_INFO_ALERTS);
+      }
+    }
+  }, []);
+
+  // Client-side organic drift simulation fallback only when backend is unreachable
   const stepSimulation = useCallback(() => {
     setSensors((prev) => {
       let targetPH = 6.98;
@@ -149,14 +305,25 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
       if (anomalyMode === "tds_spike") targetTDS = 1120;
 
       const ph = Number((prev.ph + (targetPH - prev.ph) * 0.01 + (Math.random() - 0.5) * 0.002).toFixed(2));
-      const waterTemperature = Number((prev.waterTemperature + (targetTemp - prev.waterTemperature) * 0.008 + (Math.random() - 0.5) * 0.004).toFixed(1));
+      const waterTemperature = Number(
+        (prev.waterTemperature + (targetTemp - prev.waterTemperature) * 0.008 + (Math.random() - 0.5) * 0.004).toFixed(1)
+      );
       const tds = Math.round(prev.tds + (targetTDS - prev.tds) * 0.01 + (Math.random() - 0.5) * 0.3);
-      const airTemperature = Number((27.0 + (waterTemperature - 24.0) * 0.35 + (Math.random() - 0.5) * 0.015).toFixed(1));
-      const humidity = Number((65.0 - (airTemperature - 25.0) * 1.2 + (Math.random() - 0.5) * 0.1).toFixed(1));
+      const airTemperature = Number(
+        (27.0 + (waterTemperature - 24.0) * 0.35 + (Math.random() - 0.5) * 0.015).toFixed(1)
+      );
+      const humidity = Number(
+        (65.0 - (airTemperature - 25.0) * 1.2 + (Math.random() - 0.5) * 0.1).toFixed(1)
+      );
 
       const isAeratorOn = actuators.aerator?.isOn ?? true;
       const targetDO = isAeratorOn ? 7.35 : 4.4;
-      const dissolvedOxygen = Number(Math.max(2.0, Math.min(9.5, prev.dissolvedOxygen + (targetDO - prev.dissolvedOxygen) * 0.012 + (Math.random() - 0.5) * 0.003)).toFixed(2));
+      const dissolvedOxygen = Number(
+        Math.max(
+          2.0,
+          Math.min(9.5, prev.dissolvedOxygen + (targetDO - prev.dissolvedOxygen) * 0.012 + (Math.random() - 0.5) * 0.003)
+        ).toFixed(2)
+      );
 
       const isLightOn = actuators.growLight?.isOn ?? false;
       const baseLight = isLightOn ? 2450 : 620;
@@ -186,160 +353,196 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
     });
   }, [actuators, anomalyMode]);
 
-  // Sync with Elysia backend
+  // Sync with Elysia backend via HTTP
   const fetchTelemetry = useCallback(async () => {
-    let connected = false;
-
-    for (const base of API_ENDPOINTS) {
-      try {
-        const res = await fetch(`${base}/api/sensors/current`, {
-          cache: "no-store",
-          signal: AbortSignal.timeout(2000),
-        });
-
-        if (res.ok) {
-          const json = await res.json();
-          connected = true;
-          setBackendConnected(true);
-
-          if (json.sensors) {
-            setSensors(json.sensors);
-            // Append incoming live reading to history for real-time spline graphs
-            setHistory((prevH) => [
-              ...prevH.slice(-59),
-              {
-                timestamp: json.timestamp || new Date().toISOString(),
-                sensors: json.sensors,
-                actuators: Object.fromEntries(
-                  Object.entries(json.actuators || {}).map(([k, v]: [string, any]) => [k, v.isOn])
-                ),
-              },
-            ]);
-          }
-
-          if (json.actuators) {
-            setActuators((prev) => {
-              const updated = { ...prev };
-              Object.entries(json.actuators).forEach(([id, act]: [string, any]) => {
-                updated[id] = {
-                  id,
-                  name: act.name || updated[id]?.name || id,
-                  code: act.code || updated[id]?.code || (id === "waterPump" ? "RELAY-01" : id === "aerator" ? "RELAY-02" : id === "growLight" ? "RELAY-03" : id === "feeder" ? "RELAY-04" : "RELAY-05"),
-                  type: act.type || updated[id]?.type || "pump",
-                  isOn: act.isOn,
-                  powerWatts: act.powerWatts || updated[id]?.powerWatts || 20,
-                  voltage: act.voltage || updated[id]?.voltage || "12V DC",
-                };
-              });
-              return updated;
-            });
-          }
-
-          if (json.alerts && Array.isArray(json.alerts) && json.alerts.length > 0) {
-            setAlerts(json.alerts.map((a: any) => ({
-              id: a.id || `alt-${Date.now()}`,
-              title: a.metric ? `Peringatan ${a.metric.toUpperCase()}` : "Alert Sistem",
-              message: a.message,
-              time: new Date(a.timestamp || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-              severity: a.severity || "warning",
-              isResolved: a.isResolved ?? false,
-            })));
-          }
-
-          if (json.system?.anomalyMode) {
-            setAnomalyMode(json.system.anomalyMode);
-          }
-
-          break; // Successfully fetched from this endpoint
-        }
-      } catch {
-        // try next endpoint
-      }
-    }
-
-    if (!connected) {
+    const res = await fetchFromBackend<BackendTelemetrySnapshot>("/api/sensors/current", {}, 2500);
+    if (res.ok && res.data) {
+      applyBackendSnapshot(res.data);
+    } else if (!res.reached) {
       setBackendConnected(false);
+      setSensorSources(DEFAULT_SENSOR_SOURCES);
+      setSystemMeta((prev) => ({ ...prev, edgeOnline: false, liveSensorCount: 0 }));
       stepSimulation();
     }
-  }, [stepSimulation]);
+  }, [applyBackendSnapshot, stepSimulation]);
 
   // Initial history load
   useEffect(() => {
     async function loadInit() {
-      let loaded = false;
-      for (const base of API_ENDPOINTS) {
-        try {
-          const res = await fetch(`${base}/api/sensors/history`, { signal: AbortSignal.timeout(2000) });
-          if (res.ok) {
-            const json = await res.json();
-            if (json.data && json.data.length > 0) {
-              setHistory(json.data);
-              loaded = true;
-              break;
-            }
-          }
-        } catch {
-          // try next
-        }
-      }
-
-      if (!loaded) {
-        const starter: HistorySample[] = [];
-        const baseNow = Date.now();
-        for (let i = 20; i >= 0; i--) {
-          starter.push({
-            timestamp: new Date(baseNow - i * 15000).toISOString(),
-            sensors: {
-              ph: Number((6.94 + Math.sin(i * 0.25) * 0.15).toFixed(2)),
-              tds: Math.round(540 + Math.cos(i * 0.15) * 15),
-              waterTemperature: Number((24.3 + Math.sin(i * 0.15) * 0.4).toFixed(1)),
-              airTemperature: 27.2,
-              humidity: 65.5,
-              lightIntensity: 660,
-              dissolvedOxygen: Number((7.3 + Math.cos(i * 0.2) * 0.2).toFixed(2)),
-              waterLevel: 92.4,
-            },
-            actuators: { waterPump: true, aerator: true, growLight: false, feeder: true },
-          });
-        }
-        setHistory(starter);
+      const res = await fetchFromBackend<{ data?: HistorySample[] }>("/api/sensors/history", {}, 2500);
+      if (res.ok && res.data?.data && res.data.data.length > 0) {
+        setHistory(res.data.data);
       }
     }
-    loadInit();
+    void loadInit();
   }, []);
 
+  // Periodic 1500ms HTTP sync (guarantees steady state even behind HTTP-only reverse proxies)
   useEffect(() => {
-    fetchTelemetry();
-    const interval = setInterval(fetchTelemetry, 1500);
-    return () => clearInterval(interval);
-  }, [fetchTelemetry]);
-
-  const toggleActuator = async (id: string) => {
-    // 1. Optimistic UI update
-    setActuators((prev) => {
-      if (!prev[id]) return prev;
-      return {
-        ...prev,
-        [id]: { ...prev[id], isOn: !prev[id].isOn },
-      };
-    });
-
-    // 2. Dispatch network toggle to backend
-    for (const base of API_ENDPOINTS) {
-      try {
-        const res = await fetch(`${base}/api/actuators/${id}/toggle`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: AbortSignal.timeout(2000),
-        });
-        if (res.ok) break;
-      } catch {
-        // try next
+    let cancelled = false;
+    async function pollLoop() {
+      const res = await fetchFromBackend<BackendTelemetrySnapshot>("/api/sensors/current", {}, 2500);
+      if (cancelled) return;
+      if (res.ok && res.data) {
+        applyBackendSnapshot(res.data);
+      } else if (!res.reached) {
+        setBackendConnected(false);
+        setSensorSources(DEFAULT_SENSOR_SOURCES);
+        setSystemMeta((prev) => ({ ...prev, edgeOnline: false, liveSensorCount: 0 }));
+        stepSimulation();
       }
     }
-  };
 
-  const dispenseFeed = async () => {
+    void pollLoop();
+    const interval = setInterval(() => {
+      void pollLoop();
+    }, 1500);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [applyBackendSnapshot, stepSimulation]);
+
+  // Optional low-latency WebSocket listener when direct HTTP/HTTPS backend URL is known
+  useEffect(() => {
+    if (!backendConnected) return;
+    const directUrl = getActiveDirectBackendUrl();
+    if (!directUrl) return;
+
+    const wsUrl = getWebSocketEndpoint(directUrl);
+    if (!wsUrl || typeof WebSocket === "undefined") return;
+
+    let ws: WebSocket | null = null;
+    try {
+      ws = new WebSocket(wsUrl);
+      ws.onopen = () => {
+        wsConnectedRef.current = true;
+      };
+      ws.onmessage = (evt) => {
+        try {
+          const msg = JSON.parse(evt.data);
+          if (msg?.type === "ping") {
+            ws?.send("ping");
+            return;
+          }
+          if (msg?.data && (msg.type === "snapshot" || msg.type === "telemetry" || msg.type === "actuator_update")) {
+            applyBackendSnapshot(msg.data);
+          }
+        } catch {
+          // ignore malformed WS frames cleanly
+        }
+      };
+      ws.onerror = () => {
+        wsConnectedRef.current = false;
+      };
+      ws.onclose = () => {
+        wsConnectedRef.current = false;
+      };
+    } catch {
+      wsConnectedRef.current = false;
+    }
+
+    return () => {
+      wsConnectedRef.current = false;
+      if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+        ws.close();
+      }
+    };
+  }, [backendConnected, applyBackendSnapshot]);
+
+  const handleActuatorMutation = useCallback(
+    async (
+      id: string,
+      path: string,
+      init: RequestInit,
+      optimisticNext: boolean
+    ): Promise<ActuatorActionResult> => {
+      setLastActuatorError(null);
+      const prevState = actuators[id]?.isOn;
+
+      // 1. Optimistic UI update
+      setActuators((prev) => {
+        if (!prev[id]) return prev;
+        return {
+          ...prev,
+          [id]: { ...prev[id], isOn: optimisticNext },
+        };
+      });
+
+      // 2. Dispatch request to backend
+      const res = await fetchFromBackend<{ success?: boolean; message?: string; actuator?: ActuatorState }>(
+        path,
+        init,
+        3000
+      );
+
+      if (res.reached && !res.ok) {
+        const errMsg = res.data?.message || `Perintah aktuator '${id}' ditolak sistem keamanan (${res.status}).`;
+        // Roll back optimistic toggle when safety interlock rejects command
+        if (typeof prevState === "boolean") {
+          setActuators((prev) => {
+            if (!prev[id]) return prev;
+            return {
+              ...prev,
+              [id]: { ...prev[id], isOn: prevState },
+            };
+          });
+        }
+        setLastActuatorError(errMsg);
+        return { ok: false, error: errMsg };
+      }
+
+      if (res.ok && res.data?.actuator) {
+        const serverAct = res.data.actuator;
+        setActuators((prev) => ({
+          ...prev,
+          [serverAct.id]: {
+            ...(prev[serverAct.id] || serverAct),
+            ...serverAct,
+          },
+        }));
+      }
+
+      return { ok: true };
+    },
+    [actuators]
+  );
+
+  const toggleActuator = useCallback(
+    async (id: string): Promise<ActuatorActionResult> => {
+      const current = actuators[id];
+      const optimisticNext = current ? !current.isOn : true;
+      return handleActuatorMutation(
+        id,
+        `/api/actuators/${encodeURIComponent(id)}/toggle`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        },
+        optimisticNext
+      );
+    },
+    [actuators, handleActuatorMutation]
+  );
+
+  const setActuatorState = useCallback(
+    async (id: string, state: boolean): Promise<ActuatorActionResult> => {
+      return handleActuatorMutation(
+        id,
+        `/api/actuators/${encodeURIComponent(id)}/set`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ state, mode: "manual" }),
+        },
+        state
+      );
+    },
+    [handleActuatorMutation]
+  );
+
+  const dispenseFeed = useCallback(async () => {
     setFeedActive(true);
     setAlerts((prev) => [
       {
@@ -350,54 +553,45 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
         severity: "info",
         isResolved: true,
       },
-      ...prev,
+      ...prev.filter((a) => a.id !== "alt-3"),
     ]);
 
-    for (const base of API_ENDPOINTS) {
-      try {
-        const res = await fetch(`${base}/api/feed/dispense`, {
-          method: "POST",
-          signal: AbortSignal.timeout(2000),
-        });
-        if (res.ok) break;
-      } catch {
-        // try next
-      }
-    }
-
+    await fetchFromBackend("/api/feed/dispense", { method: "POST" }, 3000);
     setTimeout(() => setFeedActive(false), 2500);
-  };
+  }, []);
 
-  const setAnomaly = async (type: string) => {
+  const setAnomaly = useCallback(async (type: string) => {
     setAnomalyMode(type);
-    for (const base of API_ENDPOINTS) {
-      try {
-        const res = await fetch(`${base}/api/simulation/anomaly`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ type }),
-          signal: AbortSignal.timeout(2000),
-        });
-        if (res.ok) break;
-      } catch {
-        // try next
-      }
-    }
-  };
+    await fetchFromBackend(
+      "/api/simulation/anomaly",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type }),
+      },
+      3000
+    );
+    await fetchTelemetry();
+  }, [fetchTelemetry]);
 
   return (
     <TelemetryContext.Provider
       value={{
         sensors,
+        sensorSources,
+        systemMeta,
         actuators,
         history,
         alerts,
         backendConnected,
         toggleActuator,
+        setActuatorState,
         dispenseFeed,
         feedActive,
         setAnomaly,
         anomalyMode,
+        lastActuatorError,
+        clearActuatorError,
       }}
     >
       {children}
