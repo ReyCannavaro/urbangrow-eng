@@ -2,3 +2,9 @@
 # moon
 .moon/cache
 .moon/docker
+
+# environment variables (keep secrets out of git!)
+.env
+.env.local
+.env.*.local
+!.env.example
