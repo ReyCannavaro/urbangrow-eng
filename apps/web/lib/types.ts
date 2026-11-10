@@ -264,3 +264,39 @@ export interface BackendTelemetrySnapshot {
   alerts?: BackendAlertItem[];
   system?: Partial<IoTSystemMeta>;
 }
+
+export interface AutomationSchedule {
+  id: string;
+  title: string;
+  triggerType: "time" | "sensor_threshold";
+  scheduleTime: string | null;
+  sensorMetric: string | null;
+  operator: "<" | ">" | null;
+  thresholdValue: number | null;
+  actuatorId: string;
+  targetState: boolean;
+  notes: string;
+  enabled: boolean;
+  lastTriggeredAt: string | null;
+  createdAt: string;
+}
+
+export interface ActuatorAuditLog {
+  id: number;
+  actuatorId: string;
+  actuatorName: string;
+  state: boolean;
+  triggeredBy: string;
+  note: string;
+  recordedAt: string;
+}
+
+export interface PersistedSystemAlert {
+  id: string;
+  title: string;
+  message: string;
+  severity: "critical" | "warning" | "info";
+  metric: string;
+  isResolved: boolean;
+  recordedAt: string;
+}

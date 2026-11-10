@@ -8,7 +8,10 @@ import {
   Fish,
   Sprout,
   CalendarCheck2,
+  Power,
+  Check,
 } from "lucide-react";
+import { useTelemetry } from "../../lib/telemetryContext";
 import { ClimateScoreCard } from "../../components/ai/ClimateScoreCard";
 import { HarvestCountdownCard } from "../../components/ai/HarvestCountdownCard";
 import { FishHarvestCard } from "../../components/ai/FishHarvestCard";
@@ -84,6 +87,7 @@ function notifyCohortUpdated() {
 }
 
 export default function AiInsightsPage() {
+  const { actuators, setActuatorState } = useTelemetry();
   const storedCohort = useSyncExternalStore(
     subscribeCohortStorage,
     getCohortSnapshot,
@@ -382,6 +386,43 @@ export default function AiInsightsPage() {
                     Proyeksi Stabilitas Biofilter 24 Jam:
                   </span>
                   {diagnostics.predictions.trends.waterForecast}
+                </div>
+              )}
+
+              {diagnostics?.suggestedActions && diagnostics.suggestedActions.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  <span className="block text-[11px] font-semibold text-[#6B7280]">
+                    Eksekusi Cepat Rekomendasi AI:
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {diagnostics.suggestedActions.map((act) => {
+                      const alreadyActive =
+                        actuators[act.actuatorId]?.isOn === act.targetState;
+                      return (
+                        <button
+                          key={`${act.actuatorId}-${act.targetState}`}
+                          type="button"
+                          disabled={alreadyActive}
+                          onClick={() => void setActuatorState(act.actuatorId, act.targetState)}
+                          className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
+                            alreadyActive
+                              ? "border border-[#165B39]/25 bg-[#DCFCE7] text-[#166534] cursor-default"
+                              : "bg-[#165B39] text-white hover:bg-[#124B2E]"
+                          }`}
+                          title={act.reason}
+                        >
+                          {alreadyActive ? (
+                            <Check className="h-3.5 w-3.5" />
+                          ) : (
+                            <Power className="h-3.5 w-3.5" />
+                          )}
+                          <span>
+                            {alreadyActive ? `${act.label} (Aktif)` : act.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>

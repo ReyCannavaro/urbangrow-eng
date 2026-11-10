@@ -277,6 +277,68 @@ describe("Hybrid IoT Bridge, Actuator Sync & AgriBot AI Tests", () => {
     expect(healthJson.database.engine).toBe("sqlite");
     expect(healthJson.database.ready).toBe(true);
     expect(healthJson.database.tables).toContain("prediction_cohorts");
+    expect(healthJson.database.tables).toContain("automation_schedules");
+    expect(healthJson.database.tables).toContain("sensor_readings");
+    expect(healthJson.database.tables).toContain("actuator_logs");
+  });
+
+  it("should manage automation schedules, persist actuator logs, and export sensor CSV from SQLite", async () => {
+    // 1. List seeded schedules
+    const listRes = await app.handle(new Request("http://localhost/api/schedules"));
+    expect(listRes.status).toBe(200);
+    const listJson = await listRes.json();
+    expect(listJson.success).toBe(true);
+    expect(listJson.schedules.length).toBeGreaterThanOrEqual(3);
+
+    // 2. Create a new time-based schedule
+    const createRes = await app.handle(
+      new Request("http://localhost/api/schedules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "Nyalakan Grow Light Pagi",
+          triggerType: "time",
+          scheduleTime: "06:00",
+          actuatorId: "growLight",
+          targetState: true,
+          notes: "Fotoperiode awal Rak Pakcoy Level 4",
+        }),
+      })
+    );
+    expect(createRes.status).toBe(200);
+    const createJson = await createRes.json();
+    expect(createJson.success).toBe(true);
+    expect(createJson.schedule.title).toBe("Nyalakan Grow Light Pagi");
+
+    // 3. Toggle and delete the schedule
+    const schedId = createJson.schedule.id;
+    const toggleRes = await app.handle(
+      new Request(`http://localhost/api/schedules/${schedId}/toggle`, {
+        method: "PATCH",
+      })
+    );
+    expect(toggleRes.status).toBe(200);
+    const toggleJson = await toggleRes.json();
+    expect(toggleJson.schedule.enabled).toBe(false);
+
+    const delRes = await app.handle(
+      new Request(`http://localhost/api/schedules/${schedId}`, {
+        method: "DELETE",
+      })
+    );
+    expect(delRes.status).toBe(200);
+
+    // 4. Verify actuator logs and CSV export
+    const logsRes = await app.handle(new Request("http://localhost/api/logs/actuators"));
+    expect(logsRes.status).toBe(200);
+    const logsJson = await logsRes.json();
+    expect(logsJson.success).toBe(true);
+    expect(Array.isArray(logsJson.logs)).toBe(true);
+
+    const csvRes = await app.handle(new Request("http://localhost/api/sensors/export.csv"));
+    expect(csvRes.status).toBe(200);
+    const csvText = await csvRes.text();
+    expect(csvText).toContain("Timestamp_UTC,Device_ID,pH_Air");
   });
 });
 
