@@ -98,6 +98,8 @@ export const app = new Elysia()
         setActuator: "POST /api/actuators/:id/set",
         simulateAnomaly: "POST /api/simulation/anomaly",
         aiChat: "POST /api/ai/chat",
+        aiCohort: "GET /api/ai/cohort",
+        aiCohortUpdate: "POST /api/ai/cohort",
         aiDiagnostics: "GET /api/ai/diagnostics",
         aiPredictions: "GET /api/ai/predictions",
         aiPredict: "POST /api/ai/predict",
@@ -375,13 +377,63 @@ export const app = new Elysia()
   )
 
   // 10. Structured AI Diagnostics & Predictions (Plant, Water, Fish, Trends, GDD Harvest)
+  .get("/api/ai/cohort", () => ({
+    success: true,
+    cohort: AgriBotEngine.getCohortConfig(),
+    diagnostics: AgriBotEngine.buildDiagnostics(),
+  }))
+  .post(
+    "/api/ai/cohort",
+    ({ body }) => {
+      const cohort = AgriBotEngine.updateCohortConfig(body as any);
+      const diagnostics = AgriBotEngine.buildDiagnostics();
+      return {
+        success: true,
+        cohort,
+        diagnostics,
+      };
+    },
+    {
+      body: t.Object({
+        fishMode: t.Optional(t.Union([t.Literal("both"), t.Literal("nila"), t.Literal("lele")])),
+        nila: t.Optional(
+          t.Object({
+            count: t.Optional(t.Number({ minimum: 1, maximum: 500 })),
+            stockingDate: t.Optional(t.String()),
+            initialLengthCm: t.Optional(t.Number({ minimum: 1, maximum: 50 })),
+            targetHarvestLengthCm: t.Optional(t.Number({ minimum: 5, maximum: 80 })),
+          })
+        ),
+        lele: t.Optional(
+          t.Object({
+            count: t.Optional(t.Number({ minimum: 1, maximum: 500 })),
+            stockingDate: t.Optional(t.String()),
+            initialLengthCm: t.Optional(t.Number({ minimum: 1, maximum: 50 })),
+            targetHarvestLengthCm: t.Optional(t.Number({ minimum: 5, maximum: 80 })),
+          })
+        ),
+        pakcoy: t.Optional(
+          t.Object({
+            seedingDate: t.Optional(t.String()),
+            plantCount: t.Optional(t.Number({ minimum: 1, maximum: 500 })),
+          })
+        ),
+        kangkung: t.Optional(
+          t.Object({
+            seedingDate: t.Optional(t.String()),
+            plantCount: t.Optional(t.Number({ minimum: 1, maximum: 500 })),
+          })
+        ),
+      }),
+    }
+  )
   .get(
     "/api/ai/diagnostics",
     ({ query }) => ({
       success: true,
       ...AgriBotEngine.buildDiagnostics(
-        query.pakcoyDay ? Number(query.pakcoyDay) : 14,
-        query.kangkungDay ? Number(query.kangkungDay) : 17
+        query.pakcoyDay ? Number(query.pakcoyDay) : undefined,
+        query.kangkungDay ? Number(query.kangkungDay) : undefined
       ),
     }),
     {
@@ -395,14 +447,15 @@ export const app = new Elysia()
     "/api/ai/predictions",
     ({ query }) => {
       const report = AgriBotEngine.buildDiagnostics(
-        query.pakcoyDay ? Number(query.pakcoyDay) : 14,
-        query.kangkungDay ? Number(query.kangkungDay) : 17
+        query.pakcoyDay ? Number(query.pakcoyDay) : undefined,
+        query.kangkungDay ? Number(query.kangkungDay) : undefined
       );
       return {
         success: true,
         timestamp: report.timestamp,
         overallStatus: report.overallStatus,
         sensorSources: report.sensorSources,
+        cohort: report.cohort,
         predictions: report.predictions,
       };
     },

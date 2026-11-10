@@ -60,10 +60,58 @@ export interface DomainDiagnosis {
   recommendation: string;
 }
 
+export type FishSpecies = "nila" | "lele";
+
+export interface FishCohortInput {
+  enabled: boolean;
+  species: FishSpecies;
+  count: number;
+  stockingDate: string; // YYYY-MM-DD
+  initialLengthCm: number;
+  targetHarvestLengthCm: number;
+}
+
+export interface CropCohortInput {
+  seedingDate: string; // YYYY-MM-DD (ditanam dari benih)
+  plantCount: number;
+}
+
+export interface PredictionCohortConfig {
+  fishMode: "both" | "nila" | "lele";
+  nila: FishCohortInput;
+  lele: FishCohortInput;
+  pakcoy: CropCohortInput;
+  kangkung: CropCohortInput;
+  updatedAt: string;
+}
+
+export interface FishHarvestForecastItem {
+  species: FishSpecies;
+  label: string;
+  level: string;
+  count: number;
+  stockingDate: string;
+  daysElapsed: number;
+  initialLengthCm: number;
+  estimatedCurrentLengthCm: number;
+  targetHarvestLengthCm: number;
+  progressPct: number;
+  estimatedDaysRemaining: number;
+  estimatedHarvestDate: string;
+  projectedWeightPerFishGrams: number;
+  projectedTotalYieldKg: number;
+  dailyGrowthRateCm: number;
+  growthStage: string;
+  waterSuitabilityPct: number;
+}
+
 export interface HarvestForecastItem {
   cropType: "pakcoy" | "kangkung";
   label: string;
   level: string;
+  seedingDate?: string;
+  plantCount?: number;
+  propagatedFromSeed?: boolean;
   daysSincePlanting: number;
   accumulatedGdd: number;
   targetGdd: number;
@@ -71,6 +119,7 @@ export interface HarvestForecastItem {
   estimatedDaysRemaining: number;
   estimatedHarvestDate: string;
   projectedBiomassGrams: number;
+  projectedTotalYieldKg?: number;
   growthStage: string;
   lightEfficiencyPct: number;
 }
@@ -99,6 +148,7 @@ export interface EcosystemDiagnosticReport {
   sensors: SensorData;
   sensorSources: SensorSourcesMap;
   edgeOnline: boolean;
+  cohort?: PredictionCohortConfig;
   diagnosis: {
     plant: DomainDiagnosis;
     water: DomainDiagnosis;
@@ -109,6 +159,10 @@ export interface EcosystemDiagnosticReport {
     harvest: {
       pakcoy: HarvestForecastItem;
       kangkung: HarvestForecastItem;
+    };
+    fish?: {
+      nila?: FishHarvestForecastItem;
+      lele?: FishHarvestForecastItem;
     };
   };
   suggestedActions: SuggestedAction[];

@@ -217,5 +217,56 @@ describe("Hybrid IoT Bridge, Actuator Sync & AgriBot AI Tests", () => {
       }
     }
   });
+
+  it("should allow configuring fish stocking & seed planting cohorts via /api/ai/cohort and recalculate harvest forecasts", async () => {
+    const initialRes = await app.handle(
+      new Request("http://localhost/api/ai/cohort")
+    );
+    expect(initialRes.status).toBe(200);
+    const initialJson = await initialRes.json();
+    expect(initialJson.success).toBe(true);
+    expect(initialJson.cohort.fishMode).toBe("both");
+    expect(initialJson.diagnostics.predictions.harvest.pakcoy.propagatedFromSeed).toBe(true);
+    expect(initialJson.diagnostics.predictions.fish.nila).toBeDefined();
+    expect(initialJson.diagnostics.predictions.fish.lele).toBeDefined();
+
+    const todayIso = new Date().toISOString().split("T")[0];
+    const updateRes = await app.handle(
+      new Request("http://localhost/api/ai/cohort", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fishMode: "nila",
+          nila: {
+            count: 50,
+            stockingDate: todayIso,
+            initialLengthCm: 6.0,
+            targetHarvestLengthCm: 24.0,
+          },
+          pakcoy: {
+            seedingDate: todayIso,
+            plantCount: 28,
+          },
+          kangkung: {
+            seedingDate: todayIso,
+            plantCount: 32,
+          },
+        }),
+      })
+    );
+
+    expect(updateRes.status).toBe(200);
+    const updatedJson = await updateRes.json();
+    expect(updatedJson.success).toBe(true);
+    expect(updatedJson.cohort.fishMode).toBe("nila");
+    expect(updatedJson.diagnostics.predictions.fish.nila.count).toBe(50);
+    expect(updatedJson.diagnostics.predictions.fish.nila.daysElapsed).toBe(0);
+    expect(updatedJson.diagnostics.predictions.fish.nila.estimatedDaysRemaining).toBeGreaterThan(50);
+    expect(updatedJson.diagnostics.predictions.fish.lele).toBeUndefined();
+    expect(updatedJson.diagnostics.predictions.harvest.pakcoy.seedingDate).toBe(todayIso);
+    expect(updatedJson.diagnostics.predictions.harvest.pakcoy.plantCount).toBe(28);
+    expect(updatedJson.diagnostics.predictions.harvest.pakcoy.daysSincePlanting).toBe(0);
+    expect(updatedJson.diagnostics.predictions.harvest.kangkung.plantCount).toBe(32);
+  });
 });
 

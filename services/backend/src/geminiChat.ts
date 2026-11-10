@@ -9,10 +9,58 @@ export interface DomainDiagnosis {
   recommendation: string;
 }
 
+export type FishSpecies = "nila" | "lele";
+
+export interface FishCohortInput {
+  enabled: boolean;
+  species: FishSpecies;
+  count: number;
+  stockingDate: string; // YYYY-MM-DD
+  initialLengthCm: number;
+  targetHarvestLengthCm: number;
+}
+
+export interface CropCohortInput {
+  seedingDate: string; // YYYY-MM-DD (ditanam dari benih)
+  plantCount: number;
+}
+
+export interface PredictionCohortConfig {
+  fishMode: "both" | "nila" | "lele";
+  nila: FishCohortInput;
+  lele: FishCohortInput;
+  pakcoy: CropCohortInput;
+  kangkung: CropCohortInput;
+  updatedAt: string;
+}
+
+export interface FishHarvestForecastItem {
+  species: FishSpecies;
+  label: string;
+  level: string;
+  count: number;
+  stockingDate: string;
+  daysElapsed: number;
+  initialLengthCm: number;
+  estimatedCurrentLengthCm: number;
+  targetHarvestLengthCm: number;
+  progressPct: number;
+  estimatedDaysRemaining: number;
+  estimatedHarvestDate: string;
+  projectedWeightPerFishGrams: number;
+  projectedTotalYieldKg: number;
+  dailyGrowthRateCm: number;
+  growthStage: string;
+  waterSuitabilityPct: number;
+}
+
 export interface HarvestForecastItem {
   cropType: "pakcoy" | "kangkung";
   label: string;
   level: string;
+  seedingDate: string;
+  plantCount: number;
+  propagatedFromSeed: boolean;
   daysSincePlanting: number;
   accumulatedGdd: number;
   targetGdd: number;
@@ -20,6 +68,7 @@ export interface HarvestForecastItem {
   estimatedDaysRemaining: number;
   estimatedHarvestDate: string;
   projectedBiomassGrams: number;
+  projectedTotalYieldKg: number;
   growthStage: string;
   lightEfficiencyPct: number;
 }
@@ -41,6 +90,7 @@ export interface EcosystemDiagnosticReport {
   sensors: SensorReading;
   sensorSources: Record<keyof SensorReading, SensorSource>;
   edgeOnline: boolean;
+  cohort: PredictionCohortConfig;
   diagnosis: {
     plant: DomainDiagnosis;
     water: DomainDiagnosis;
@@ -51,6 +101,10 @@ export interface EcosystemDiagnosticReport {
     harvest: {
       pakcoy: HarvestForecastItem;
       kangkung: HarvestForecastItem;
+    };
+    fish: {
+      nila?: FishHarvestForecastItem;
+      lele?: FishHarvestForecastItem;
     };
   };
   suggestedActions: Array<{
@@ -156,27 +210,127 @@ function addDaysIso(days: number): string {
   return d.toISOString().split("T")[0];
 }
 
+function daysElapsedSinceIso(isoDate: string): number {
+  const parsed = Date.parse(`${isoDate}T00:00:00+07:00`);
+  if (!Number.isFinite(parsed)) return 0;
+  const diffDays = Math.floor((Date.now() - parsed) / 86400000);
+  return Math.max(0, Math.min(365, diffDays));
+}
+
+function computeFishHarvestItem(
+  input: FishCohortInput,
+  sensors: SensorReading
+): FishHarvestForecastItem {
+  const isNila = input.species === "nila";
+  const label = isNila ? "Ikan Nila (Oreochromis niloticus)" : "Ikan Lele (Clarias sp.)";
+  const level = isNila ? "Kolam Level 3 (DO Tinggi)" : "Kolam Level 1 (Dasar Sistem)";
+
+  // Water suitability factor from live ESP32 sensors
+  const tempDiff = Math.abs(sensors.waterTemperature - 26.5);
+  const tempFactor = tempDiff <= 2.5 ? 1.0 : tempDiff <= 4.5 ? 0.86 : 0.7;
+
+  const doFactor = isNila
+    ? sensors.dissolvedOxygen >= 5.5
+      ? 1.0
+      : sensors.dissolvedOxygen >= 4.5
+      ? 0.82
+      : 0.62
+    : sensors.dissolvedOxygen >= 2.8
+    ? 1.0
+    : 0.85;
+
+  const phFactor = sensors.ph >= 6.5 && sensors.ph <= 7.8 ? 1.0 : 0.88;
+  const densityFactor = input.count <= 45 ? 1.0 : input.count <= 70 ? 0.92 : 0.84;
+
+  const suitability = tempFactor * doFactor * phFactor;
+  const waterSuitabilityPct = Math.round(suitability * 100);
+
+  // Base specific length growth rate (cm/day) in aquaponic RAS
+  const baseRateCm = isNila ? 0.24 : 0.32;
+  const dailyGrowthRateCm = Number(
+    Math.max(0.08, baseRateCm * suitability * densityFactor).toFixed(3)
+  );
+
+  const daysElapsed = daysElapsedSinceIso(input.stockingDate);
+  const initialLength = Math.max(1, input.initialLengthCm);
+  const targetLength = Math.max(initialLength + 2, input.targetHarvestLengthCm);
+
+  const estimatedCurrentLengthCm = Number(
+    Math.min(targetLength * 1.08, initialLength + dailyGrowthRateCm * daysElapsed).toFixed(1)
+  );
+  const remainingCm = Math.max(0, targetLength - estimatedCurrentLengthCm);
+  const estimatedDaysRemaining = Math.max(
+    0,
+    Math.ceil(remainingCm / Math.max(0.05, dailyGrowthRateCm))
+  );
+
+  const totalGainNeeded = Math.max(0.5, targetLength - initialLength);
+  const currentGain = Math.max(0, estimatedCurrentLengthCm - initialLength);
+  const progressPct = Math.min(100, Math.round((currentGain / totalGainNeeded) * 100));
+
+  // Allometric length-to-weight estimation (W = a * L^b)
+  const targetWeightGrams = isNila
+    ? 0.022 * Math.pow(targetLength, 2.95)
+    : 0.0085 * Math.pow(targetLength, 2.98);
+  const projectedWeightPerFishGrams = Number(targetWeightGrams.toFixed(1));
+  const survivalFactor = 0.94;
+  const projectedTotalYieldKg = Number(
+    ((input.count * projectedWeightPerFishGrams * survivalFactor) / 1000).toFixed(2)
+  );
+
+  let growthStage = "Fase Adaptasi Bibit Baru";
+  if (progressPct >= 95) {
+    growthStage = "Siap Panen Ukuran Konsumsi";
+  } else if (progressPct >= 65) {
+    growthStage = "Fase Pembesaran Akhir & Pengisian Bobot";
+  } else if (progressPct >= 25) {
+    growthStage = "Fase Pertumbuhan Juvenil Cepat";
+  }
+
+  return {
+    species: input.species,
+    label,
+    level,
+    count: input.count,
+    stockingDate: input.stockingDate,
+    daysElapsed,
+    initialLengthCm: initialLength,
+    estimatedCurrentLengthCm,
+    targetHarvestLengthCm: targetLength,
+    progressPct,
+    estimatedDaysRemaining,
+    estimatedHarvestDate: addDaysIso(estimatedDaysRemaining),
+    projectedWeightPerFishGrams,
+    projectedTotalYieldKg,
+    dailyGrowthRateCm,
+    growthStage,
+    waterSuitabilityPct,
+  };
+}
+
 function computeHarvestItem(
   cropType: "pakcoy" | "kangkung",
   waterTempC: number,
   lightLux: number,
-  daysSincePlanting: number
+  daysSincePlanting: number,
+  cohort?: CropCohortInput
 ): HarvestForecastItem {
+  // Grown from seed ("tanam dari benih") -> full seed-to-harvest GDD target
   const config =
     cropType === "pakcoy"
       ? {
           label: "Sayuran Pakcoy",
           level: "Level 4 (Puncak Rak)",
           baseTemp: 10.0,
-          targetGdd: 380.0,
-          maxBiomassGrams: 180.0,
+          targetGdd: 440.0,
+          maxBiomassGrams: 175.0,
         }
       : {
           label: "Sayuran Kangkung",
           level: "Level 2 (Hilir Biofilter)",
           baseTemp: 12.0,
-          targetGdd: 320.0,
-          maxBiomassGrams: 150.0,
+          targetGdd: 340.0,
+          maxBiomassGrams: 145.0,
         };
 
   // Photosynthetic light factor modulated smoothly by live LDR reading
@@ -200,22 +354,32 @@ function computeHarvestItem(
   );
   const progressRatio = Math.min(1, accumulatedGdd / config.targetGdd);
   const projectedBiomassGrams = Number(
-    (config.maxBiomassGrams * Math.pow(progressRatio, 1.5)).toFixed(1)
+    (config.maxBiomassGrams * Math.pow(progressRatio, 1.45)).toFixed(1)
+  );
+  const plantCount = cohort?.plantCount ?? (cropType === "pakcoy" ? 20 : 24);
+  const seedingDate = cohort?.seedingDate ?? addDaysIso(-daysSincePlanting);
+  const projectedTotalYieldKg = Number(
+    ((config.maxBiomassGrams * plantCount) / 1000).toFixed(2)
   );
 
-  let growthStage = "Fase Semai / Bibit Awal";
-  if (progressRatio >= 0.95) {
+  let growthStage = "Fase Perkecambahan Benih";
+  if (progressRatio >= 0.92) {
     growthStage = "Siap Panen Optimal";
   } else if (progressRatio >= 0.65) {
     growthStage = "Fase Pematangan & Pembesaran Daun";
-  } else if (progressRatio >= 0.25) {
+  } else if (progressRatio >= 0.22) {
     growthStage = "Fase Pertumbuhan Vegetatif Cepat";
+  } else if (progressRatio >= 0.1) {
+    growthStage = "Fase Semai Daun Sejati";
   }
 
   return {
     cropType,
     label: config.label,
     level: config.level,
+    seedingDate,
+    plantCount,
+    propagatedFromSeed: true,
     daysSincePlanting,
     accumulatedGdd,
     targetGdd: config.targetGdd,
@@ -223,6 +387,7 @@ function computeHarvestItem(
     estimatedDaysRemaining,
     estimatedHarvestDate: addDaysIso(estimatedDaysRemaining),
     projectedBiomassGrams,
+    projectedTotalYieldKg,
     growthStage,
     lightEfficiencyPct: Math.round(lightEfficiency * 100),
   };
@@ -378,10 +543,86 @@ function sanitizeChartSpecs(rawCharts: unknown): AgriBotChartSpec[] {
 }
 
 export class AgriBotEngine {
+  private static activeCohort: PredictionCohortConfig = {
+    fishMode: "both",
+    nila: {
+      enabled: true,
+      species: "nila",
+      count: 35,
+      stockingDate: addDaysIso(-18),
+      initialLengthCm: 6.5,
+      targetHarvestLengthCm: 22.0,
+    },
+    lele: {
+      enabled: true,
+      species: "lele",
+      count: 45,
+      stockingDate: addDaysIso(-16),
+      initialLengthCm: 7.0,
+      targetHarvestLengthCm: 26.0,
+    },
+    pakcoy: {
+      seedingDate: addDaysIso(-14),
+      plantCount: 20,
+    },
+    kangkung: {
+      seedingDate: addDaysIso(-12),
+      plantCount: 24,
+    },
+    updatedAt: new Date().toISOString(),
+  };
+
+  static getCohortConfig(): PredictionCohortConfig {
+    return this.activeCohort;
+  }
+
+  static updateCohortConfig(patch: Partial<PredictionCohortConfig>): PredictionCohortConfig {
+    const prev = this.activeCohort;
+    const nextFishMode =
+      patch.fishMode === "nila" || patch.fishMode === "lele" || patch.fishMode === "both"
+        ? patch.fishMode
+        : prev.fishMode;
+
+    this.activeCohort = {
+      fishMode: nextFishMode,
+      nila: {
+        ...prev.nila,
+        ...(patch.nila || {}),
+        species: "nila",
+        enabled: nextFishMode === "both" || nextFishMode === "nila",
+      },
+      lele: {
+        ...prev.lele,
+        ...(patch.lele || {}),
+        species: "lele",
+        enabled: nextFishMode === "both" || nextFishMode === "lele",
+      },
+      pakcoy: {
+        ...prev.pakcoy,
+        ...(patch.pakcoy || {}),
+      },
+      kangkung: {
+        ...prev.kangkung,
+        ...(patch.kangkung || {}),
+      },
+      updatedAt: new Date().toISOString(),
+    };
+    return this.activeCohort;
+  }
+
   static buildDiagnostics(
-    cropDayPakcoy: number = 14,
-    cropDayKangkung: number = 17
+    cropDayPakcoy?: number,
+    cropDayKangkung?: number
   ): EcosystemDiagnosticReport {
+    const cohort = this.activeCohort;
+    const effectivePakcoyDays =
+      cropDayPakcoy !== undefined
+        ? cropDayPakcoy
+        : daysElapsedSinceIso(cohort.pakcoy.seedingDate);
+    const effectiveKangkungDays =
+      cropDayKangkung !== undefined
+        ? cropDayKangkung
+        : daysElapsedSinceIso(cohort.kangkung.seedingDate);
     const snap = simulator.getSnapshot();
     const history = simulator.getHistory();
     const s = snap.sensors;
@@ -553,9 +794,29 @@ export class AgriBotEngine {
       fishRecs.push("Nyalakan kembali Pompa Sirkulasi 12V jika level air aman.");
     }
 
-    // 5. Harvest Predictions (Dynamic GDD)
-    const pakcoyHarvest = computeHarvestItem("pakcoy", s.waterTemperature, s.lightIntensity, cropDayPakcoy);
-    const kangkungHarvest = computeHarvestItem("kangkung", s.waterTemperature, s.lightIntensity, cropDayKangkung);
+    // 5. Harvest Predictions (Dynamic GDD from seed + Fish cohort growth)
+    const pakcoyHarvest = computeHarvestItem(
+      "pakcoy",
+      s.waterTemperature,
+      s.lightIntensity,
+      effectivePakcoyDays,
+      cohort.pakcoy
+    );
+    const kangkungHarvest = computeHarvestItem(
+      "kangkung",
+      s.waterTemperature,
+      s.lightIntensity,
+      effectiveKangkungDays,
+      cohort.kangkung
+    );
+
+    const fishPredictions: EcosystemDiagnosticReport["predictions"]["fish"] = {};
+    if (cohort.nila.enabled) {
+      fishPredictions.nila = computeFishHarvestItem(cohort.nila, s);
+    }
+    if (cohort.lele.enabled) {
+      fishPredictions.lele = computeFishHarvestItem(cohort.lele, s);
+    }
 
     // 6. Suggested Safe Actuator Actions
     const suggestedActions: EcosystemDiagnosticReport["suggestedActions"] = [];
@@ -600,6 +861,7 @@ export class AgriBotEngine {
       sensors: s,
       sensorSources: sources,
       edgeOnline: snap.system.edgeOnline,
+      cohort,
       diagnosis: {
         plant: {
           status: plantStatus,
@@ -644,6 +906,7 @@ export class AgriBotEngine {
           pakcoy: pakcoyHarvest,
           kangkung: kangkungHarvest,
         },
+        fish: fishPredictions,
       },
       suggestedActions,
     };
@@ -737,10 +1000,24 @@ export class AgriBotEngine {
     // Targeted responses only when focusing on a single topic
     if (topicCount === 1) {
       if (asksHarvest) {
+        const fishLines: string[] = [];
+        if (diag.predictions.fish?.nila) {
+          const n = diag.predictions.fish.nila;
+          fishLines.push(
+            `- **Ikan Nila (Kolam L3 — ${n.count} ekor)**: **${n.estimatedDaysRemaining} hari lagi** (${n.estimatedHarvestDate}) • Ukuran saat ini **~${n.estimatedCurrentLengthCm} cm** → target **${n.targetHarvestLengthCm} cm** • Estimasi panen **~${n.projectedTotalYieldKg} kg**.`
+          );
+        }
+        if (diag.predictions.fish?.lele) {
+          const l = diag.predictions.fish.lele;
+          fishLines.push(
+            `- **Ikan Lele (Kolam L1 — ${l.count} ekor)**: **${l.estimatedDaysRemaining} hari lagi** (${l.estimatedHarvestDate}) • Ukuran saat ini **~${l.estimatedCurrentLengthCm} cm** → target **${l.targetHarvestLengthCm} cm** • Estimasi panen **~${l.projectedTotalYieldKg} kg**.`
+          );
+        }
         return [
-          `### 📅 Prediksi Panen & Pertumbuhan (GDD Model)`,
-          `- **Pakcoy (Level 4)**: **${pakcoy.estimatedDaysRemaining} hari lagi** (${pakcoy.estimatedHarvestDate}) • Progress **${pakcoy.progressPct}%** (${pakcoy.accumulatedGdd}/${pakcoy.targetGdd} °C·Hari) • Estimasi bobot **~${pakcoy.projectedBiomassGrams}g/pod**.`,
-          `- **Kangkung (Level 2)**: **${kangkung.estimatedDaysRemaining} hari lagi** (${kangkung.estimatedHarvestDate}) • Progress **${kangkung.progressPct}%** (${kangkung.accumulatedGdd}/${kangkung.targetGdd} °C·Hari) • Estimasi bobot **~${kangkung.projectedBiomassGrams}g/ikat**.`,
+          `### 📅 Prediksi Panen Tanaman (Benih → Panen GDD) & Budidaya Ikan`,
+          `- **Pakcoy (Level 4 — ${pakcoy.plantCount} netpot, semai ${pakcoy.seedingDate})**: **${pakcoy.estimatedDaysRemaining} hari lagi** (${pakcoy.estimatedHarvestDate}) • Progress **${pakcoy.progressPct}%** (${pakcoy.accumulatedGdd}/${pakcoy.targetGdd} °C·Hari) • Estimasi bobot **~${pakcoy.projectedBiomassGrams}g/pod** (total **~${pakcoy.projectedTotalYieldKg} kg**).`,
+          `- **Kangkung (Level 2 — ${kangkung.plantCount} netpot, semai ${kangkung.seedingDate})**: **${kangkung.estimatedDaysRemaining} hari lagi** (${kangkung.estimatedHarvestDate}) • Progress **${kangkung.progressPct}%** (${kangkung.accumulatedGdd}/${kangkung.targetGdd} °C·Hari) • Estimasi bobot **~${kangkung.projectedBiomassGrams}g/ikat** (total **~${kangkung.projectedTotalYieldKg} kg**).`,
+          ...fishLines,
           `- **Faktor Cahaya (${ldrBadge})**: Terukur **${s.lightIntensity} lux** (Efisiensi fotosintesis **${pakcoy.lightEfficiencyPct}%**). ${s.lightIntensity < 300 ? "Cahaya sangat redup berpotensi memundurkan panen jika Grow Light tidak dinyalakan." : "Cahaya mendukung laju pematangan daun."}`,
         ].join("\n\n");
       }
@@ -956,8 +1233,8 @@ export class AgriBotEngine {
 
   static async chat(req: AgriBotChatRequest): Promise<AgriBotChatResponse> {
     const diagnostics = this.buildDiagnostics(
-      req.cropDayPakcoy ?? 14,
-      req.cropDayKangkung ?? 17
+      req.cropDayPakcoy,
+      req.cropDayKangkung
     );
     const snap = simulator.getSnapshot();
     const rawHistory = simulator.getHistory();
