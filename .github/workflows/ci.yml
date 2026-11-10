@@ -41,7 +41,7 @@ jobs:
       - name: Verify Moon Workspace
         run: |
           moon --version
-          moon query projects --json > /dev/null
+          moon query projects > /dev/null
           moon project backend > /dev/null
           moon project web > /dev/null
 
