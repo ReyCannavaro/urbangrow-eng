@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Fish, Sprout, Layers, ArrowUpRight } from "lucide-react";
+import { Fish, Sprout, Layers } from "lucide-react";
 
 export function HeroWelcome() {
   return (

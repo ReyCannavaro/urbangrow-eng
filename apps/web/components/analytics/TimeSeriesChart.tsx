@@ -14,7 +14,7 @@ interface TimeSeriesChartProps {
   sensors: SensorData;
 }
 
-type MetricKey = "all" | "ph" | "temp" | "tds" | "do" | "lux";
+type MetricKey = "all" | "ph" | "temp" | "tds" | "lux";
 
 interface MetricConfig {
   key: keyof SensorData;
@@ -28,18 +28,7 @@ interface MetricConfig {
   format: (v: number) => string;
 }
 
-const METRICS: Record<"ph" | "temp" | "tds" | "do" | "lux", MetricConfig> = {
-  do: {
-    key: "dissolvedOxygen",
-    label: "Oksigen (DO)",
-    unit: "mg/L",
-    color: "#4EAB7C", // Sage Mint
-    fillId: "gradient-do",
-    min: 4.5,
-    max: 9.5,
-    bandIndex: 0,
-    format: (v) => `${v.toFixed(2)} mg/L`,
-  },
+const METRICS: Record<"ph" | "temp" | "tds" | "lux", MetricConfig> = {
   temp: {
     key: "waterTemperature",
     label: "Suhu Air",
@@ -48,7 +37,7 @@ const METRICS: Record<"ph" | "temp" | "tds" | "do" | "lux", MetricConfig> = {
     fillId: "gradient-temp",
     min: 20.0,
     max: 30.0,
-    bandIndex: 1,
+    bandIndex: 0,
     format: (v) => `${v.toFixed(1)}°C`,
   },
   ph: {
@@ -59,7 +48,7 @@ const METRICS: Record<"ph" | "temp" | "tds" | "do" | "lux", MetricConfig> = {
     fillId: "gradient-ph",
     min: 6.0,
     max: 8.5,
-    bandIndex: 2,
+    bandIndex: 1,
     format: (v) => v.toFixed(2),
   },
   tds: {
@@ -69,8 +58,8 @@ const METRICS: Record<"ph" | "temp" | "tds" | "do" | "lux", MetricConfig> = {
     color: "#D97706", // Amber
     fillId: "gradient-tds",
     min: 350,
-    max: 750,
-    bandIndex: 3,
+    max: 850,
+    bandIndex: 2,
     format: (v) => `${Math.round(v)} ppm`,
   },
   lux: {
@@ -81,7 +70,7 @@ const METRICS: Record<"ph" | "temp" | "tds" | "do" | "lux", MetricConfig> = {
     fillId: "gradient-lux",
     min: 0,
     max: 3000,
-    bandIndex: 4,
+    bandIndex: 3,
     format: (v) => `${Math.round(v)} lux`,
   },
 };
@@ -108,7 +97,6 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
   const phStats = getStats("ph");
   const tempStats = getStats("waterTemperature");
   const tdsStats = getStats("tds");
-  const doStats = getStats("dissolvedOxygen");
   const luxStats = getStats("lightIntensity");
 
   // Chart dimensions inside SVG viewBox
@@ -137,20 +125,22 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
     const vals = dataSamples.map((pt) => pt.sensors[config.key] ?? config.min);
     const valMin = Math.min(...vals);
     const valMax = Math.max(...vals);
-    const span = Math.max(0.01, valMax - valMin);
+    const rawSpan = valMax - valMin;
+    const isFlat = rawSpan < 0.0001;
+    const span = Math.max(0.01, rawSpan);
 
-    // Altitude Bands for Multi-Trace SCADA Mode
-    // DO (band 0): 0.05 - 0.23
-    // Temp (band 1): 0.28 - 0.46
-    // pH (band 2): 0.51 - 0.69
-    // TDS (band 3): 0.74 - 0.92
+    // Altitude Bands for 4 Physical Multi-Trace Channels
+    // Temp (band 0): 0.05 - 0.24
+    // pH (band 1): 0.28 - 0.47
+    // TDS (band 2): 0.51 - 0.70
+    // Lux (band 3): 0.74 - 0.93
     const bandBases = [0.05, 0.28, 0.51, 0.74];
     const bandHeight = 0.19;
 
     const points = dataSamples.map((pt, idx) => {
       const x = paddingX + (idx / (dataSamples.length - 1)) * (width - 2 * paddingX);
       const val = pt.sensors[config.key] ?? config.min;
-      const normalizedLocal = (val - valMin) / span;
+      const normalizedLocal = isFlat ? 0.5 : (val - valMin) / span;
 
       let normY = 0.5;
       if (selectedMetric === "all") {
@@ -208,8 +198,7 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
           cy={lastPoint.y}
           r={8}
           fill={config.color}
-          opacity={0.3}
-          className="animate-pulse"
+          opacity={0.22}
         />
 
         {/* Hovered node point */}
@@ -265,67 +254,62 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
             </h3>
           </div>
           <p className="text-xs text-[#6B7280] mt-1 ml-9">
-            Multi-trace telemetri SCADA dengan interpolasi spline kontinu 60 sampel live.
+            Multi-trace telemetri fisik ESP32 dengan interpolasi spline kontinu 60 sampel live.
           </p>
         </div>
 
         {/* Metric Selector Pills */}
         <div className="flex items-center gap-1 p-1 rounded-full border border-[#E5E7EB] bg-[#F8F9FA] text-xs self-start sm:self-auto overflow-x-auto max-w-full">
           <button
+            type="button"
             onClick={() => setSelectedMetric("all")}
-            className={`px-3.5 py-1.5 rounded-full font-medium transition cursor-pointer shrink-0 ${
+            className={`px-3.5 py-1.5 rounded-full font-medium transition-colors cursor-pointer shrink-0 ${
               selectedMetric === "all"
-                ? "bg-[#165B39] text-white font-semibold shadow-xs"
+                ? "bg-[#165B39] text-white font-semibold"
                 : "text-[#4B5563] hover:text-[#111827] hover:bg-white"
             }`}
           >
             Semua Kanal
           </button>
           <button
+            type="button"
             onClick={() => setSelectedMetric("ph")}
-            className={`px-3.5 py-1.5 rounded-full font-medium transition cursor-pointer shrink-0 ${
+            className={`px-3.5 py-1.5 rounded-full font-medium transition-colors cursor-pointer shrink-0 ${
               selectedMetric === "ph"
-                ? "bg-[#165B39] text-white font-semibold shadow-xs"
+                ? "bg-[#165B39] text-white font-semibold"
                 : "text-[#4B5563] hover:text-[#111827] hover:bg-white"
             }`}
           >
             pH Air
           </button>
           <button
+            type="button"
             onClick={() => setSelectedMetric("temp")}
-            className={`px-3.5 py-1.5 rounded-full font-medium transition cursor-pointer shrink-0 ${
+            className={`px-3.5 py-1.5 rounded-full font-medium transition-colors cursor-pointer shrink-0 ${
               selectedMetric === "temp"
-                ? "bg-[#165B39] text-white font-semibold shadow-xs"
+                ? "bg-[#165B39] text-white font-semibold"
                 : "text-[#4B5563] hover:text-[#111827] hover:bg-white"
             }`}
           >
             Suhu Air
           </button>
           <button
+            type="button"
             onClick={() => setSelectedMetric("tds")}
-            className={`px-3.5 py-1.5 rounded-full font-medium transition cursor-pointer shrink-0 ${
+            className={`px-3.5 py-1.5 rounded-full font-medium transition-colors cursor-pointer shrink-0 ${
               selectedMetric === "tds"
-                ? "bg-[#165B39] text-white font-semibold shadow-xs"
+                ? "bg-[#165B39] text-white font-semibold"
                 : "text-[#4B5563] hover:text-[#111827] hover:bg-white"
             }`}
           >
             TDS Nutrisi
           </button>
           <button
-            onClick={() => setSelectedMetric("do")}
-            className={`px-3.5 py-1.5 rounded-full font-medium transition cursor-pointer shrink-0 ${
-              selectedMetric === "do"
-                ? "bg-[#165B39] text-white font-semibold shadow-xs"
-                : "text-[#4B5563] hover:text-[#111827] hover:bg-white"
-            }`}
-          >
-            DO Oksigen
-          </button>
-          <button
+            type="button"
             onClick={() => setSelectedMetric("lux")}
-            className={`px-3.5 py-1.5 rounded-full font-medium transition cursor-pointer shrink-0 ${
+            className={`px-3.5 py-1.5 rounded-full font-medium transition-colors cursor-pointer shrink-0 ${
               selectedMetric === "lux"
-                ? "bg-[#7C3AED] text-white font-semibold shadow-xs"
+                ? "bg-[#7C3AED] text-white font-semibold"
                 : "text-[#4B5563] hover:text-[#111827] hover:bg-white"
             }`}
           >
@@ -334,14 +318,15 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
         </div>
       </div>
 
-      {/* 2. Interactive KPI Chips Bar (Donezo Metric Strip) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      {/* 2. Interactive KPI Chips Bar (4 Physical Sensor Channels) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {/* pH Chip */}
         <button
+          type="button"
           onClick={() => setSelectedMetric(selectedMetric === "ph" ? "all" : "ph")}
-          className={`p-3.5 rounded-[18px] border text-left transition-all cursor-pointer ${
+          className={`p-3.5 rounded-[18px] border text-left transition-colors cursor-pointer ${
             selectedMetric === "ph"
-              ? "border-[#165B39] bg-[#DCFCE7]/30 shadow-xs ring-1 ring-[#165B39]"
+              ? "border-[#165B39] bg-[#DCFCE7]/25"
               : "border-[#E5E7EB] bg-[#F8F9FA] hover:bg-white hover:border-[#D1D5DB]"
           }`}
         >
@@ -362,10 +347,11 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
 
         {/* Suhu Chip */}
         <button
+          type="button"
           onClick={() => setSelectedMetric(selectedMetric === "temp" ? "all" : "temp")}
-          className={`p-3.5 rounded-[18px] border text-left transition-all cursor-pointer ${
+          className={`p-3.5 rounded-[18px] border text-left transition-colors cursor-pointer ${
             selectedMetric === "temp"
-              ? "border-[#0284C7] bg-[#E0F2FE]/40 shadow-xs ring-1 ring-[#0284C7]"
+              ? "border-[#0284C7] bg-[#E0F2FE]/35"
               : "border-[#E5E7EB] bg-[#F8F9FA] hover:bg-white hover:border-[#D1D5DB]"
           }`}
         >
@@ -388,10 +374,11 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
 
         {/* TDS Chip */}
         <button
+          type="button"
           onClick={() => setSelectedMetric(selectedMetric === "tds" ? "all" : "tds")}
-          className={`p-3.5 rounded-[18px] border text-left transition-all cursor-pointer ${
+          className={`p-3.5 rounded-[18px] border text-left transition-colors cursor-pointer ${
             selectedMetric === "tds"
-              ? "border-[#D97706] bg-[#FEF3C7]/40 shadow-xs ring-1 ring-[#D97706]"
+              ? "border-[#D97706] bg-[#FEF3C7]/35"
               : "border-[#E5E7EB] bg-[#F8F9FA] hover:bg-white hover:border-[#D1D5DB]"
           }`}
         >
@@ -410,38 +397,13 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
           </div>
         </button>
 
-        {/* DO Chip */}
-        <button
-          onClick={() => setSelectedMetric(selectedMetric === "do" ? "all" : "do")}
-          className={`p-3.5 rounded-[18px] border text-left transition-all cursor-pointer ${
-            selectedMetric === "do"
-              ? "border-[#4EAB7C] bg-[#DCFCE7]/40 shadow-xs ring-1 ring-[#4EAB7C]"
-              : "border-[#E5E7EB] bg-[#F8F9FA] hover:bg-white hover:border-[#D1D5DB]"
-          }`}
-        >
-          <div className="flex items-center justify-between text-xs text-[#6B7280]">
-            <span className="flex items-center gap-1.5 font-medium">
-              <span className="h-2 w-2 rounded-full bg-[#4EAB7C]" />
-              DO Oksigen
-            </span>
-            <span className="font-mono text-[10px] text-[#9CA3AF]">
-              {dataSamples.length > 0 ? `${doStats.min.toFixed(2)}-${doStats.max.toFixed(2)}` : "6.5-8.0"}
-            </span>
-          </div>
-          <div className="text-xl font-bold tracking-tight text-[#111827] num-tabular mt-1">
-            {typeof sensors.dissolvedOxygen === "number"
-              ? sensors.dissolvedOxygen.toFixed(2)
-              : sensors.dissolvedOxygen}
-            <span className="text-xs font-normal text-[#6B7280] ml-1">mg/L</span>
-          </div>
-        </button>
-
         {/* LDR Light Chip */}
         <button
+          type="button"
           onClick={() => setSelectedMetric(selectedMetric === "lux" ? "all" : "lux")}
-          className={`p-3.5 rounded-[18px] border text-left transition-all cursor-pointer ${
+          className={`p-3.5 rounded-[18px] border text-left transition-colors cursor-pointer ${
             selectedMetric === "lux"
-              ? "border-[#7C3AED] bg-[#F3E8FF]/50 shadow-xs ring-1 ring-[#7C3AED]"
+              ? "border-[#7C3AED] bg-[#F3E8FF]/45"
               : "border-[#E5E7EB] bg-[#F8F9FA] hover:bg-white hover:border-[#D1D5DB]"
           }`}
         >
@@ -488,10 +450,6 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
               <stop offset="0%" stopColor="#D97706" stopOpacity="0.4" />
               <stop offset="100%" stopColor="#D97706" stopOpacity="0.0" />
             </linearGradient>
-            <linearGradient id="gradient-do" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#4EAB7C" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="#4EAB7C" stopOpacity="0.0" />
-            </linearGradient>
             <linearGradient id="gradient-lux" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#7C3AED" stopOpacity="0.35" />
               <stop offset="100%" stopColor="#7C3AED" stopOpacity="0.0" />
@@ -529,16 +487,14 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
 
           {/* Time-series Splines (Sweep reveal left-to-right when viewed) */}
           <g className={chartInView ? "ug-chart-reveal" : "opacity-0"}>
-            {(selectedMetric === "all" || selectedMetric === "do") &&
-              renderLine(METRICS.do, selectedMetric === "do")}
             {(selectedMetric === "all" || selectedMetric === "temp") &&
               renderLine(METRICS.temp, selectedMetric === "temp")}
             {(selectedMetric === "all" || selectedMetric === "ph") &&
               renderLine(METRICS.ph, selectedMetric === "ph")}
             {(selectedMetric === "all" || selectedMetric === "tds") &&
               renderLine(METRICS.tds, selectedMetric === "tds")}
-            {selectedMetric === "lux" &&
-              renderLine(METRICS.lux, true)}
+            {(selectedMetric === "all" || selectedMetric === "lux") &&
+              renderLine(METRICS.lux, selectedMetric === "lux")}
           </g>
 
           {/* Interactive Crosshair Line on Hover */}
@@ -590,12 +546,6 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
             </div>
             <div className="flex items-center justify-between text-[#111827]">
               <span className="flex items-center gap-1.5 text-[11px]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#4EAB7C]" /> DO:
-              </span>
-              <span className="font-bold">{activeSample.sensors.dissolvedOxygen.toFixed(2)} mg/L</span>
-            </div>
-            <div className="flex items-center justify-between text-[#111827]">
-              <span className="flex items-center gap-1.5 text-[11px]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#7C3AED]" /> LDR:
               </span>
               <span className="font-bold">{Math.round(activeSample.sensors.lightIntensity)} lux</span>
@@ -611,8 +561,8 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
           <span className="text-[#9CA3AF]">-45s</span>
           <span className="text-[#9CA3AF] hidden sm:inline">-30s</span>
           <span className="text-[#9CA3AF]">-15s</span>
-          <span className="font-bold text-[#165B39] flex items-center gap-1">
-            <span className="h-2 w-2 rounded-full bg-[#165B39] animate-pulse" />
+          <span className="font-bold text-[#165B39] flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-[#165B39]" />
             Live Sekarang
           </span>
         </div>

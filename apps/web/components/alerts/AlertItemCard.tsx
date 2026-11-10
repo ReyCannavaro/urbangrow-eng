@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { AlertTriangle, Droplets, CheckCircle2, ArrowRight, Clock } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ArrowUpRight, Clock } from "lucide-react";
 import { AlertNotification } from "@/lib/types";
 
 interface AlertItemCardProps {
@@ -40,13 +40,13 @@ export function AlertItemCard({ alert, isArchive = false }: AlertItemCardProps) 
 
   return (
     <div
-      className={`rounded-[22px] bg-white border border-[#E5E7EB] p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-[#D1D5DB] transition-all ${
-        isArchive ? "opacity-80" : ""
+      className={`rounded-[22px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors ${
+        isArchive ? "opacity-85" : ""
       }`}
     >
       <div className="flex items-start sm:items-center gap-3.5">
         <div
-          className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 shadow-2xs ${style.bgIcon}`}
+          className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${style.bgIcon}`}
         >
           {style.icon}
         </div>
@@ -75,10 +75,10 @@ export function AlertItemCard({ alert, isArchive = false }: AlertItemCardProps) 
         </span>
         <Link
           href="/controls"
-          className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] flex items-center justify-center text-[#4B5563] hover:text-[#111827] transition-colors shadow-2xs"
+          className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] hover:border-[#D1D5DB] flex items-center justify-center text-[#4B5563] hover:text-[#111827] transition-colors group"
           title="Periksa Kontrol Relay"
         >
-          <ArrowRight className="h-3.5 w-3.5" />
+          <ArrowUpRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:rotate-45" />
         </Link>
       </div>
     </div>

@@ -24,7 +24,7 @@ export function RelaySwitchCard({ actuator, onToggle }: RelaySwitchCardProps) {
           icon: Wind,
           bg: "bg-[#DCFCE7] text-[#166534]",
           badge: "bg-[#DCFCE7] text-[#166534]",
-          role: "Injeksi Oksigen DO Nila",
+          role: "Sirkulasi Aerasi Kolam Nila",
         };
       case "light":
         return {
@@ -57,17 +57,17 @@ export function RelaySwitchCard({ actuator, onToggle }: RelaySwitchCardProps) {
 
   return (
     <div
-      className={`rounded-[24px] bg-white border p-5 transition-all shadow-xs flex flex-col justify-between h-[180px] group ${
+      className={`rounded-[24px] bg-white border p-5 transition-colors shadow-xs flex flex-col justify-between h-[180px] group ${
         actuator.isOn
-          ? "border-[#165B39]/50 ring-1 ring-[#165B39]/20"
-          : "border-[#E5E7EB] hover:border-[#CBD5E1]"
+          ? "border-[#165B39]/35 hover:bg-[#F9FAFB]/70 hover:border-[#165B39]/55"
+          : "border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB]"
       }`}
     >
       {/* Top Header: Icon, Name & Tactile Toggle Switch */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div
-            className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 ${meta.bg}`}
+            className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${meta.bg}`}
           >
             <Icon className="h-5 w-5" />
           </div>
@@ -83,11 +83,13 @@ export function RelaySwitchCard({ actuator, onToggle }: RelaySwitchCardProps) {
           </div>
         </div>
 
-        {/* Donezo Tactile Toggle Switch */}
-        <div
+        {/* Tactile Toggle Switch */}
+        <button
+          type="button"
           onClick={() => onToggle(actuator.id)}
           className="flex items-center gap-2 cursor-pointer"
           title={`Toggle ${actuator.name}`}
+          aria-pressed={actuator.isOn}
         >
           <span className="hidden sm:inline-block text-[10px] font-mono font-bold text-[#4B5563]">
             {actuator.isOn ? "ON" : "OFF"}
@@ -95,7 +97,7 @@ export function RelaySwitchCard({ actuator, onToggle }: RelaySwitchCardProps) {
           <div
             className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${
               actuator.isOn
-                ? "bg-[#165B39] shadow-[0_0_8px_rgba(22,91,57,0.35)]"
+                ? "bg-[#165B39]"
                 : "bg-[#E5E7EB] border border-[#D1D5DB]"
             }`}
           >
@@ -105,7 +107,7 @@ export function RelaySwitchCard({ actuator, onToggle }: RelaySwitchCardProps) {
               }`}
             />
           </div>
-        </div>
+        </button>
       </div>
 
       {/* Middle: 3 Hardware Telemetry Chips */}
@@ -135,9 +137,7 @@ export function RelaySwitchCard({ actuator, onToggle }: RelaySwitchCardProps) {
         <span className="flex items-center gap-1.5 text-[#4B5563]">
           <span
             className={`h-2 w-2 rounded-full ${
-              actuator.isOn
-                ? "bg-[#165B39] shadow-[0_0_6px_rgba(22,91,57,0.6)] animate-pulse"
-                : "bg-[#9CA3AF]"
+              actuator.isOn ? "bg-[#165B39]" : "bg-[#9CA3AF]"
             }`}
           />
           {actuator.isOn ? "AKTIF BEROPERASI" : "STANDBY TERPUTUS"}

@@ -13,7 +13,7 @@ export function FishHarvestCard({ forecast }: FishHarvestCardProps) {
   const isNila = forecast.species === "nila";
 
   return (
-    <div className="rounded-[24px] border border-[#E5E7EB] bg-white p-5 sm:p-6 transition-colors hover:border-[#D1D5DB]">
+    <div className="rounded-[24px] border border-[#E5E7EB] bg-white p-5 sm:p-6 transition-colors hover:bg-[#F9FAFB]/40 hover:border-[#D1D5DB]">
       {/* Header */}
       <div className="flex items-start justify-between gap-3 border-b border-[#F3F4F6] pb-4">
         <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -131,7 +131,7 @@ export function FishHarvestCard({ forecast }: FishHarvestCardProps) {
             {forecast.waterSuitabilityPct}%
           </span>
           <span className="text-[10px] text-[#6B7280]">
-            {isNila ? "Sensor DO & Suhu" : "Adaptif L1"}
+            {isNila ? "Suhu & pH Air" : "Adaptif L1"}
           </span>
         </div>
       </div>

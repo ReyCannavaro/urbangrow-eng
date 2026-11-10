@@ -1,8 +1,7 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
-import { Check, Waves, Wind, Sun, Zap, Droplets } from "lucide-react";
+import { Check, Waves, Wind, Sun } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
 
 export function DarkTaskPanel() {

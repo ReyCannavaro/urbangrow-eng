@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import { Settings, Bell, User, Radio, Sprout } from "lucide-react";
+import { Settings, Bell, User } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
 
 export function NavigationHeader() {

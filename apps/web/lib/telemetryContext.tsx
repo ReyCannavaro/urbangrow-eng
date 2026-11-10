@@ -91,20 +91,21 @@ const DEFAULT_INFO_ALERTS: AlertNotification[] = [
 
 const TelemetryContext = createContext<TelemetryContextType | undefined>(undefined);
 
+const INITIAL_HISTORY_ANCHOR_MS = Date.UTC(2026, 0, 1, 12, 0, 0);
+
 function generateInitialHistory(): HistorySample[] {
-  const now = Date.now();
   const samples: HistorySample[] = [];
   for (let i = 45; i >= 0; i--) {
-    const t = new Date(now - i * 1500);
+    const t = new Date(INITIAL_HISTORY_ANCHOR_MS - i * 1500);
     const wave = Math.sin((45 - i) * 0.2);
     const cosWave = Math.cos((45 - i) * 0.15);
     samples.push({
       timestamp: t.toISOString(),
       sensors: {
-        ph: Number((6.95 + wave * 0.07 + (Math.random() - 0.5) * 0.02).toFixed(2)),
-        waterTemperature: Number((24.2 + cosWave * 0.3 + (Math.random() - 0.5) * 0.05).toFixed(1)),
-        tds: Math.round(540 + wave * 10 + (Math.random() - 0.5) * 3),
-        dissolvedOxygen: Number((7.25 - wave * 0.18 + (Math.random() - 0.5) * 0.03).toFixed(2)),
+        ph: Number((6.95 + wave * 0.07).toFixed(2)),
+        waterTemperature: Number((24.2 + cosWave * 0.3).toFixed(1)),
+        tds: Math.round(540 + wave * 10),
+        dissolvedOxygen: Number((7.25 - wave * 0.18).toFixed(2)),
         airTemperature: Number((27.1 + cosWave * 0.4).toFixed(1)),
         humidity: Number((65.2 - wave * 1.5).toFixed(1)),
         lightIntensity: Math.round(680 + wave * 30),

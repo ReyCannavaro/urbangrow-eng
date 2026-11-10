@@ -21,11 +21,11 @@ export function AlertGroupSection({
   return (
     <div className="space-y-3.5">
       <div className="flex items-center justify-between pb-1">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <h3 className="text-xs font-bold text-[#374151] uppercase tracking-wider">
             {title}
           </h3>
-          <span className="px-2 py-0.2 rounded-full bg-[#F3F4F6] text-[10px] font-mono text-[#4B5563] font-bold">
+          <span className="px-2 py-0.5 rounded-full bg-[#F3F4F6] text-[10px] font-mono text-[#4B5563] font-bold whitespace-nowrap shrink-0">
             {alerts.length} Log
           </span>
         </div>

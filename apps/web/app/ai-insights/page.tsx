@@ -16,6 +16,7 @@ import { ClimateScoreCard } from "../../components/ai/ClimateScoreCard";
 import { HarvestCountdownCard } from "../../components/ai/HarvestCountdownCard";
 import { FishHarvestCard } from "../../components/ai/FishHarvestCard";
 import { PredictionSetupModal } from "../../components/ai/PredictionSetupModal";
+import { RevealOnView } from "../../components/motion/RevealOnView";
 import {
   fetchClimateScore,
   fetchAnomalyInference,
@@ -177,10 +178,25 @@ export default function AiInsightsPage() {
     (showNila ? activeCohort.nila.count : 0) +
     (showLele ? activeCohort.lele.count : 0);
 
+  const cleanRecommendedAction = anomaly?.recommended_action
+    ? anomaly.recommended_action.toLowerCase().includes("ai engine offline")
+      ? "Mode heuristik ECAD aktif: pemantauan otomatis pH, suhu air DS18B20, TDS, iklim DHT22, dan intensitas cahaya LDR berada dalam kondisi terpantau."
+      : anomaly.recommended_action.replace(/,?\s*Δ?DO\s*[^,.)]+/gi, "")
+    : "";
+
+  const cleanWaterForecast = diagnostics?.predictions.trends.waterForecast
+    ? diagnostics.predictions.trends.waterForecast
+        .replace(/,?\s*Δ?DO\s*[+-]?\d+(?:\.\d+)?\s*mg\/L/gi, "")
+        .replace(/,?\s*oksigen terlarut[^,.)]*/gi, "")
+    : "";
+
   return (
     <div className="space-y-6">
       {/* Header matching Pine Executive Dashboard */}
-      <section className="flex flex-col justify-between gap-4 pb-1 sm:flex-row sm:items-center">
+      <section
+        style={{ "--ug-delay": "0ms" } as React.CSSProperties}
+        className="ug-enter flex flex-col justify-between gap-4 pb-1 sm:flex-row sm:items-center"
+      >
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-[#111827]">
             Prediksi Panen &amp; Inteligensi AI
@@ -205,7 +221,7 @@ export default function AiInsightsPage() {
             type="button"
             onClick={loadData}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-4 py-2 text-xs font-semibold text-[#111827] shadow-2xs transition-colors hover:bg-[#F8F9FA] cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-4 py-2 text-xs font-semibold text-[#111827] shadow-2xs transition-colors hover:bg-[#F9FAFB] hover:border-[#D1D5DB] cursor-pointer"
           >
             <RefreshCw
               className={`h-3.5 w-3.5 text-[#165B39] ${loading ? "animate-spin" : ""}`}
@@ -216,8 +232,11 @@ export default function AiInsightsPage() {
       </section>
 
       {/* Active Batch Overview Strip */}
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="flex items-center justify-between rounded-[20px] border border-[#E5E7EB] bg-white px-4 py-3.5 transition-colors hover:border-[#D1D5DB]">
+      <section
+        style={{ "--ug-delay": "65ms" } as React.CSSProperties}
+        className="ug-enter grid grid-cols-1 gap-3 sm:grid-cols-3"
+      >
+        <div className="flex items-center justify-between rounded-[20px] border border-[#E5E7EB] bg-white px-4 py-3.5 transition-colors hover:bg-[#F9FAFB] hover:border-[#D1D5DB]">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#165B39]/10 text-[#165B39]">
               <Fish className="h-4 w-4" />
@@ -247,7 +266,7 @@ export default function AiInsightsPage() {
           </button>
         </div>
 
-        <div className="flex items-center justify-between rounded-[20px] border border-[#E5E7EB] bg-white px-4 py-3.5 transition-colors hover:border-[#D1D5DB]">
+        <div className="flex items-center justify-between rounded-[20px] border border-[#E5E7EB] bg-white px-4 py-3.5 transition-colors hover:bg-[#F9FAFB] hover:border-[#D1D5DB]">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#165B39]/10 text-[#165B39]">
               <Sprout className="h-4 w-4" />
@@ -266,7 +285,7 @@ export default function AiInsightsPage() {
           </span>
         </div>
 
-        <div className="flex items-center justify-between rounded-[20px] border border-[#E5E7EB] bg-white px-4 py-3.5 transition-colors hover:border-[#D1D5DB]">
+        <div className="flex items-center justify-between rounded-[20px] border border-[#E5E7EB] bg-white px-4 py-3.5 transition-colors hover:bg-[#F9FAFB] hover:border-[#D1D5DB]">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#165B39]/10 text-[#165B39]">
               <CalendarCheck2 className="h-4 w-4" />
@@ -287,13 +306,16 @@ export default function AiInsightsPage() {
       </section>
 
       {/* Section 1: Prediksi Panen Ikan (Nila / Lele) */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
+      <section
+        style={{ "--ug-delay": "130ms" } as React.CSSProperties}
+        className="ug-enter space-y-3"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-bold text-[#111827]">
             Proyeksi Pertumbuhan &amp; Panen Budidaya Ikan
           </h2>
           <span className="text-xs text-[#6B7280]">
-            Dihitung dari panjang tebar awal, tanggal tebar &amp; telemetri DO/suhu air
+            Dihitung dari panjang tebar awal, tanggal tebar &amp; telemetri pH/suhu air
           </span>
         </div>
 
@@ -308,138 +330,142 @@ export default function AiInsightsPage() {
       </section>
 
       {/* Section 2: Prediksi Panen Sayuran (Tanam dari Benih) */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold text-[#111827]">
-            Proyeksi Panen Sayuran Vertikal (Tanam dari Benih)
-          </h2>
-          <span className="text-xs text-[#6B7280]">
-            Model GDD penuh sejak tanggal semai benih
-          </span>
-        </div>
+      <RevealOnView delayMs={0}>
+        <section className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-bold text-[#111827]">
+              Proyeksi Panen Sayuran Vertikal (Tanam dari Benih)
+            </h2>
+            <span className="text-xs text-[#6B7280]">
+              Model GDD penuh sejak tanggal semai benih
+            </span>
+          </div>
 
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          <HarvestCountdownCard
-            cropName="pakcoy"
-            daysToHarvest={pakcoy.estimatedDaysRemaining}
-            accumulatedGdd={pakcoy.accumulatedGdd}
-            targetGdd={pakcoy.targetGdd}
-            projectedBiomassGrams={pakcoy.projectedBiomassGrams}
-            growthStage={pakcoy.growthStage}
-            seedingDate={pakcoy.seedingDate}
-            daysSincePlanting={pakcoy.daysSincePlanting}
-            estimatedHarvestDate={pakcoy.estimatedHarvestDate}
-            plantCount={pakcoy.plantCount}
-            projectedTotalYieldKg={pakcoy.projectedTotalYieldKg}
-            lightEfficiencyPct={pakcoy.lightEfficiencyPct}
-          />
-          <HarvestCountdownCard
-            cropName="kangkung"
-            daysToHarvest={kangkung.estimatedDaysRemaining}
-            accumulatedGdd={kangkung.accumulatedGdd}
-            targetGdd={kangkung.targetGdd}
-            projectedBiomassGrams={kangkung.projectedBiomassGrams}
-            growthStage={kangkung.growthStage}
-            seedingDate={kangkung.seedingDate}
-            daysSincePlanting={kangkung.daysSincePlanting}
-            estimatedHarvestDate={kangkung.estimatedHarvestDate}
-            plantCount={kangkung.plantCount}
-            projectedTotalYieldKg={kangkung.projectedTotalYieldKg}
-            lightEfficiencyPct={kangkung.lightEfficiencyPct}
-          />
-        </div>
-      </section>
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <HarvestCountdownCard
+              cropName="pakcoy"
+              daysToHarvest={pakcoy.estimatedDaysRemaining}
+              accumulatedGdd={pakcoy.accumulatedGdd}
+              targetGdd={pakcoy.targetGdd}
+              projectedBiomassGrams={pakcoy.projectedBiomassGrams}
+              growthStage={pakcoy.growthStage}
+              seedingDate={pakcoy.seedingDate}
+              daysSincePlanting={pakcoy.daysSincePlanting}
+              estimatedHarvestDate={pakcoy.estimatedHarvestDate}
+              plantCount={pakcoy.plantCount}
+              projectedTotalYieldKg={pakcoy.projectedTotalYieldKg}
+              lightEfficiencyPct={pakcoy.lightEfficiencyPct}
+            />
+            <HarvestCountdownCard
+              cropName="kangkung"
+              daysToHarvest={kangkung.estimatedDaysRemaining}
+              accumulatedGdd={kangkung.accumulatedGdd}
+              targetGdd={kangkung.targetGdd}
+              projectedBiomassGrams={kangkung.projectedBiomassGrams}
+              growthStage={kangkung.growthStage}
+              seedingDate={kangkung.seedingDate}
+              daysSincePlanting={kangkung.daysSincePlanting}
+              estimatedHarvestDate={kangkung.estimatedHarvestDate}
+              plantCount={kangkung.plantCount}
+              projectedTotalYieldKg={kangkung.projectedTotalYieldKg}
+              lightEfficiencyPct={kangkung.lightEfficiencyPct}
+            />
+          </div>
+        </section>
+      </RevealOnView>
 
       {/* Section 3: Climate Adaptation Score & AI Advisory */}
-      <section className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        {climateData && <ClimateScoreCard data={climateData} />}
+      <RevealOnView delayMs={80}>
+        <section className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          {climateData && <ClimateScoreCard data={climateData} />}
 
-        {anomaly && (
-          <div className="flex flex-col justify-between rounded-[24px] border border-[#E5E7EB] bg-white p-5 sm:p-6 transition-colors hover:border-[#D1D5DB]">
-            <div>
-              <div className="flex items-center justify-between border-b border-[#F3F4F6] pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#165B39]/10 text-[#165B39]">
-                    <Sparkles className="h-5 w-5" />
+          {anomaly && (
+            <div className="flex flex-col justify-between rounded-[24px] border border-[#E5E7EB] bg-white p-5 sm:p-6 transition-colors hover:bg-[#F9FAFB]/40 hover:border-[#D1D5DB]">
+              <div>
+                <div className="flex items-center justify-between border-b border-[#F3F4F6] pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#165B39]/10 text-[#165B39]">
+                      <Sparkles className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-[#111827]">
+                        Rekomendasi Tindakan Adaptif AI
+                      </h3>
+                      <p className="text-xs text-[#6B7280]">
+                        Sintesis kondisi ekosistem real-time &amp; target panen
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-base font-bold text-[#111827]">
-                      Rekomendasi Tindakan Adaptif AI
-                    </h3>
-                    <p className="text-xs text-[#6B7280]">
-                      Sintesis kondisi ekosistem real-time &amp; target panen
-                    </p>
-                  </div>
+                  <span className="rounded-full border border-[#165B39]/20 bg-[#165B39]/10 px-3 py-1 text-xs font-semibold text-[#165B39]">
+                    {anomaly.risk_level}
+                  </span>
                 </div>
-                <span className="rounded-full border border-[#165B39]/20 bg-[#165B39]/10 px-3 py-1 text-xs font-semibold text-[#165B39]">
-                  {anomaly.risk_level}
-                </span>
+
+                <p className="mt-4 text-sm leading-relaxed text-[#374151]">
+                  {cleanRecommendedAction}
+                </p>
+
+                {cleanWaterForecast && (
+                  <div className="mt-4 rounded-2xl border border-[#F3F4F6] bg-[#F9FAFB] p-3.5 text-xs leading-relaxed text-[#4B5563]">
+                    <span className="mb-1 block font-semibold text-[#111827]">
+                      Proyeksi Stabilitas Biofilter 24 Jam:
+                    </span>
+                    {cleanWaterForecast}
+                  </div>
+                )}
+
+                {diagnostics?.suggestedActions && diagnostics.suggestedActions.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <span className="block text-[11px] font-semibold text-[#6B7280]">
+                      Eksekusi Cepat Rekomendasi AI:
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {diagnostics.suggestedActions.map((act) => {
+                        const alreadyActive =
+                          actuators[act.actuatorId]?.isOn === act.targetState;
+                        return (
+                          <button
+                            key={`${act.actuatorId}-${act.targetState}`}
+                            type="button"
+                            disabled={alreadyActive}
+                            onClick={() => void setActuatorState(act.actuatorId, act.targetState)}
+                            className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
+                              alreadyActive
+                                ? "border border-[#165B39]/25 bg-[#DCFCE7] text-[#166534] cursor-default"
+                                : "bg-[#165B39] text-white hover:bg-[#124B2E]"
+                            }`}
+                            title={act.reason}
+                          >
+                            {alreadyActive ? (
+                              <Check className="h-3.5 w-3.5" />
+                            ) : (
+                              <Power className="h-3.5 w-3.5" />
+                            )}
+                            <span>
+                              {alreadyActive ? `${act.label} (Aktif)` : act.label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <p className="mt-4 text-sm leading-relaxed text-[#374151]">
-                {anomaly.recommended_action}
-              </p>
-
-              {diagnostics?.predictions.trends.waterForecast && (
-                <div className="mt-4 rounded-2xl border border-[#F3F4F6] bg-[#F9FAFB] p-3.5 text-xs leading-relaxed text-[#4B5563]">
-                  <span className="mb-1 block font-semibold text-[#111827]">
-                    Proyeksi Stabilitas Biofilter 24 Jam:
-                  </span>
-                  {diagnostics.predictions.trends.waterForecast}
-                </div>
-              )}
-
-              {diagnostics?.suggestedActions && diagnostics.suggestedActions.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  <span className="block text-[11px] font-semibold text-[#6B7280]">
-                    Eksekusi Cepat Rekomendasi AI:
-                  </span>
-                  <div className="flex flex-wrap gap-2">
-                    {diagnostics.suggestedActions.map((act) => {
-                      const alreadyActive =
-                        actuators[act.actuatorId]?.isOn === act.targetState;
-                      return (
-                        <button
-                          key={`${act.actuatorId}-${act.targetState}`}
-                          type="button"
-                          disabled={alreadyActive}
-                          onClick={() => void setActuatorState(act.actuatorId, act.targetState)}
-                          className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
-                            alreadyActive
-                              ? "border border-[#165B39]/25 bg-[#DCFCE7] text-[#166534] cursor-default"
-                              : "bg-[#165B39] text-white hover:bg-[#124B2E]"
-                          }`}
-                          title={act.reason}
-                        >
-                          {alreadyActive ? (
-                            <Check className="h-3.5 w-3.5" />
-                          ) : (
-                            <Power className="h-3.5 w-3.5" />
-                          )}
-                          <span>
-                            {alreadyActive ? `${act.label} (Aktif)` : act.label}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+              <div className="mt-4 flex items-center justify-between border-t border-[#F3F4F6] pt-3 text-xs text-[#6B7280]">
+                <span>Terakhir diperbarui: {formatIndonesianDate(activeCohort.updatedAt.split("T")[0])}</span>
+                <button
+                  type="button"
+                  onClick={handleOpenSetup}
+                  className="font-semibold text-[#165B39] hover:underline cursor-pointer"
+                >
+                  Sesuaikan Parameter Batch →
+                </button>
+              </div>
             </div>
-
-            <div className="mt-4 flex items-center justify-between border-t border-[#F3F4F6] pt-3 text-xs text-[#6B7280]">
-              <span>Terakhir diperbarui: {formatIndonesianDate(activeCohort.updatedAt.split("T")[0])}</span>
-              <button
-                type="button"
-                onClick={handleOpenSetup}
-                className="font-semibold text-[#165B39] hover:underline cursor-pointer"
-              >
-                Sesuaikan Parameter Batch →
-              </button>
-            </div>
-          </div>
-        )}
-      </section>
+          )}
+        </section>
+      </RevealOnView>
 
       {/* Setup Data Prediksi Popup Modal */}
       <PredictionSetupModal

@@ -218,7 +218,7 @@ export function PredictionSetupModal({
                           Ikan Nila (Oreochromis niloticus)
                         </span>
                         <p className="text-[11px] text-[#6B7280]">
-                          Kolam Level 3 • Oksigen Terlarut Tinggi
+                          Kolam Level 3 • Sirkulasi Aerasi Tinggi
                         </p>
                       </div>
                       <span className="rounded-full bg-[#165B39]/10 px-2.5 py-0.5 text-[11px] font-semibold text-[#165B39]">

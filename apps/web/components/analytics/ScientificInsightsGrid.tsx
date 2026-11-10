@@ -5,25 +5,55 @@ import {
   CheckCircle2,
   Thermometer,
   Sun,
-  Sparkles,
 } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
 
 export function ScientificInsightsGrid() {
   const { sensors, actuators } = useTelemetry();
 
+  // Compute live nitrification efficiency synced with BiofilterDonutCard ECAD formula
+  const phDeviation = Math.abs((sensors.ph ?? 6.95) - 7.0);
+  const tempDeviation = Math.abs((sensors.waterTemperature ?? 24.3) - 25.0);
+  const pumpPenalty = actuators.waterPump?.isOn ? 0 : 8.5;
+  const totalEfficiency = Number(
+    Math.max(
+      62,
+      Math.min(
+        98.5,
+        97.2 - phDeviation * 5.2 - Math.max(0, tempDeviation - 2) * 1.6 - pumpPenalty
+      )
+    ).toFixed(1)
+  );
+  const nitrateRatio = sensors.tds >= 400 && sensors.tds <= 800 ? 0.768 : 0.72;
+  const nitratePct = Number((totalEfficiency * nitrateRatio).toFixed(1));
+  const nitrificationPct = Number((totalEfficiency - nitratePct).toFixed(1));
+  const residuePct = Number((100 - totalEfficiency).toFixed(1));
+
   const formattedTemp =
     typeof sensors.waterTemperature === "number"
       ? sensors.waterTemperature.toFixed(1)
       : sensors.waterTemperature;
-  const formattedDO =
-    typeof sensors.dissolvedOxygen === "number"
-      ? sensors.dissolvedOxygen.toFixed(2)
-      : sensors.dissolvedOxygen;
+  const formattedAirTemp =
+    typeof sensors.airTemperature === "number"
+      ? sensors.airTemperature.toFixed(1)
+      : sensors.airTemperature;
+  const formattedHumidity =
+    typeof sensors.humidity === "number"
+      ? Math.round(sensors.humidity)
+      : sensors.humidity;
   const formattedLux =
     typeof sensors.lightIntensity === "number"
       ? Math.round(sensors.lightIntensity)
       : sensors.lightIntensity;
+
+  // Thermal buffer score centered at 24.5°C across ECAD window [22, 27]
+  const thermalStabilityPct = Math.round(
+    Math.max(45, Math.min(100, 100 - Math.abs((sensors.waterTemperature ?? 24.5) - 24.5) * 8))
+  );
+  const airDelta = Number(
+    ((sensors.airTemperature ?? 27.2) - (sensors.waterTemperature ?? 24.3)).toFixed(1)
+  );
+
   const lightEfficiencyPct =
     sensors.lightIntensity >= 1200
       ? 100
@@ -40,22 +70,18 @@ export function ScientificInsightsGrid() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base sm:text-lg font-bold text-[#111827] tracking-tight">
-            Korelasi Ilmiah & Evaluasi Stabilitas Ekosistem
+            Korelasi Ilmiah &amp; Evaluasi Stabilitas Ekosistem
           </h2>
           <p className="text-xs text-[#6B7280] mt-0.5">
-            Model analitik bioproses: nitrifikasi bakteri, solubilitas oksigen termal, dan asimilasi foton.
+            Model analitik bioproses: nitrifikasi bakteri, keseimbangan termal iklim mikro, dan asimilasi foton.
           </p>
         </div>
-        <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-[#E5E7EB] text-[11px] font-mono text-[#4B5563] shadow-2xs">
-          <Sparkles className="h-3 w-3 text-[#165B39]" />
-          <span>Biomodel ECAD v2.4</span>
-        </span>
       </div>
 
       {/* 3 Rich Bento Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* CARD 1: INDEKS KONVERSI NITRIFIKASI */}
-        <div className="rounded-[24px] bg-white border border-[#E5E7EB] p-6 shadow-xs flex flex-col justify-between space-y-5 hover:border-[#D1D5DB] transition-colors">
+        {/* CARD 1: INDEKS KONVERSI NITRIFIKASI (Synced live with BiofilterDonutCard) */}
+        <div className="rounded-[24px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB]/60 hover:border-[#D1D5DB] p-6 shadow-xs flex flex-col justify-between space-y-5 transition-colors">
           <div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -67,14 +93,15 @@ export function ScientificInsightsGrid() {
                 </span>
               </div>
               <span className="px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[10px] font-mono font-bold text-[#166534] whitespace-nowrap shrink-0">
-                Bakteri Aktif
+                {actuators.waterPump?.isOn ? "Biofilter Aktif" : "Sirkulasi Terjeda"}
               </span>
             </div>
 
             {/* KPI Display */}
             <div className="mt-4">
               <div className="text-3xl sm:text-4xl font-bold tracking-tight num-tabular text-[#111827]">
-                94.2<span className="text-xl font-normal text-[#9CA3AF] ml-0.5">%</span>
+                {totalEfficiency.toFixed(1)}
+                <span className="text-xl font-normal text-[#9CA3AF] ml-0.5">%</span>
               </div>
               <p className="text-xs text-[#6B7280] mt-0.5">
                 Efisiensi Perombakan Amonia ke Nitrat (NH₃ → NO₃⁻)
@@ -84,47 +111,47 @@ export function ScientificInsightsGrid() {
             {/* Multi-segment Nitrogen Cycle Bar */}
             <div className="mt-4 space-y-1.5">
               <div className="flex items-center justify-between text-[11px] font-mono text-[#6B7280]">
-                <span>Distribusi Kimiawi Nitrogen:</span>
-                <span className="text-[#166534] font-bold">94.2% Terserap</span>
+                <span>Distribusi Biofilter Nitrogen:</span>
+                <span className="text-[#166534] font-bold">{nitratePct}% Terserap</span>
               </div>
               <div className="h-3 w-full rounded-full bg-[#F3F4F6] overflow-hidden flex">
                 <div
-                  className="bg-[#10B981] h-full"
-                  style={{ width: "94.2%" }}
-                  title="Nitrat NO₃⁻ (94.2%)"
+                  className="bg-[#165B39] h-full transition-all duration-300"
+                  style={{ width: `${nitratePct}%` }}
+                  title={`Nitrat NO₃⁻ (${nitratePct}%)`}
                 />
                 <div
-                  className="bg-[#F59E0B] h-full"
-                  style={{ width: "3.8%" }}
-                  title="Nitrit NO₂⁻ (3.8%)"
+                  className="bg-[#4EAB7C] h-full transition-all duration-300"
+                  style={{ width: `${nitrificationPct}%` }}
+                  title={`Nitrifikasi (${nitrificationPct}%)`}
                 />
                 <div
-                  className="bg-[#EF4444] h-full"
-                  style={{ width: "2.0%" }}
-                  title="Amonia NH₃ (2.0%)"
+                  className="bg-[#CBD5E1] h-full transition-all duration-300"
+                  style={{ width: `${residuePct}%` }}
+                  title={`Residu (${residuePct}%)`}
                 />
               </div>
               <div className="flex items-center justify-between text-[10px] font-mono text-[#9CA3AF] pt-0.5">
                 <span className="flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#10B981]" /> NO₃⁻ 45.2 mg/L
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#165B39]" /> Nitrat {nitratePct}%
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#F59E0B]" /> NO₂⁻ 0.02 mg/L
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#4EAB7C]" /> Proses {nitrificationPct}%
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#EF4444]" /> NH₃ 0.04 mg/L
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#9CA3AF]" /> Residu {residuePct}%
                 </span>
               </div>
             </div>
           </div>
 
           <div className="pt-3 border-t border-[#F3F4F6] text-xs text-[#4B5563] leading-relaxed">
-            Substrat biofilter Kangkung (L2) & Pakcoy (L1) mentransformasi 94% limbah metabolik ikan menjadi nutrisi daun organik tanpa residu racun.
+            Substrat biofilter Kangkung (B 3-4) &amp; Pakcoy (B 1-2) menyerap limbah metabolik ikan menjadi nutrisi organik berkelanjutan.
           </div>
         </div>
 
-        {/* CARD 2: KORELASI INVERS SUHU VS OKSIGEN TERLARUT */}
-        <div className="rounded-[24px] bg-white border border-[#E5E7EB] p-6 shadow-xs flex flex-col justify-between space-y-5 hover:border-[#D1D5DB] transition-colors">
+        {/* CARD 2: KESEIMBANGAN TERMAL & IKLIM MIKRO (DS18B20 + DHT22) */}
+        <div className="rounded-[24px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB]/60 hover:border-[#D1D5DB] p-6 shadow-xs flex flex-col justify-between space-y-5 transition-colors">
           <div>
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
@@ -132,56 +159,57 @@ export function ScientificInsightsGrid() {
                   <Thermometer className="h-4 w-4" />
                 </div>
                 <span className="text-xs font-bold text-[#111827]">
-                  Korelasi Invers Suhu-DO
+                  Stabilitas Termal &amp; Iklim
                 </span>
               </div>
               <span className="px-2.5 py-0.5 rounded-full bg-[#E0F2FE] text-[10px] font-mono font-bold text-[#0284C7] whitespace-nowrap shrink-0">
-                r = -0.82 (Kuat)
+                Δ {airDelta >= 0 ? `+${airDelta}` : airDelta}°C Udara-Air
               </span>
             </div>
 
             {/* KPI Display */}
             <div className="mt-4">
               <div className="text-3xl sm:text-4xl font-bold tracking-tight num-tabular text-[#111827]">
-                -0.82
+                {formattedTemp}
+                <span className="text-xl font-normal text-[#9CA3AF] ml-0.5">°C</span>
               </div>
               <p className="text-xs text-[#6B7280] mt-0.5">
-                Koefisien Korelasi Termal Oksigen (p &lt; 0.001)
+                Indeks Keseimbangan Suhu Kolam ({thermalStabilityPct}% Zona Nyaman)
               </p>
             </div>
 
-            {/* Thermal vs DO Saturation Gauge Bar */}
+            {/* Thermal Stability Progress Bar */}
             <div className="mt-4 space-y-2">
               <div className="flex items-center justify-between text-[11px] font-mono">
-                <span className="text-[#6B7280]">Saturasi Oksigen Kolam:</span>
-                <span className="text-[#0284C7] font-bold">87% dari Batas Jenuh</span>
+                <span className="text-[#6B7280]">Buffer Termal Ikan &amp; Tanaman:</span>
+                <span className="text-[#0284C7] font-bold">{thermalStabilityPct}% Optimal</span>
               </div>
               <div className="h-2.5 w-full rounded-full bg-[#F3F4F6] overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-[#0284C7] to-[#38BDF8] rounded-full"
-                  style={{ width: "87%" }}
+                  className="h-full bg-[#0284C7] rounded-full transition-all duration-300"
+                  style={{ width: `${thermalStabilityPct}%` }}
                 />
               </div>
               <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-[11px]">
                 <div className="p-2 rounded-xl bg-[#F8F9FA] border border-[#E5E7EB]">
-                  <div className="text-[10px] text-[#9CA3AF]">Suhu Saat Ini</div>
-                  <div className="font-bold text-[#111827]">{formattedTemp}°C</div>
+                  <div className="text-[10px] text-[#9CA3AF]">Suhu Udara (DHT22)</div>
+                  <div className="font-bold text-[#111827]">{formattedAirTemp}°C</div>
                 </div>
                 <div className="p-2 rounded-xl bg-[#F8F9FA] border border-[#E5E7EB]">
-                  <div className="text-[10px] text-[#9CA3AF]">Kadar Oksigen DO</div>
-                  <div className="font-bold text-[#0284C7]">{formattedDO} mg/L</div>
+                  <div className="text-[10px] text-[#9CA3AF]">Kelembaban RH</div>
+                  <div className="font-bold text-[#0284C7]">{formattedHumidity}%</div>
                 </div>
               </div>
             </div>
           </div>
 
           <div className="pt-3 border-t border-[#F3F4F6] text-xs text-[#4B5563] leading-relaxed">
-            Kenaikan suhu air kolam menurunkan kelarutan alami DO. Sistem mempertahankan aerasi venturi aktif sehingga kadar oksigen tetap di atas 7 mg/L.
+            Resirkulasi air konstan membantu meredam lonjakan panas harian sehingga suhu kolam Nila &amp; Lele tetap stabil di rentang 22–27°C.
           </div>
         </div>
 
         {/* CARD 3: SPEKTRUM PAR & CAHAYA LDR LIVE */}
-        <div className="rounded-[24px] bg-white border border-[#E5E7EB] p-6 shadow-xs flex flex-col justify-between space-y-5 hover:border-[#D1D5DB] transition-colors">
+        <div className="rounded-[24px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB]/60 hover:border-[#D1D5DB] p-6 shadow-xs flex flex-col justify-between space-y-5 transition-colors">
           <div>
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
@@ -192,8 +220,8 @@ export function ScientificInsightsGrid() {
                   Intensitas Cahaya (LDR)
                 </span>
               </div>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#DCFCE7] text-[#166534]">
-                LIVE ESP32
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#F3F4F6] text-[#4B5563]">
+                {sensors.lightIntensity >= 300 ? "PAR Cukup" : "Butuh Grow Light"}
               </span>
             </div>
 
@@ -216,7 +244,7 @@ export function ScientificInsightsGrid() {
               </div>
               <div className="h-2.5 w-full rounded-full bg-[#F3F4F6] overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-[#D97706] to-[#FBBF24] rounded-full transition-all duration-300"
+                  className="h-full bg-[#D97706] rounded-full transition-all duration-300"
                   style={{ width: `${lightEfficiencyPct}%` }}
                 />
               </div>
