@@ -132,7 +132,7 @@ export function CommandPaletteModal({ isOpen, onClose }: CommandPaletteModalProp
         id: "act-aerator",
         section: "Aksi Cepat Aktuator",
         title: `${actuators.aerator?.isOn ? "Matikan" : "Nyalakan"} Aerator Oksigen (RELAY-02)`,
-        subtitle: "Injeksi oksigen terlarut untuk kolam Ikan Nila Level 3",
+        subtitle: "Sirkulasi aerasi udara untuk kolam Ikan Nila Level 3",
         badge: actuators.aerator?.isOn ? "ON" : "OFF",
         icon: Power,
         keywords: "aerator oksigen relay 02 nyalakan matikan",
@@ -152,7 +152,7 @@ export function CommandPaletteModal({ isOpen, onClose }: CommandPaletteModalProp
         id: "act-pump",
         section: "Aksi Cepat Aktuator",
         title: `${actuators.waterPump?.isOn ? "Matikan" : "Nyalakan"} Pompa Sirkulasi 12V (RELAY-01)`,
-        subtitle: "Resirkulasi tertutup biofilter 4-level (dilindungi dry-run interlock)",
+        subtitle: "Resirkulasi tertutup biofilter 4-level (RELAY-01)",
         badge: actuators.waterPump?.isOn ? "ON" : "OFF",
         icon: Power,
         keywords: "pompa air sirkulasi relay 01 nyalakan matikan",
@@ -358,7 +358,7 @@ export function CommandPaletteModal({ isOpen, onClose }: CommandPaletteModalProp
                           type="button"
                           onMouseEnter={() => setSelectedIndex(flatIndex)}
                           onClick={() => void item.onSelect()}
-                          className={`flex w-full items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors cursor-pointer ${
+                          className={`group flex w-full items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors cursor-pointer ${
                             isSelected
                               ? "bg-[#F3F4F6] text-[#111827]"
                               : "bg-white text-[#111827] hover:bg-[#F9FAFB]"
@@ -390,7 +390,7 @@ export function CommandPaletteModal({ isOpen, onClose }: CommandPaletteModalProp
                                 {item.badge}
                               </span>
                             )}
-                            <ArrowUpRight className="h-3.5 w-3.5 text-[#9CA3AF]" />
+                            <ArrowUpRight className="h-3.5 w-3.5 text-[#9CA3AF] transition-transform duration-200 group-hover:rotate-45 group-hover:text-[#165B39]" />
                           </div>
                         </button>
                       );

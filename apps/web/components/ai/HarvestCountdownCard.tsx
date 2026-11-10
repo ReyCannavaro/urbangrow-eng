@@ -37,7 +37,7 @@ export function HarvestCountdownCard({
   const progressPct = Math.min(100, Math.round((accumulatedGdd / Math.max(1, targetGdd)) * 100));
 
   return (
-    <div className="rounded-[24px] border border-[#E5E7EB] bg-white p-5 sm:p-6 transition-colors hover:border-[#D1D5DB]">
+    <div className="rounded-[24px] border border-[#E5E7EB] bg-white p-5 sm:p-6 transition-colors hover:bg-[#F9FAFB]/40 hover:border-[#D1D5DB]">
       {/* Header */}
       <div className="flex items-start justify-between gap-3 border-b border-[#F3F4F6] pb-4">
         <div className="flex min-w-0 flex-1 items-start gap-3">

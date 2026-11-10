@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Power, Wind, Sun, AlertTriangle } from "lucide-react";
+import { Power, Wind, Sun } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
 
 export function QuickActuatorBar() {

@@ -2,11 +2,12 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
 import { AlertsHeader } from "@/components/alerts/AlertsHeader";
 import { AlertsBentoRow } from "@/components/alerts/AlertsBentoRow";
 import { AlertGroupSection } from "@/components/alerts/AlertGroupSection";
+import { RevealOnView } from "@/components/motion/RevealOnView";
 import {
   ActuatorAuditLog,
   AlertNotification,
@@ -124,15 +125,18 @@ export default function AlertsPage() {
       <AlertsBentoRow activeCount={activeAlerts.length} />
 
       {/* 3. Filter Navigation Strip */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-1.5 p-1 rounded-full border border-[#E5E7EB] bg-white text-xs shadow-2xs">
+      <div
+        style={{ "--ug-delay": "275ms" } as React.CSSProperties}
+        className="ug-enter flex items-center justify-between flex-wrap gap-3"
+      >
+        <div className="flex items-center gap-1.5 p-1 rounded-full border border-[#E5E7EB] bg-white text-xs">
           <button
             type="button"
             onClick={() => setFilter("all")}
             className={`px-3.5 py-1.5 rounded-full font-medium transition-colors cursor-pointer ${
               filter === "all"
-                ? "bg-[#165B39] text-white font-semibold shadow-xs"
-                : "text-[#4B5563] hover:text-[#111827] hover:bg-[#F8F9FA]"
+                ? "bg-[#165B39] text-white font-semibold"
+                : "text-[#4B5563] hover:text-[#111827] hover:bg-[#F9FAFB]"
             }`}
           >
             Semua Log ({activeAlerts.length + resolvedAndAuditLogs.length})
@@ -142,8 +146,8 @@ export default function AlertsPage() {
             onClick={() => setFilter("warning")}
             className={`px-3.5 py-1.5 rounded-full font-medium transition-colors cursor-pointer ${
               filter === "warning"
-                ? "bg-[#165B39] text-white font-semibold shadow-xs"
-                : "text-[#4B5563] hover:text-[#111827] hover:bg-[#F8F9FA]"
+                ? "bg-[#165B39] text-white font-semibold"
+                : "text-[#4B5563] hover:text-[#111827] hover:bg-[#F9FAFB]"
             }`}
           >
             Peringatan &amp; Anomali ({warningCount})
@@ -153,8 +157,8 @@ export default function AlertsPage() {
             onClick={() => setFilter("optimal")}
             className={`px-3.5 py-1.5 rounded-full font-medium transition-colors cursor-pointer ${
               filter === "optimal"
-                ? "bg-[#165B39] text-white font-semibold shadow-xs"
-                : "text-[#4B5563] hover:text-[#111827] hover:bg-[#F8F9FA]"
+                ? "bg-[#165B39] text-white font-semibold"
+                : "text-[#4B5563] hover:text-[#111827] hover:bg-[#F9FAFB]"
             }`}
           >
             Audit Aktuator &amp; Sistem ({infoCount})
@@ -163,28 +167,30 @@ export default function AlertsPage() {
 
         <Link
           href="/controls"
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F8F9FA] text-xs font-semibold text-[#111827] shadow-2xs transition-colors"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] hover:border-[#D1D5DB] text-xs font-semibold text-[#111827] transition-colors group"
         >
           <span>Panel Kontrol Aktuator</span>
-          <ArrowRight className="h-3.5 w-3.5 text-[#165B39]" />
+          <ArrowUpRight className="h-3.5 w-3.5 text-[#165B39] transition-transform duration-200 group-hover:rotate-45" />
         </Link>
       </div>
 
       {/* 4. Alert Timeline Feed (Persisted SQLite Alerts + Actuator Audit History) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <AlertGroupSection
-          title="Peringatan Aktif & Anomali Terkini"
-          alerts={activeFiltered}
-          emptyMessage="Tidak ada anomali parameter yang tertunda. Seluruh parameter sensor dalam rentang aman ECAD."
-        />
+      <RevealOnView delayMs={0}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <AlertGroupSection
+            title="Peringatan Aktif & Anomali Terkini"
+            alerts={activeFiltered}
+            emptyMessage="Tidak ada anomali parameter yang tertunda. Seluruh parameter sensor dalam rentang aman ECAD."
+          />
 
-        <AlertGroupSection
-          title="Riwayat Audit Aktuator & Log Tersimpan (SQLite)"
-          alerts={historyFiltered}
-          isArchive={true}
-          emptyMessage="Belum ada riwayat perubahan relay yang tercatat di database."
-        />
-      </div>
+          <AlertGroupSection
+            title="Riwayat Audit Aktuator & Log Tersimpan (SQLite)"
+            alerts={historyFiltered}
+            isArchive={true}
+            emptyMessage="Belum ada riwayat perubahan relay yang tercatat di database."
+          />
+        </div>
+      </RevealOnView>
     </div>
   );
 }

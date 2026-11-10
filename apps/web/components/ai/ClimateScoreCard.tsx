@@ -3,17 +3,25 @@
 import React from "react";
 import { ShieldCheck, Sparkles, AlertTriangle } from "lucide-react";
 import { ClimateScoreData } from "../../lib/aiApi";
+import { useTelemetry } from "../../lib/telemetryContext";
 
 interface Props {
   data: ClimateScoreData;
 }
 
 export function ClimateScoreCard({ data }: Props) {
+  const { sensors } = useTelemetry();
   const score = data.climate_adaptation_score;
   const isHealthy = score >= 75;
 
+  const airTempDiff = Math.abs((sensors.airTemperature ?? 27.2) - 27.0);
+  const rhDiff = Math.abs((sensors.humidity ?? 65.0) - 65.0);
+  const microClimatePct = Math.round(
+    Math.max(55, Math.min(100, 100 - airTempDiff * 4.5 - rhDiff * 0.35))
+  );
+
   return (
-    <div className="rounded-[24px] border border-[#E5E7EB] bg-white p-5 sm:p-6 transition-colors hover:border-[#D1D5DB]">
+    <div className="rounded-[24px] border border-[#E5E7EB] bg-white p-5 sm:p-6 transition-colors hover:bg-[#F9FAFB]/40 hover:border-[#D1D5DB]">
       <div className="flex items-center justify-between border-b border-[#F3F4F6] pb-4">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#165B39]/10 text-[#165B39]">
@@ -58,15 +66,15 @@ export function ClimateScoreCard({ data }: Props) {
           </p>
         </div>
         <div className="rounded-2xl border border-[#F3F4F6] bg-[#F9FAFB] p-3.5">
-          <span className="text-[#6B7280]">Kualitas pH & TDS</span>
+          <span className="text-[#6B7280]">Kualitas pH &amp; TDS</span>
           <p className="mt-1 font-mono text-base font-bold text-sky-700 tabular-nums">
             {data.sub_scores.water_quality}%
           </p>
         </div>
         <div className="rounded-2xl border border-[#F3F4F6] bg-[#F9FAFB] p-3.5">
-          <span className="text-[#6B7280]">Oksigen Terlarut (DO)</span>
-          <p className="mt-1 font-mono text-base font-bold text-indigo-700 tabular-nums">
-            {data.sub_scores.dissolved_oxygen}%
+          <span className="text-[#6B7280]">Iklim Mikro (DHT22)</span>
+          <p className="mt-1 font-mono text-base font-bold text-[#0284C7] tabular-nums">
+            {microClimatePct}%
           </p>
         </div>
         <div className="rounded-2xl border border-[#F3F4F6] bg-[#F9FAFB] p-3.5">

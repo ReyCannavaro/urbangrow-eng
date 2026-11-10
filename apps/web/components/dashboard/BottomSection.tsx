@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { ChevronDown, Send, Check, Clock, Calendar, Users, Cpu, ShieldCheck } from "lucide-react";
+import { ChevronDown, Send, Check, Calendar, Cpu, ShieldCheck } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
 
 export function BottomSection() {
