@@ -1,23 +1,12 @@
 "use client";
 
 import React from "react";
-import {
-  Zap,
-  Cpu,
-  BatteryCharging,
-  ShieldCheck,
-  TrendingUp,
-  CheckCircle2,
-  Sliders,
-  AlertOctagon,
-  X,
-} from "lucide-react";
+import { AlertOctagon, X } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
 import { ControlsHeader } from "@/components/controls/ControlsHeader";
 import { RelaySwitchCard } from "@/components/controls/RelaySwitchCard";
 import { QuickFeedBanner } from "@/components/controls/QuickFeedBanner";
 import { SafetyInterlockPanel } from "@/components/controls/SafetyInterlockPanel";
-import { RevealOnView } from "@/components/motion/RevealOnView";
 
 export default function ControlsPage() {
   const {
@@ -49,11 +38,11 @@ export default function ControlsPage() {
       />
 
       {lastActuatorError && (
-        <div className="flex items-center justify-between gap-3 rounded-[20px] border border-rose-200 bg-rose-50 px-5 py-3.5 text-xs text-rose-800 shadow-xs">
-          <div className="flex items-center gap-2.5">
+        <div className="flex items-center justify-between gap-3 rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800 shadow-xs">
+          <div className="flex items-center gap-2">
             <AlertOctagon className="h-4 w-4 text-rose-600 shrink-0" />
             <span>
-              <strong>Safety Interlock Aktuator:</strong> {lastActuatorError}
+              <strong>Safety Interlock:</strong> {lastActuatorError}
             </span>
           </div>
           <button
@@ -67,201 +56,186 @@ export default function ControlsPage() {
         </div>
       )}
 
-      {/* 2. 4-Metric Bento Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* HERO INVERTED CARD: Total Daya Beban Relay */}
-        <div
-          style={{ "--ug-delay": "60ms" } as React.CSSProperties}
-          className="ug-enter rounded-[24px] bg-[#165B39] hover:bg-[#145233] text-white p-5 shadow-xs flex flex-col justify-between h-[170px] relative overflow-hidden transition-colors"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-white/90">
-              Total Daya Beban Relay
-            </span>
-            <div
-              className="h-8 w-8 rounded-full bg-white flex items-center justify-center text-[#165B39]"
-              title="Konsumsi Daya Aktif"
-            >
-              <Zap className="h-4 w-4" />
-            </div>
-          </div>
-
-          <div>
-            <div className="text-4xl font-bold tracking-tight num-tabular text-white">
-              {totalLoad}
-              <span className="text-xl font-normal text-white/80 ml-1">Watt</span>
-            </div>
-            <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 text-[10px] font-mono text-white/90">
-              <TrendingUp className="h-3 w-3 text-[#68C194]" />
-              <span>Beban Operasional Terukur</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 2. KANAL RELAY AKTIF */}
-        <div
-          style={{ "--ug-delay": "115ms" } as React.CSSProperties}
-          className="ug-enter rounded-[24px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] p-5 shadow-xs flex flex-col justify-between h-[170px] transition-colors"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#111827]">
-              Kanal Relay Aktif
-            </span>
-            <div className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563]">
-              <Cpu className="h-4 w-4" />
-            </div>
-          </div>
-
-          <div>
-            <div className="text-4xl font-bold tracking-tight num-tabular text-[#111827]">
-              {activeCount}
-              <span className="text-xl font-normal text-[#9CA3AF] ml-1">
-                / {totalCount}
+      {/* ===================================================================
+          2. INDUSTRIAL EDGE POWER & CIRCUIT HUD (Calm, Typography-Led)
+          =================================================================== */}
+      <div className="rounded-[20px] bg-[#1E293B] text-white p-5 sm:p-6 shadow-sm border border-[#334155]">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-[#38BDF8] animate-pulse" />
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#38BDF8]">
+                EDGE POWER BUS &bull; HARDWARE INTERLOCK DECK
               </span>
             </div>
-            <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[10px] font-medium text-[#166534]">
-              <CheckCircle2 className="h-3 w-3" />
-              <span>{activeCount} Aktif • {totalCount - activeCount} Siaga</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 3. TEGANGAN CATU DAYA BUS */}
-        <div
-          style={{ "--ug-delay": "170ms" } as React.CSSProperties}
-          className="ug-enter rounded-[24px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] p-5 shadow-xs flex flex-col justify-between h-[170px] transition-colors"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#111827]">
-              Tegangan Catu Daya Bus
-            </span>
-            <div className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563]">
-              <BatteryCharging className="h-4 w-4" />
-            </div>
+            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white">
+              Konsol Daya Catu Ganda 12V DC &amp; Saklar Optocoupler
+            </h2>
+            <p className="text-xs text-white/75 max-w-2xl leading-relaxed">
+              Semua modul relay 4-channel dikendalikan via Active-Low logic dengan isolasi optocoupler PC817. Relay otomatis berpindah ke baterai SLA 12V 7Ah tanpa jeda (0ms transfer) saat suplai PLN terputus.
+            </p>
           </div>
 
-          <div>
-            <div className="text-4xl font-bold tracking-tight num-tabular text-[#111827]">
-              12.2
-              <span className="text-xl font-normal text-[#9CA3AF] ml-1">V DC</span>
+          {/* Integrated Circuit Telemetry Gauges */}
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0 font-mono text-xs">
+            <div className="px-3 py-2 rounded-xl bg-black/40 border border-white/10">
+              <div className="text-[9.5px] uppercase tracking-wider text-white/50">Total Beban</div>
+              <div className="font-bold text-white text-sm num-tabular mt-0.5">
+                <span className="text-[#F59E0B]">{totalLoad} W</span>
+                <span className="text-[10px] text-white/40 ml-1">/ 180W</span>
+              </div>
             </div>
-            <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#E0F2FE] text-[10px] font-medium text-[#0369A1]">
-              <CheckCircle2 className="h-3 w-3" />
-              <span>Adaptor Primer + Backup 7Ah</span>
-            </div>
-          </div>
-        </div>
 
-        {/* 4. PROTEKSI OVERLOAD EDGE */}
-        <div
-          style={{ "--ug-delay": "225ms" } as React.CSSProperties}
-          className="ug-enter rounded-[24px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] p-5 shadow-xs flex flex-col justify-between h-[170px] transition-colors"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#111827]">
-              Proteksi Sirkuit Relay
-            </span>
-            <div className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563]">
-              <ShieldCheck className="h-4 w-4" />
+            <div className="px-3 py-2 rounded-xl bg-black/40 border border-white/10">
+              <div className="text-[9.5px] uppercase tracking-wider text-white/50">Tegangan Bus</div>
+              <div className="font-bold text-[#38BDF8] text-sm num-tabular mt-0.5">
+                12.2 V DC
+              </div>
             </div>
-          </div>
 
-          <div>
-            <div className="text-4xl font-bold tracking-tight text-[#111827]">
-              Aman
-            </div>
-            <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[10px] font-medium text-[#166534]">
-              <CheckCircle2 className="h-3 w-3" />
-              <span>Optoisolator PC817 • Fuse 10A</span>
+            <div className="px-3 py-2 rounded-xl bg-black/40 border border-white/10">
+              <div className="text-[9.5px] uppercase tracking-wider text-white/50">Kanal Aktif</div>
+              <div className="font-bold text-[#68C194] text-sm num-tabular mt-0.5">
+                {activeCount} / {totalCount} ON
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 3. Section Container: 5 Hardware Relay Switches Grid */}
-      <RevealOnView delayMs={0}>
-        <div className="rounded-[28px] bg-white border border-[#E5E7EB] p-6 shadow-xs">
-          <div className="flex flex-wrap items-center justify-between gap-3 pb-5 mb-6 border-b border-[#E5E7EB]">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-[#DCFCE7] text-[#166534] flex items-center justify-center font-bold">
-                <Sliders className="h-5 w-5" />
-              </div>
+      {/* ===================================================================
+          3. ASYMMETRIC 2-COLUMN MAIN CONSOLE:
+             LEFT (60%): 4-BAY TACTICAL HARDWARE SWITCHBOARD
+             RIGHT (40%): SAFETY INTERLOCK & SCHEDULED AUTOMATION
+          =================================================================== */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* LEFT COLUMN: 4-CHANNEL RELAY SWITCHBOARD */}
+        <div className="lg:col-span-7 space-y-4">
+          <div className="rounded-[20px] bg-white border border-[#E5E7EB] p-5 sm:p-6 shadow-xs">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 mb-4 border-b border-[#E5E7EB]">
               <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-base font-bold text-[#111827]">
-                    Kanal Relay Ekosistem (Active-Low Control)
-                  </h2>
-                  <span className="px-2.5 py-0.5 rounded-full bg-[#165B39] text-white font-mono text-[10px] font-bold whitespace-nowrap shrink-0">
-                    {totalCount} Kanal
-                  </span>
-                </div>
-                <p className="text-xs text-[#6B7280] mt-0.5">
-                  Sentuh sakelar geser taktil untuk mengubah status aktuator relay secara instan (0ms delay).
+                <h2 className="text-base font-bold text-[#111827]">
+                  Kanal Relay Fisik (Optoisolated 10A)
+                </h2>
+                <p className="text-xs text-[#6B7280]">
+                  Klik saklar geser untuk mengubah status kontak fisik relay seketika.
                 </p>
               </div>
-            </div>
 
-            <div className="text-xs font-mono">
-              <span className="px-3 py-1 rounded-full bg-[#F8F9FA] border border-[#E5E7EB] text-[#165B39] font-bold">
-                OPTOISOLATED 250V AC / 30V DC 10A
+              <span className="px-2.5 py-1 rounded bg-[#F8F9FA] border border-[#E5E7EB] text-[#165B39] font-mono text-[10.5px] font-bold">
+                ACTIVE-LOW GPIO
               </span>
             </div>
+
+            {/* List of 4-5 Relays in a Clean Single-Stack or 2-Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {actuatorList.map((act) => (
+                <RelaySwitchCard
+                  key={act.id}
+                  actuator={act}
+                  onToggle={toggleActuator}
+                />
+              ))}
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {actuatorList.map((act) => (
-              <RelaySwitchCard
-                key={act.id}
-                actuator={act}
-                onToggle={toggleActuator}
-              />
-            ))}
+          {/* Quick Immediate Action Bar (Fish Feeder Pulse) */}
+          <QuickFeedBanner onDispense={dispenseFeed} feedActive={feedActive} />
+        </div>
+
+        {/* RIGHT COLUMN: SAFETY INTERLOCKS & AUTOMATION TIMELINE */}
+        <div className="lg:col-span-5 space-y-4">
+          {/* 1. Real-time Hardware Safety Interlock Bay */}
+          <SafetyInterlockPanel
+            sensors={sensors}
+            actuators={actuators}
+            edgeNode={systemMeta.edgeNode}
+          />
+
+          {/* 2. Scheduled Automation Timeline (ECAD Routine) */}
+          <div className="rounded-[20px] bg-white border border-[#E5E7EB] p-5 shadow-xs space-y-3">
+            <div className="flex items-center justify-between pb-2.5 border-b border-[#E5E7EB]">
+              <div>
+                <span className="text-[10px] font-mono font-bold text-[#165B39] uppercase tracking-wider block">
+                  Jadwal Otomasi
+                </span>
+                <h4 className="text-xs font-bold text-[#111827] uppercase tracking-wide mt-0.5">
+                  Agenda Siklus Harian (WIB)
+                </h4>
+              </div>
+              <span className="text-[10px] font-mono font-semibold text-[#166534] bg-[#DCFCE7] px-2 py-0.5 rounded">
+                Auto Aktif
+              </span>
+            </div>
+
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#F8F9FA] border border-[#E5E7EB]">
+                <div className="flex items-center gap-2">
+                  <span className="px-1.5 py-0.5 rounded bg-[#165B39] text-white font-mono text-[10px] font-bold">
+                    07:00
+                  </span>
+                  <div>
+                    <span className="font-bold text-[#111827] block text-[11px]">Pakan Pagi Nila &amp; Lele</span>
+                    <span className="text-[10px] text-[#6B7280]">Dispense 35g pelet protein 32%</span>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono text-[#165B39] font-bold">Terjadwal</span>
+              </div>
+
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#F8F9FA] border border-[#E5E7EB]">
+                <div className="flex items-center gap-2">
+                  <span className="px-1.5 py-0.5 rounded bg-[#165B39] text-white font-mono text-[10px] font-bold">
+                    16:30
+                  </span>
+                  <div>
+                    <span className="font-bold text-[#111827] block text-[11px]">Pakan Sore Nila &amp; Lele</span>
+                    <span className="text-[10px] text-[#6B7280]">Dispense 35g pelet sore</span>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono text-[#165B39] font-bold">Terjadwal</span>
+              </div>
+
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#FEF3C7]/40 border border-[#FDE68A]">
+                <div className="flex items-center gap-2">
+                  <span className="px-1.5 py-0.5 rounded bg-[#D97706] text-white font-mono text-[10px] font-bold">
+                    18:00
+                  </span>
+                  <div>
+                    <span className="font-bold text-[#92400E] block text-[11px]">Grow Light Fotoperiode</span>
+                    <span className="text-[10px] text-[#B45309]">Siklus 12 Jam LED Full-Spectrum</span>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono text-[#B45309] font-bold">12 Jam</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Hardware Fail-Safe Specifications */}
+          <div className="rounded-[20px] bg-[#F8F9FA] border border-[#E5E7EB] p-4 space-y-2">
+            <span className="text-[10px] font-mono font-bold text-[#6B7280] uppercase tracking-wider block">
+              Spesifikasi Sirkuit Relay ESP32
+            </span>
+            <div className="space-y-1.5 text-xs text-[#4B5563] font-mono">
+              <div className="flex items-center justify-between py-1 border-b border-[#E5E7EB]">
+                <span className="text-[#6B7280]">Trigger Koil</span>
+                <span className="font-bold text-[#111827]">Active-LOW (0V)</span>
+              </div>
+              <div className="flex items-center justify-between py-1 border-b border-[#E5E7EB]">
+                <span className="text-[#6B7280]">Isolasi</span>
+                <span className="font-bold text-[#111827]">PC817 Optocoupler</span>
+              </div>
+              <div className="flex items-center justify-between py-1 border-b border-[#E5E7EB]">
+                <span className="text-[#6B7280]">Watchdog WDT</span>
+                <span className="font-bold text-[#165B39]">8.000 ms</span>
+              </div>
+              <div className="flex items-center justify-between py-1">
+                <span className="text-[#6B7280]">Backup Baterai</span>
+                <span className="font-bold text-[#0284C7]">SLA 12V 7Ah (0ms)</span>
+              </div>
+            </div>
           </div>
         </div>
-      </RevealOnView>
-
-      {/* 4. Manual Immediate Action Banner */}
-      <RevealOnView delayMs={60}>
-        <QuickFeedBanner onDispense={dispenseFeed} feedActive={feedActive} />
-      </RevealOnView>
-
-      {/* 5. Real-Time Automation & Hardware Interlock Rules */}
-      <RevealOnView delayMs={80}>
-        <SafetyInterlockPanel
-          sensors={sensors}
-          actuators={actuators}
-          edgeNode={systemMeta.edgeNode}
-        />
-      </RevealOnView>
-
-      {/* 6. Signature Wavy Ribbon Footer: Fail-safe Hardware Specs */}
-      <RevealOnView delayMs={100}>
-        <div
-          id="hardware-esp32"
-          className="scroll-mt-6 rounded-[24px] bg-wavy-ribbon text-white p-6 shadow-xs flex flex-col lg:flex-row items-center justify-between gap-5"
-        >
-          <div className="relative z-10">
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-[#68C194]" />
-              <h3 className="text-sm font-bold tracking-tight text-white">
-                Sistem Proteksi Catu Daya Ganda &amp; Watchdog ESP32
-              </h3>
-            </div>
-            <p className="text-xs text-white/75 mt-1 max-w-2xl leading-relaxed">
-              Dilengkapi sirkuit dioda flyback peredam arus balik induktif relay, isolasi optocoupler PC817 terhadap noise sinyal ESP32, dan pemindahan daya otomatis 0ms jika adaptor utama terputus.
-            </p>
-          </div>
-
-          <div className="relative z-10 flex flex-wrap items-center gap-2.5 shrink-0">
-            <div className="px-3.5 py-1.5 rounded-full bg-white/15 border border-white/20 text-xs font-mono font-bold text-white">
-              ISOLASI OPTOCOUPLER
-            </div>
-            <div className="px-3.5 py-1.5 rounded-full bg-white/15 border border-white/20 text-xs font-mono font-bold text-[#68C194]">
-              FAIL-SAFE 0MS
-            </div>
-          </div>
-        </div>
-      </RevealOnView>
+      </div>
     </div>
   );
 }
