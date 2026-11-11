@@ -76,7 +76,7 @@ export function AppSidebar() {
   ];
 
   return (
-    <aside className="app-sidebar-panel w-full shrink-0 flex flex-col justify-between p-4 sm:p-5 rounded-[24px] lg:rounded-[28px] bg-white border border-[#E5E7EB] shadow-xs select-none">
+    <aside className="app-sidebar-panel hidden lg:flex shrink-0 flex-col justify-between p-4 sm:p-5 rounded-[24px] lg:rounded-[28px] bg-white border border-[#E5E7EB] shadow-xs select-none">
       <div className="min-h-0 flex flex-col">
         {/* Brand Logo Header */}
         <div className="app-sidebar-brand flex items-center justify-between gap-2 mb-3.5 pl-1 shrink-0">

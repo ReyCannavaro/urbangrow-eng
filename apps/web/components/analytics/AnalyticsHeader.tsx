@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { ArrowLeft, Download, Database } from "lucide-react";
+import { ArrowLeft, Download } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
 import { downloadTelemetryCsv } from "@/lib/operationsApi";
 
@@ -16,7 +16,7 @@ export function AnalyticsHeader() {
   return (
     <div
       style={{ "--ug-delay": "0ms" } as React.CSSProperties}
-      className="ug-enter bg-white rounded-[24px] border border-[#E5E7EB] p-5 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4"
+      className="ug-enter bg-white rounded-[20px] border border-[#E5E7EB] p-5 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4"
     >
       <div>
         <div className="flex items-center gap-3">
@@ -39,20 +39,19 @@ export function AnalyticsHeader() {
       </div>
 
       {/* Right Sample Count & CSV Export Action */}
-      <div className="flex flex-wrap items-center gap-2.5 shrink-0 pl-12 md:pl-0">
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#E5E7EB] text-[11px] font-mono text-[#4B5563]">
-          <Database className="h-3.5 w-3.5 text-[#165B39]" />
-          <span>Sampel: <strong className="text-[#111827]">{history.length} Data</strong></span>
+      <div className="flex flex-wrap items-center gap-2.5 shrink-0 pl-12 md:pl-0 font-mono text-[11px]">
+        <div className="px-3 py-1.5 rounded-full bg-white border border-[#E5E7EB] text-[#4B5563]">
+          Buffer: <strong className="text-[#111827]">{history.length} Data</strong>
         </div>
 
         <button
           type="button"
           onClick={handleExportCSV}
-          className="px-4 py-2 rounded-full bg-[#165B39] hover:bg-[#124B2E] text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+          className="px-3.5 py-1.5 rounded-full bg-[#165B39] hover:bg-[#124B2E] text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer font-sans"
           title="Unduh Data Telemetri CSV"
         >
           <Download className="h-3.5 w-3.5" />
-          <span>Export Data CSV</span>
+          <span>Export CSV</span>
         </button>
       </div>
     </div>

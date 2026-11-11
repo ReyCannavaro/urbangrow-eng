@@ -22,30 +22,22 @@ export function ClimateScoreCard({ data }: Props) {
 
   return (
     <div className="rounded-[24px] border border-[#E5E7EB] bg-white p-5 sm:p-6 transition-colors hover:bg-[#F9FAFB]/40 hover:border-[#D1D5DB]">
-      <div className="flex items-center justify-between border-b border-[#F3F4F6] pb-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#165B39]/10 text-[#165B39]">
-            <Sparkles className="h-5 w-5" />
-          </div>
-          <div>
-            <h3 className="text-base font-bold text-[#111827]">
-              Climate Adaptation Score
-            </h3>
-            <p className="text-xs text-[#6B7280]">ECAD Resilience Index (0 - 100)</p>
-          </div>
+      <div className="flex items-center justify-between border-b border-[#F3F4F6] pb-3.5">
+        <div>
+          <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#165B39] block">
+            ECAD Resilience Index (0 - 100)
+          </span>
+          <h3 className="text-base font-bold text-[#111827] mt-0.5">
+            Climate Adaptation Score
+          </h3>
         </div>
         <span
-          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
+          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono font-bold ${
             isHealthy
-              ? "border border-[#165B39]/20 bg-[#165B39]/10 text-[#165B39]"
+              ? "border border-[#165B39]/20 bg-[#DCFCE7] text-[#166534]"
               : "border border-amber-200 bg-amber-50 text-amber-700"
           }`}
         >
-          {isHealthy ? (
-            <ShieldCheck className="h-3.5 w-3.5" />
-          ) : (
-            <AlertTriangle className="h-3.5 w-3.5" />
-          )}
           {data.resilience_grade}
         </span>
       </div>

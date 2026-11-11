@@ -231,77 +231,52 @@ export default function AiInsightsPage() {
         </div>
       </section>
 
-      {/* Active Batch Overview Strip */}
+      {/* ===================================================================
+          1. INTEGRATED AGRO-INTELLIGENCE HORIZON (Replaces Generic 3-Box Strip)
+          =================================================================== */}
       <section
         style={{ "--ug-delay": "65ms" } as React.CSSProperties}
-        className="ug-enter grid grid-cols-1 gap-3 sm:grid-cols-3"
+        className="ug-enter rounded-[24px] bg-[#165B39] text-white p-5 sm:p-6 shadow-sm border border-[#145233]"
       >
-        <div className="flex items-center justify-between rounded-[20px] border border-[#E5E7EB] bg-white px-4 py-3.5 transition-colors hover:bg-[#F9FAFB] hover:border-[#D1D5DB]">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#165B39]/10 text-[#165B39]">
-              <Fish className="h-4 w-4" />
-            </div>
-            <div>
-              <span className="block text-[11px] font-medium text-[#6B7280]">
-                Batch Bibit Ikan Aktif
-              </span>
-              <span className="text-sm font-bold text-[#111827]">
-                {totalFishCount} Ekor{" "}
-                <span className="text-xs font-medium text-[#6B7280]">
-                  ({activeCohort.fishMode === "both"
-                    ? "Nila & Lele"
-                    : activeCohort.fishMode === "nila"
-                    ? "Ikan Nila"
-                    : "Ikan Lele"})
-                </span>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#68C194] animate-pulse" />
+              <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#68C194]">
+                ECAD PREDICTIVE ENGINE &bull; ACTIVE HARVEST HORIZON
               </span>
             </div>
+            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
+              <span>Horizon Panen &amp; Akumulasi Pertumbuhan Hayati</span>
+            </h2>
+            <p className="text-xs text-white/80 max-w-2xl leading-relaxed">
+              Model matematis GDD (*Growing Degree Days*) memproyeksikan laju kematangan tanaman dari tanggal semai benih, disinkronkan dengan estimasi bobot rata-rata harian (ADG) bibit ikan.
+            </p>
           </div>
-          <button
-            type="button"
-            onClick={handleOpenSetup}
-            className="text-[11px] font-semibold text-[#165B39] hover:underline cursor-pointer"
-          >
-            Ubah
-          </button>
-        </div>
 
-        <div className="flex items-center justify-between rounded-[20px] border border-[#E5E7EB] bg-white px-4 py-3.5 transition-colors hover:bg-[#F9FAFB] hover:border-[#D1D5DB]">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#165B39]/10 text-[#165B39]">
-              <Sprout className="h-4 w-4" />
+          {/* Integrated Biological Horizon Metrics (Typography-First) */}
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0 font-mono text-xs">
+            <div className="px-3 py-2 rounded-xl bg-white/10 border border-white/15">
+              <div className="text-[9.5px] uppercase tracking-wider text-white/60">Batch Ikan</div>
+              <div className="font-bold text-white text-sm num-tabular mt-0.5">
+                {totalFishCount} Ekor <span className="text-[10px] text-white/60 font-normal">({activeCohort.fishMode === "both" ? "Nila & Lele" : activeCohort.fishMode === "nila" ? "Nila" : "Lele"})</span>
+              </div>
             </div>
-            <div>
-              <span className="block text-[11px] font-medium text-[#6B7280]">
-                Semai Benih Pakcoy (L4)
-              </span>
-              <span className="text-sm font-bold text-[#111827]">
-                Panen {formatIndonesianDate(pakcoy.estimatedHarvestDate)}
-              </span>
-            </div>
-          </div>
-          <span className="rounded-full bg-[#F3F4F6] px-2.5 py-0.5 font-mono text-[11px] font-semibold text-[#374151]">
-            {pakcoy.estimatedDaysRemaining}h lagi
-          </span>
-        </div>
 
-        <div className="flex items-center justify-between rounded-[20px] border border-[#E5E7EB] bg-white px-4 py-3.5 transition-colors hover:bg-[#F9FAFB] hover:border-[#D1D5DB]">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#165B39]/10 text-[#165B39]">
-              <CalendarCheck2 className="h-4 w-4" />
+            <div className="px-3 py-2 rounded-xl bg-white/10 border border-white/15">
+              <div className="text-[9.5px] uppercase tracking-wider text-white/60">Pakcoy (L4)</div>
+              <div className="font-bold text-[#68C194] text-sm num-tabular mt-0.5">
+                {pakcoy.estimatedDaysRemaining} Hari <span className="text-[10px] text-white/60 font-normal">({formatIndonesianDate(pakcoy.estimatedHarvestDate)})</span>
+              </div>
             </div>
-            <div>
-              <span className="block text-[11px] font-medium text-[#6B7280]">
-                Semai Benih Kangkung (L2)
-              </span>
-              <span className="text-sm font-bold text-[#111827]">
-                Panen {formatIndonesianDate(kangkung.estimatedHarvestDate)}
-              </span>
+
+            <div className="px-3 py-2 rounded-xl bg-white/10 border border-white/15">
+              <div className="text-[9.5px] uppercase tracking-wider text-white/60">Kangkung (L2)</div>
+              <div className="font-bold text-[#FDE68A] text-sm num-tabular mt-0.5">
+                {kangkung.estimatedDaysRemaining} Hari <span className="text-[10px] text-white/60 font-normal">({formatIndonesianDate(kangkung.estimatedHarvestDate)})</span>
+              </div>
             </div>
           </div>
-          <span className="rounded-full bg-[#F3F4F6] px-2.5 py-0.5 font-mono text-[11px] font-semibold text-[#374151]">
-            {kangkung.estimatedDaysRemaining}h lagi
-          </span>
         </div>
       </section>
 
@@ -382,21 +357,16 @@ export default function AiInsightsPage() {
           {anomaly && (
             <div className="flex flex-col justify-between rounded-[24px] border border-[#E5E7EB] bg-white p-5 sm:p-6 transition-colors hover:bg-[#F9FAFB]/40 hover:border-[#D1D5DB]">
               <div>
-                <div className="flex items-center justify-between border-b border-[#F3F4F6] pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#165B39]/10 text-[#165B39]">
-                      <Sparkles className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-bold text-[#111827]">
-                        Rekomendasi Tindakan Adaptif AI
-                      </h3>
-                      <p className="text-xs text-[#6B7280]">
-                        Sintesis kondisi ekosistem real-time &amp; target panen
-                      </p>
-                    </div>
+                <div className="flex items-center justify-between border-b border-[#F3F4F6] pb-3.5">
+                  <div>
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#165B39] block">
+                      AI Diagnostic Synthesis
+                    </span>
+                    <h3 className="text-base font-bold text-[#111827] mt-0.5">
+                      Rekomendasi Tindakan Adaptif AI
+                    </h3>
                   </div>
-                  <span className="rounded-full border border-[#165B39]/20 bg-[#165B39]/10 px-3 py-1 text-xs font-semibold text-[#165B39]">
+                  <span className="rounded-full border border-[#165B39]/20 bg-[#DCFCE7] px-2.5 py-0.5 font-mono text-xs font-bold text-[#166534]">
                     {anomaly.risk_level}
                   </span>
                 </div>
