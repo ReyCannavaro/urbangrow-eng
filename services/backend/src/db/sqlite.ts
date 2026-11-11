@@ -23,14 +23,14 @@ export interface PersistedSensorRow {
   id: number;
   recordedAt: string;
   deviceId: string;
-  ph: number;
-  tds: number;
-  waterTemperature: number;
-  airTemperature: number;
-  humidity: number;
-  lightIntensity: number;
-  dissolvedOxygen: number;
-  waterLevel: number;
+  ph: number | null;
+  tds: number | null;
+  waterTemperature: number | null;
+  airTemperature: number | null;
+  humidity: number | null;
+  lightIntensity: number | null;
+  dissolvedOxygen: number | null;
+  waterLevel: number | null;
 }
 
 export interface ActuatorLogRow {
@@ -182,14 +182,14 @@ export function initDatabase(): Database {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       recorded_at TEXT NOT NULL,
       device_id TEXT NOT NULL,
-      ph REAL NOT NULL,
-      tds REAL NOT NULL,
-      water_temp REAL NOT NULL,
-      air_temp REAL NOT NULL,
-      humidity REAL NOT NULL,
-      light_intensity REAL NOT NULL,
-      dissolved_oxygen REAL NOT NULL,
-      water_level REAL NOT NULL
+      ph REAL,
+      tds REAL,
+      water_temp REAL,
+      air_temp REAL,
+      humidity REAL,
+      light_intensity REAL,
+      dissolved_oxygen REAL,
+      water_level REAL
     );
 
     CREATE INDEX IF NOT EXISTS idx_sensor_readings_recorded_at
@@ -222,9 +222,63 @@ export function initDatabase(): Database {
       ON system_alerts (recorded_at DESC);
   `);
 
+  migrateLegacyNonNullSensorColumns(db);
+
   dbInstance = db;
   seedDefaultSchedulesAndLogs(db);
   return db;
+}
+
+function migrateLegacyNonNullSensorColumns(db: Database): void {
+  const columns = db
+    .query<{ name: string; notnull: number }, []>("PRAGMA table_info(sensor_readings)")
+    .all();
+
+  const metricCols = new Set([
+    "ph",
+    "tds",
+    "water_temp",
+    "air_temp",
+    "humidity",
+    "light_intensity",
+    "dissolved_oxygen",
+    "water_level",
+  ]);
+
+  const needsMigration = columns.some(
+    (col) => metricCols.has(col.name) && col.notnull === 1
+  );
+  if (!needsMigration) return;
+
+  db.exec(`
+    BEGIN IMMEDIATE;
+    ALTER TABLE sensor_readings RENAME TO sensor_readings_legacy;
+    CREATE TABLE sensor_readings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      recorded_at TEXT NOT NULL,
+      device_id TEXT NOT NULL,
+      ph REAL,
+      tds REAL,
+      water_temp REAL,
+      air_temp REAL,
+      humidity REAL,
+      light_intensity REAL,
+      dissolved_oxygen REAL,
+      water_level REAL
+    );
+    INSERT INTO sensor_readings (
+      id, recorded_at, device_id, ph, tds, water_temp, air_temp,
+      humidity, light_intensity, dissolved_oxygen, water_level
+    )
+    SELECT
+      id, recorded_at, device_id, ph, tds, water_temp, air_temp,
+      humidity, light_intensity, dissolved_oxygen, water_level
+    FROM sensor_readings_legacy;
+    DROP TABLE sensor_readings_legacy;
+    CREATE INDEX IF NOT EXISTS idx_sensor_readings_recorded_at
+      ON sensor_readings (recorded_at DESC);
+    COMMIT;
+  `);
 }
 
 function seedDefaultSchedulesAndLogs(db: Database): void {
@@ -266,16 +320,16 @@ function seedDefaultSchedulesAndLogs(db: Database): void {
       nowIso
     );
     insertSched.run(
-      "sched-do-protect",
-      "Proteksi Oksigen Terlarut Nila L3",
+      "sched-temp-aerator",
+      "Proteksi Suhu & Oksigen Kolam Nila L3",
       "sensor_threshold",
       null,
-      "dissolvedOxygen",
-      "<",
-      5.5,
+      "waterTemperature",
+      ">",
+      28.5,
       "aerator",
       1,
-      "Otomatis menyalakan Aerator Venturi jika DO turun di bawah 5.5 mg/L.",
+      "Otomatis menyalakan Aerator Venturi jika suhu air naik di atas 28.5°C.",
       nowIso
     );
   }
@@ -291,8 +345,8 @@ function seedDefaultSchedulesAndLogs(db: Database): void {
     );
     insertAlert.run(
       "init-alert-1",
-      "Inisialisasi Database & Kalibrasi Sensor ESP32",
-      "Node ESP32-GROW-01 terhubung dengan database lokal dan seluruh kanal sensor terkalibrasi.",
+      "Inisialisasi Database & Gateway Telemetri",
+      "Database SQLite siap merekam data riil dari node ESP32-GROW-01 begitu paket telemetri pertama diterima.",
       "info",
       "system",
       1,
@@ -300,8 +354,8 @@ function seedDefaultSchedulesAndLogs(db: Database): void {
     );
     insertAlert.run(
       "init-alert-2",
-      "Sirkulasi Biofilter 4-Level Stabil",
-      "Resirkulasi air tandon Level 1 menuju talang Pakcoy Level 4 berjalan normal.",
+      "Konfigurasi Default Sirkulasi 4-Level Siap",
+      "Status target awal relay dimuat ke memori dan menunggu sinkronisasi dari mikrokontroler ESP32.",
       "info",
       "waterPump",
       1,
@@ -583,9 +637,9 @@ export function createAutomationSchedule(input: {
     input.title.trim(),
     input.triggerType,
     input.triggerType === "time" ? (input.scheduleTime || "08:00") : null,
-    input.triggerType === "sensor_threshold" ? (input.sensorMetric || "dissolvedOxygen") : null,
-    input.triggerType === "sensor_threshold" ? (input.operator || "<") : null,
-    input.triggerType === "sensor_threshold" ? (input.thresholdValue ?? 5.5) : null,
+    input.triggerType === "sensor_threshold" ? (input.sensorMetric || "waterTemperature") : null,
+    input.triggerType === "sensor_threshold" ? (input.operator || ">") : null,
+    input.triggerType === "sensor_threshold" ? (input.thresholdValue ?? 28.5) : null,
     input.actuatorId,
     targetState ? 1 : 0,
     (input.notes || "").trim(),
@@ -597,9 +651,9 @@ export function createAutomationSchedule(input: {
     title: input.title.trim(),
     triggerType: input.triggerType,
     scheduleTime: input.triggerType === "time" ? (input.scheduleTime || "08:00") : null,
-    sensorMetric: input.triggerType === "sensor_threshold" ? (input.sensorMetric || "dissolvedOxygen") : null,
-    operator: input.triggerType === "sensor_threshold" ? (input.operator || "<") : null,
-    thresholdValue: input.triggerType === "sensor_threshold" ? (input.thresholdValue ?? 5.5) : null,
+    sensorMetric: input.triggerType === "sensor_threshold" ? (input.sensorMetric || "waterTemperature") : null,
+    operator: input.triggerType === "sensor_threshold" ? (input.operator || ">") : null,
+    thresholdValue: input.triggerType === "sensor_threshold" ? (input.thresholdValue ?? 28.5) : null,
     actuatorId: input.actuatorId,
     targetState,
     notes: (input.notes || "").trim(),
@@ -631,14 +685,14 @@ export function deleteAutomationSchedule(id: string): boolean {
 
 export function recordSensorReading(sample: {
   deviceId: string;
-  ph: number;
-  tds: number;
-  waterTemperature: number;
-  airTemperature: number;
-  humidity: number;
-  lightIntensity: number;
-  dissolvedOxygen: number;
-  waterLevel: number;
+  ph: number | null;
+  tds: number | null;
+  waterTemperature: number | null;
+  airTemperature: number | null;
+  humidity: number | null;
+  lightIntensity: number | null;
+  dissolvedOxygen: number | null;
+  waterLevel: number | null;
   recordedAt?: string;
 }): void {
   const db = initDatabase();
@@ -675,14 +729,14 @@ export function getPersistedSensorReadings(limit: number = 250): PersistedSensor
         id: number;
         recorded_at: string;
         device_id: string;
-        ph: number;
-        tds: number;
-        water_temp: number;
-        air_temp: number;
-        humidity: number;
-        light_intensity: number;
-        dissolved_oxygen: number;
-        water_level: number;
+        ph: number | null;
+        tds: number | null;
+        water_temp: number | null;
+        air_temp: number | null;
+        humidity: number | null;
+        light_intensity: number | null;
+        dissolved_oxygen: number | null;
+        water_level: number | null;
       },
       [number]
     >("SELECT * FROM sensor_readings ORDER BY id DESC LIMIT ?1")

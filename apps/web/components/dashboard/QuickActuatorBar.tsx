@@ -30,7 +30,7 @@ export function QuickActuatorBar() {
         >
           <span
             className={`h-2 w-2 rounded-full ${
-              pump?.isOn ? "bg-emerald-400 animate-pulse" : "bg-slate-600"
+              pump?.isOn ? "bg-emerald-400" : "bg-slate-600"
             }`}
           />
           <span>Pompa Sirkulasi</span>

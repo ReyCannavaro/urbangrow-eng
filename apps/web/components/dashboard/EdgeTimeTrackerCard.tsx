@@ -44,8 +44,12 @@ export function EdgeTimeTrackerCard() {
         </div>
         <p className="text-[10px] text-white/60 mt-0.5">
           {backendConnected && systemMeta.edgeOnline
-            ? "Sinkronisasi ESP32 Real-Time Aktif"
-            : "Siklus Telemetri Node Edge Aktif"}
+            ? systemMeta.liveSensorCount > 0
+              ? `Sinkronisasi ESP32 Live (${systemMeta.liveSensorCount} Sensor)`
+              : "ESP32 Terhubung (Heartbeat Saja)"
+            : backendConnected
+            ? "Menunggu Koneksi ESP32 (Offline)"
+            : "Menghubungkan ke Backend VPS..."}
         </p>
       </div>
 
@@ -57,7 +61,12 @@ export function EdgeTimeTrackerCard() {
         <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/30 border border-white/10 text-[11px] font-mono text-[#68C194]">
           <Zap className="h-3.5 w-3.5 text-[#FACC15]" />
           <span>
-            {totalWatts} Watt • WiFi {systemMeta.wifiSignalDbm ?? -56} dBm
+            {totalWatts} Watt &bull;{" "}
+            {systemMeta.edgeOnline
+              ? typeof systemMeta.wifiSignalDbm === "number"
+                ? `WiFi ${systemMeta.wifiSignalDbm} dBm`
+                : "HTTP Polling Aktif"
+              : "ESP32 Offline"}
           </span>
         </div>
       </div>

@@ -15,11 +15,15 @@ export class SafetyInterlockManager {
   }
 
   /**
-   * Evaluates aerator automatic override rules based on Dissolved Oxygen (DO).
+   * Evaluates aerator automatic override rules based on Dissolved Oxygen (DO) or water temp.
    */
   static shouldBoostAerator(sensors: SensorTelemetry): boolean {
-    // If DO drops below 5.0 mg/L (Critical threshold for Tilapia in Level 3)
-    return sensors.dissolved_oxygen_mg_l < 5.0 || sensors.water_temp_c > 30.0;
+    const lowDo =
+      typeof sensors.dissolved_oxygen_mg_l === "number" &&
+      sensors.dissolved_oxygen_mg_l < 5.0;
+    const highTemp =
+      typeof sensors.water_temp_c === "number" && sensors.water_temp_c > 30.0;
+    return lowDo || highTemp;
   }
 
   /**

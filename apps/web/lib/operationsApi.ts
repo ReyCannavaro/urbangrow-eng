@@ -42,16 +42,16 @@ function getFallbackSchedules(): AutomationSchedule[] {
       createdAt: nowIso,
     },
     {
-      id: "sched-do-protect",
-      title: "Proteksi Oksigen Terlarut Nila L3",
+      id: "sched-temp-aerator",
+      title: "Proteksi Suhu & Oksigen Kolam Nila L3",
       triggerType: "sensor_threshold",
       scheduleTime: null,
-      sensorMetric: "dissolvedOxygen",
-      operator: "<",
-      thresholdValue: 5.5,
+      sensorMetric: "waterTemperature",
+      operator: ">",
+      thresholdValue: 28.5,
       actuatorId: "aerator",
       targetState: true,
-      notes: "Otomatis menyalakan Aerator Venturi jika DO turun di bawah 5.5 mg/L.",
+      notes: "Otomatis menyalakan Aerator Venturi jika suhu air naik di atas 28.5°C.",
       enabled: true,
       lastTriggeredAt: null,
       createdAt: nowIso,
@@ -126,11 +126,11 @@ export async function createAutomationScheduleItem(payload: {
     scheduleTime: payload.triggerType === "time" ? payload.scheduleTime || "08:00" : null,
     sensorMetric:
       payload.triggerType === "sensor_threshold"
-        ? payload.sensorMetric || "dissolvedOxygen"
+        ? payload.sensorMetric || "waterTemperature"
         : null,
-    operator: payload.triggerType === "sensor_threshold" ? payload.operator || "<" : null,
+    operator: payload.triggerType === "sensor_threshold" ? payload.operator || ">" : null,
     thresholdValue:
-      payload.triggerType === "sensor_threshold" ? payload.thresholdValue ?? 5.5 : null,
+      payload.triggerType === "sensor_threshold" ? payload.thresholdValue ?? 28.5 : null,
     actuatorId: payload.actuatorId,
     targetState: payload.targetState ?? true,
     notes: payload.notes || "",
@@ -258,16 +258,23 @@ export async function downloadTelemetryCsv(fallbackHistory: HistorySample[]): Pr
     "Grow_Light",
   ];
 
+  const fmtNum = (val: number | null, digits?: number): string =>
+    typeof val === "number" && Number.isFinite(val)
+      ? digits !== undefined
+        ? val.toFixed(digits)
+        : String(Math.round(val))
+      : "";
+
   const rows = fallbackHistory.map((h) => [
     h.timestamp,
-    h.sensors.ph.toFixed(2),
-    h.sensors.waterTemperature.toFixed(2),
-    Math.round(h.sensors.tds),
-    h.sensors.dissolvedOxygen.toFixed(2),
-    h.sensors.airTemperature.toFixed(1),
-    h.sensors.humidity.toFixed(1),
-    Math.round(h.sensors.lightIntensity),
-    h.sensors.waterLevel.toFixed(1),
+    fmtNum(h.sensors.ph, 2),
+    fmtNum(h.sensors.waterTemperature, 2),
+    fmtNum(h.sensors.tds),
+    fmtNum(h.sensors.dissolvedOxygen, 2),
+    fmtNum(h.sensors.airTemperature, 1),
+    fmtNum(h.sensors.humidity, 1),
+    fmtNum(h.sensors.lightIntensity),
+    fmtNum(h.sensors.waterLevel, 1),
     h.actuators?.waterPump ? "ON" : "OFF",
     h.actuators?.aerator ? "ON" : "OFF",
     h.actuators?.growLight ? "ON" : "OFF",

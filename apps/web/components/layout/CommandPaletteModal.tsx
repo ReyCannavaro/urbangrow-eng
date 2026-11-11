@@ -71,14 +71,45 @@ export function CommandPaletteModal({ isOpen, onClose }: CommandPaletteModalProp
       }
     };
 
+    const phText =
+      typeof sensors.ph === "number" ? sensors.ph.toFixed(2) : "--";
+    const phBadge =
+      typeof sensors.ph !== "number"
+        ? "Offline"
+        : sensors.ph >= 6.5 && sensors.ph <= 7.5
+          ? "Optimal"
+          : "Perhatian";
+    const tdsText =
+      typeof sensors.tds === "number" ? `${Math.round(sensors.tds)} ppm` : "--";
+    const waterTempText =
+      typeof sensors.waterTemperature === "number"
+        ? `${sensors.waterTemperature.toFixed(1)} °C`
+        : "--";
+    const waterTempBadge =
+      typeof sensors.waterTemperature === "number"
+        ? `${sensors.waterTemperature.toFixed(1)}°C`
+        : "Offline";
+    const airTempText =
+      typeof sensors.airTemperature === "number"
+        ? `${sensors.airTemperature.toFixed(1)}°C`
+        : "--°C";
+    const humidityText =
+      typeof sensors.humidity === "number"
+        ? `${sensors.humidity.toFixed(0)}%`
+        : "--%";
+    const luxText =
+      typeof sensors.lightIntensity === "number"
+        ? `${Math.round(sensors.lightIntensity)} lux`
+        : "--";
+
     return [
       // Live Sensors
       {
         id: "sensor-ph",
         section: "Sensor Real-Time",
-        title: `Sensor pH Air Kolam: ${sensors.ph.toFixed(2)}`,
+        title: `Sensor pH Air Kolam: ${phText}`,
         subtitle: "Target ideal ECAD: 6.5 – 7.5 pH • Klik untuk buka grafik deret waktu",
-        badge: sensors.ph >= 6.5 && sensors.ph <= 7.5 ? "Optimal" : "Perhatian",
+        badge: phBadge,
         icon: Droplets,
         keywords: "ph asam basa air sensor",
         onSelect: () => go("/analytics"),
@@ -86,9 +117,9 @@ export function CommandPaletteModal({ isOpen, onClose }: CommandPaletteModalProp
       {
         id: "sensor-tds",
         section: "Sensor Real-Time",
-        title: `Nutrisi TDS Terlarut: ${Math.round(sensors.tds)} ppm`,
+        title: `Nutrisi TDS Terlarut: ${tdsText}`,
         subtitle: "Target vegetatif Pakcoy & Kangkung: 400 – 800 ppm",
-        badge: `${Math.round(sensors.tds)} ppm`,
+        badge: typeof sensors.tds === "number" ? tdsText : "Offline",
         icon: Gauge,
         keywords: "tds nutrisi ppm pupuk",
         onSelect: () => go("/analytics"),
@@ -96,9 +127,9 @@ export function CommandPaletteModal({ isOpen, onClose }: CommandPaletteModalProp
       {
         id: "sensor-temp",
         section: "Sensor Real-Time",
-        title: `Suhu Air Kolam: ${sensors.waterTemperature.toFixed(1)} °C`,
-        subtitle: `Suhu udara ${sensors.airTemperature.toFixed(1)}°C • Kelembaban ${sensors.humidity.toFixed(0)}%`,
-        badge: `${sensors.waterTemperature.toFixed(1)}°C`,
+        title: `Suhu Air Kolam: ${waterTempText}`,
+        subtitle: `Suhu udara ${airTempText} • Kelembaban ${humidityText}`,
+        badge: waterTempBadge,
         icon: Thermometer,
         keywords: "suhu temperatur air udara ds18b20 dht22",
         onSelect: () => go("/analytics"),
@@ -106,9 +137,9 @@ export function CommandPaletteModal({ isOpen, onClose }: CommandPaletteModalProp
       {
         id: "sensor-lux",
         section: "Sensor Real-Time",
-        title: `Intensitas Cahaya LDR: ${Math.round(sensors.lightIntensity)} lux`,
+        title: `Intensitas Cahaya LDR: ${luxText}`,
         subtitle: "Sensor cahaya rak vertikal Pakcoy & Kangkung",
-        badge: `${Math.round(sensors.lightIntensity)} lux`,
+        badge: typeof sensors.lightIntensity === "number" ? luxText : "Offline",
         icon: Sun,
         keywords: "cahaya lux ldr lampu grow light",
         onSelect: () => go("/analytics"),

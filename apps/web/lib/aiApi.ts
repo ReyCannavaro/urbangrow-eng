@@ -16,7 +16,7 @@ const COHORT_STORAGE_KEY = "urbangrow_prediction_cohort_v1";
 
 function offsetDaysIso(days: number): string {
   const d = new Date(Date.now() + days * 86400000);
-  return d.toISOString().split("T")[0];
+  return d.toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
 }
 
 export function daysElapsedSinceDate(isoDate: string): number {
@@ -125,20 +125,29 @@ export function computeLocalFishForecast(
   const label = isNila ? "Ikan Nila (Oreochromis niloticus)" : "Ikan Lele (Clarias sp.)";
   const level = isNila ? "Kolam Level 3 (DO Tinggi)" : "Kolam Level 1 (Dasar Sistem)";
 
-  const tempDiff = Math.abs(sensors.waterTemperature - 26.5);
+  const waterTemp = typeof sensors.waterTemperature === "number" ? sensors.waterTemperature : 25.0;
+  const tempDiff = Math.abs(waterTemp - 26.5);
   const tempFactor = tempDiff <= 2.5 ? 1.0 : tempDiff <= 4.5 ? 0.86 : 0.7;
 
-  const doFactor = isNila
-    ? sensors.dissolvedOxygen >= 5.5
-      ? 1.0
-      : sensors.dissolvedOxygen >= 4.5
-      ? 0.82
-      : 0.62
-    : sensors.dissolvedOxygen >= 2.8
-    ? 1.0
-    : 0.85;
+  const doFactor =
+    typeof sensors.dissolvedOxygen === "number"
+      ? isNila
+        ? sensors.dissolvedOxygen >= 5.5
+          ? 1.0
+          : sensors.dissolvedOxygen >= 4.5
+          ? 0.82
+          : 0.62
+        : sensors.dissolvedOxygen >= 2.8
+        ? 1.0
+        : 0.85
+      : 1.0;
 
-  const phFactor = sensors.ph >= 6.5 && sensors.ph <= 7.8 ? 1.0 : 0.88;
+  const phFactor =
+    typeof sensors.ph === "number"
+      ? sensors.ph >= 6.5 && sensors.ph <= 7.8
+        ? 1.0
+        : 0.88
+      : 1.0;
   const densityFactor = input.count <= 45 ? 1.0 : input.count <= 70 ? 0.92 : 0.84;
 
   const suitability = tempFactor * doFactor * phFactor;
@@ -228,7 +237,9 @@ export function computeLocalSeedCropForecast(
         };
 
   const lightEfficiency =
-    sensors.lightIntensity >= 1200
+    typeof sensors.lightIntensity !== "number"
+      ? 0.88
+      : sensors.lightIntensity >= 1200
       ? 1.0
       : sensors.lightIntensity >= 500
       ? 0.9
@@ -236,8 +247,9 @@ export function computeLocalSeedCropForecast(
       ? 0.78
       : 0.62;
 
+  const waterTemp = typeof sensors.waterTemperature === "number" ? sensors.waterTemperature : 25.0;
   const daysSincePlanting = daysElapsedSinceDate(cohort.seedingDate);
-  const effectiveTemp = Math.max(2.0, sensors.waterTemperature - config.baseTemp);
+  const effectiveTemp = Math.max(2.0, waterTemp - config.baseTemp);
   const effectiveDailyGdd = effectiveTemp * lightEfficiency;
   const accumulatedGdd = Number((effectiveDailyGdd * daysSincePlanting).toFixed(1));
   const remainingGdd = Math.max(0, config.targetGdd - accumulatedGdd);
@@ -285,18 +297,20 @@ export function computeLocalSeedCropForecast(
 }
 
 export interface ClimateScoreData {
-  climate_adaptation_score: number;
+  offline?: boolean;
+  climate_adaptation_score: number | null;
   resilience_grade: string;
   sub_scores: {
-    temperature_stability: number;
-    water_quality: number;
-    dissolved_oxygen: number;
-    photoperiod_consistency: number;
+    temperature_stability: number | null;
+    water_quality: number | null;
+    dissolved_oxygen: number | null;
+    photoperiod_consistency: number | null;
   };
   insights: string[];
 }
 
 export interface AnomalyPrediction {
+  offline?: boolean;
   is_anomaly: boolean;
   anomaly_score: number;
   risk_level: string;
@@ -306,21 +320,22 @@ export interface AnomalyPrediction {
 
 export async function fetchClimateScore(): Promise<ClimateScoreData> {
   const res = await fetchFromBackend<ClimateScoreData>("/api/ai/climate-score", {}, 4000);
-  if (res.ok && res.data && typeof res.data.climate_adaptation_score === "number") {
+  if (res.ok && res.data && "climate_adaptation_score" in res.data && res.data.sub_scores) {
     return res.data;
   }
 
   return {
-    climate_adaptation_score: 84.0,
-    resilience_grade: "OPTIMAL",
+    offline: true,
+    climate_adaptation_score: null,
+    resilience_grade: "OFFLINE",
     sub_scores: {
-      temperature_stability: 88.0,
-      water_quality: 82.0,
-      dissolved_oxygen: 85.0,
-      photoperiod_consistency: 80.0,
+      temperature_stability: null,
+      water_quality: null,
+      dissolved_oxygen: null,
+      photoperiod_consistency: null,
     },
     insights: [
-      "Suhu air dan oksigen terlarut berada pada zona kenyamanan Nila dan Lele.",
+      "Server backend belum terjangkau atau belum menerima paket telemetri dari ESP32-GROW-01.",
     ],
   };
 }
@@ -336,10 +351,11 @@ export async function fetchAnomalyInference(): Promise<AnomalyPrediction> {
   }
 
   return {
+    offline: true,
     is_anomaly: false,
-    anomaly_score: 0.1,
-    risk_level: "LOW",
-    recommended_action: "Seluruh sensor beroperasi normal.",
+    anomaly_score: 0,
+    risk_level: "OFFLINE",
+    recommended_action: "Menunggu koneksi backend & data sensor live dari ESP32-GROW-01.",
     affected_metrics: [],
   };
 }
@@ -503,24 +519,24 @@ export async function sendAgriBotChat(payload: {
       timestamp: new Date().toISOString(),
       overallStatus: "WARNING",
       sensors: {
-        ph: 6.95,
-        tds: 540,
-        waterTemperature: 24.3,
-        airTemperature: 27.2,
-        humidity: 65.4,
-        lightIntensity: 650,
-        dissolvedOxygen: 7.25,
-        waterLevel: 92.0,
+        ph: null,
+        tds: null,
+        waterTemperature: null,
+        airTemperature: null,
+        humidity: null,
+        lightIntensity: null,
+        dissolvedOxygen: null,
+        waterLevel: null,
       },
       sensorSources: {
-        ph: "auto_dummy",
-        tds: "auto_dummy",
-        waterTemperature: "auto_dummy",
-        airTemperature: "auto_dummy",
-        humidity: "auto_dummy",
-        lightIntensity: "auto_dummy",
-        dissolvedOxygen: "auto_dummy",
-        waterLevel: "auto_dummy",
+        ph: "offline",
+        tds: "offline",
+        waterTemperature: "offline",
+        airTemperature: "offline",
+        humidity: "offline",
+        lightIntensity: "offline",
+        dissolvedOxygen: "offline",
+        waterLevel: "offline",
       },
       edgeOnline: false,
       diagnosis: {

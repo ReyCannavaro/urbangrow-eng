@@ -14,42 +14,45 @@ import { useTelemetry } from "@/lib/telemetryContext";
 export function AnalyticsBentoRow() {
   const { sensors, systemMeta } = useTelemetry();
 
-  // Dynamic WQI score computed from active physical sensors (pH, Water Temp, TDS)
-  const tdsPenalty =
-    sensors.tds < 400
-      ? (400 - sensors.tds) * 0.03
-      : sensors.tds > 800
-      ? (sensors.tds - 800) * 0.03
-      : 0;
-  const wqiScore = Math.max(
-    50,
-    Math.min(
-      98,
-      Math.round(
-        100 -
-          Math.abs((sensors.ph ?? 7.0) - 7.0) * 16 -
-          Math.abs((sensors.waterTemperature ?? 24.5) - 24.5) * 2.5 -
-          tdsPenalty
+  const hasPh = typeof sensors.ph === "number";
+  const hasWaterTemp = typeof sensors.waterTemperature === "number";
+  const hasTds = typeof sensors.tds === "number";
+  const hasAnyWaterSensor = hasPh || hasWaterTemp || hasTds;
+
+  // Dynamic WQI score computed strictly when live ESP32 water sensors exist
+  const tdsPenalty = hasTds
+    ? (sensors.tds as number) < 400
+      ? (400 - (sensors.tds as number)) * 0.03
+      : (sensors.tds as number) > 800
+      ? ((sensors.tds as number) - 800) * 0.03
+      : 0
+    : 0;
+  const wqiScore = hasAnyWaterSensor
+    ? Math.max(
+        50,
+        Math.min(
+          98,
+          Math.round(
+            100 -
+              (hasPh ? Math.abs((sensors.ph as number) - 7.0) * 16 : 0) -
+              (hasWaterTemp ? Math.abs((sensors.waterTemperature as number) - 24.5) * 2.5 : 0) -
+              tdsPenalty
+          )
+        )
       )
-    )
-  );
+    : null;
 
-  const formattedTemp =
-    typeof sensors.waterTemperature === "number"
-      ? sensors.waterTemperature.toFixed(1)
-      : sensors.waterTemperature;
-  const formattedTDS =
-    typeof sensors.tds === "number"
-      ? Math.round(sensors.tds)
-      : sensors.tds;
-  const formattedPH =
-    typeof sensors.ph === "number"
-      ? sensors.ph.toFixed(2)
-      : sensors.ph;
+  const formattedTemp = hasWaterTemp ? (sensors.waterTemperature as number).toFixed(1) : "--";
+  const formattedTDS = hasTds ? Math.round(sensors.tds as number) : "--";
+  const formattedPH = hasPh ? (sensors.ph as number).toFixed(2) : "--";
 
-  const isPhOptimal = sensors.ph >= 6.5 && sensors.ph <= 7.5;
-  const isTempOptimal = sensors.waterTemperature >= 22 && sensors.waterTemperature <= 27;
-  const isTdsOptimal = sensors.tds >= 400 && sensors.tds <= 800;
+  const isPhOptimal = hasPh && (sensors.ph as number) >= 6.5 && (sensors.ph as number) <= 7.5;
+  const isTempOptimal =
+    hasWaterTemp &&
+    (sensors.waterTemperature as number) >= 22 &&
+    (sensors.waterTemperature as number) <= 27;
+  const isTdsOptimal =
+    hasTds && (sensors.tds as number) >= 400 && (sensors.tds as number) <= 800;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -72,14 +75,15 @@ export function AnalyticsBentoRow() {
 
         <div>
           <div className="text-4xl font-bold tracking-tight num-tabular text-white">
-            {wqiScore}<span className="text-xl font-normal text-white/80">%</span>
+            {wqiScore !== null ? wqiScore : "--"}
+            <span className="text-xl font-normal text-white/80">%</span>
           </div>
           <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 text-[10px] font-mono text-white/90">
             <TrendingUp className="h-3 w-3 text-[#68C194]" />
             <span>
-              {systemMeta.edgeOnline
-                ? `Node ${systemMeta.edgeNode} • Terukur`
-                : "Stabilitas pH, Suhu & TDS Optimal"}
+              {systemMeta.liveSensorCount > 0
+                ? `${systemMeta.edgeNode} • ${systemMeta.liveSensorCount} Sensor Live`
+                : "Menunggu Data ESP32"}
             </span>
           </div>
         </div>
@@ -106,13 +110,15 @@ export function AnalyticsBentoRow() {
           </div>
           <div
             className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium ${
-              isPhOptimal
+              !hasPh
+                ? "bg-[#F3F4F6] text-[#6B7280]"
+                : isPhOptimal
                 ? "bg-[#DCFCE7] text-[#166534]"
                 : "bg-[#FEF3C7] text-[#B45309]"
             }`}
           >
             <CheckCircle2 className="h-3 w-3" />
-            <span>Ideal Nitrifikasi: 6.5 – 7.5 pH</span>
+            <span>{!hasPh ? "Sensor pH offline" : "Ideal Nitrifikasi: 6.5 – 7.5 pH"}</span>
           </div>
         </div>
       </div>
@@ -138,13 +144,17 @@ export function AnalyticsBentoRow() {
           </div>
           <div
             className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium ${
-              isTempOptimal
+              !hasWaterTemp
+                ? "bg-[#F3F4F6] text-[#6B7280]"
+                : isTempOptimal
                 ? "bg-[#DCFCE7] text-[#166534]"
                 : "bg-[#FEF3C7] text-[#B45309]"
             }`}
           >
             <CheckCircle2 className="h-3 w-3" />
-            <span>Ideal Nila &amp; Lele: 22 – 27°C</span>
+            <span>
+              {!hasWaterTemp ? "Sensor DS18B20 offline" : "Ideal Nila & Lele: 22 – 27°C"}
+            </span>
           </div>
         </div>
       </div>
@@ -170,13 +180,17 @@ export function AnalyticsBentoRow() {
           </div>
           <div
             className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium ${
-              isTdsOptimal
+              !hasTds
+                ? "bg-[#F3F4F6] text-[#6B7280]"
+                : isTdsOptimal
                 ? "bg-[#DCFCE7] text-[#166534]"
                 : "bg-[#FEF3C7] text-[#B45309]"
             }`}
           >
             <CheckCircle2 className="h-3 w-3" />
-            <span>Target Vegetatif: 400 – 800 ppm</span>
+            <span>
+              {!hasTds ? "Sensor TDS offline" : "Target Vegetatif: 400 – 800 ppm"}
+            </span>
           </div>
         </div>
       </div>

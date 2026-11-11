@@ -1,28 +1,28 @@
 export interface SensorData {
-  ph: number;
-  tds: number;
-  waterTemperature: number;
-  airTemperature: number;
-  humidity: number;
-  lightIntensity: number;
-  dissolvedOxygen: number;
-  waterLevel: number;
+  ph: number | null;
+  tds: number | null;
+  waterTemperature: number | null;
+  airTemperature: number | null;
+  humidity: number | null;
+  lightIntensity: number | null;
+  dissolvedOxygen: number | null;
+  waterLevel: number | null;
 }
 
 export type SensorKey = keyof SensorData;
-export type SensorSource = "live_iot" | "auto_dummy";
+export type SensorSource = "live_iot" | "offline";
 export type SensorSourcesMap = Record<SensorKey, SensorSource>;
 
 export interface IoTSystemMeta {
   status: string;
-  mode: "hybrid_live_iot" | "auto_dummy_simulation" | string;
+  mode: "live_iot" | "partial_live_iot" | "heartbeat_only" | "offline" | string;
   anomalyMode: string;
   uptimeSeconds: number;
   edgeNode: string;
   edgeOnline: boolean;
   liveSensorCount: number;
   lastTelemetryAt: string | null;
-  wifiSignalDbm: number;
+  wifiSignalDbm: number | null;
 }
 
 export interface ActuatorState {

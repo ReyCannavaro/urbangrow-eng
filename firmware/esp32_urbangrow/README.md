@@ -30,20 +30,25 @@ Firmware ini digunakan untuk menghubungkan modul mikrokontroler **ESP32 DevKit V
 
 ---
 
-## ⚙️ 3. Konfigurasi Sketch Sebelum Upload
+## ⚙️ 3. Konfigurasi Kredensial (`secrets.h`) Sebelum Upload
 
-Buka file `esp32_urbangrow.ino` di Arduino IDE, lalu sesuaikan bagian atas:
+Agar password Wi-Fi tidak ikut ter-commit ke Git, duplikat file template [`secrets.h.example`](secrets.h.example) menjadi **`secrets.h`** di folder `firmware/esp32_urbangrow/`:
 
-1. **`WIFI_SSID` & `WIFI_PASSWORD`**:
-   Masukkan nama Wi-Fi atau Hotspot HP Anda.
-   *(PENTING: Laptop dan ESP32 harus terhubung ke Wi-Fi / Hotspot yang sama)*.
+1. **`URBANGROW_WIFI_SSID` & `URBANGROW_WIFI_PASSWORD`**:
+   Isi nama Wi-Fi / Hotspot HP Anda.
 
-2. **`SERVER_URL`**:
-   Masukkan IP lokal laptop Anda.
-   Contoh: jika IP laptop Anda `192.168.18.63`, maka:
-   ```cpp
-   const char* SERVER_URL = "http://192.168.18.63:3000/api/sensors/telemetry";
-   ```
+2. **`URBANGROW_SERVER_URL`**:
+   - **Production VPS (HTTPS)**:
+     ```cpp
+     #define URBANGROW_SERVER_URL "https://urbangrow-api.reycannavaro.dev/api/sensors/telemetry"
+     ```
+   - **Testing Backend Lokal (HTTP LAN)**:
+     ```cpp
+     #define URBANGROW_SERVER_URL "http://192.168.x.x:3000/api/sensors/telemetry"
+     ```
+
+3. **Transparansi Data Sensor Riil**:
+   Firmware hanya mengirim field sensor yang benar-benar terbaca dari hardware (tanpa nilai dummy). Jika suatu sensor belum terpasang, ESP32 tetap mengirim *heartbeat* (`device_id`, `wifi_rssi_dbm`) sehingga status node `edgeOnline` menjadi `true`, sedangkan sensor yang belum terpasang tampil **`offline`** di dashboard.
 
 ---
 
@@ -53,7 +58,7 @@ Buka file `esp32_urbangrow.ino` di Arduino IDE, lalu sesuaikan bagian atas:
 2. Di Arduino IDE, pilih board: **`DOIT ESP32 DEVKIT V1`** dan pilih Port COM yang sesuai.
 3. Klik tombol **Upload** (tanda panah ke kanan).
 4. Setelah selesai upload, buka **Tools -> Serial Monitor** dengan baud rate `115200`.
-5. Buka Web Dashboard di browser: `http://localhost:3001`.
-6. Klik tombol saklar pada kartu kontrol aktuator (misal: matikan Pompa atau hidupkan Grow Light).
-7. Perhatikan modul relay fisik Anda: lampu indikator relay akan berubah dan terdengar bunyi *klik* relay fisik!
+5. Buka Web Dashboard (`https://urbangrow.reycannavaro.dev` atau `http://localhost:3001`).
+6. Klik tombol saklar pada kartu kontrol aktuator atau tombol **Beri Pakan (35g)**.
+7. Perhatikan modul relay fisik Anda: lampu indikator relay akan berubah mengikuti respons JSON `commands.actuators` dan `commands.feed_pending`!
 

@@ -2,20 +2,25 @@
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <Wire.h>
+#include <string.h>
+
+#if __has_include("secrets.h")
+#include "secrets.h"
+#else
+#include "secrets.h.example"
+#endif
 
 // ==========================================
 // 📶 1. KONFIGURASI WI-FI & DASHBOARD BACKEND
 // ==========================================
-// Silakan sesuaikan nama & password Wi-Fi atau Hotspot HP Anda
-const char *WIFI_SSID = "gabess";
-const char *WIFI_PASSWORD = "rintocans";
-
-// Masukkan IP Lokal laptop Anda (Port 3000):
-// IP saat ini dari adapter Wi-Fi / Hotspot laptop: 172.20.10.2
-const char *SERVER_URL = "http://172.20.10.2:3000/api/sensors/telemetry";
-
-const char *DEVICE_ID = "ESP32-GROW-01";
+// Ubah kredensial melalui file lokal `secrets.h` (copy dari `secrets.h.example`)
+const char *WIFI_SSID = URBANGROW_WIFI_SSID;
+const char *WIFI_PASSWORD = URBANGROW_WIFI_PASSWORD;
+const char *SERVER_URL = URBANGROW_SERVER_URL;
+const char *DEVICE_ID = URBANGROW_DEVICE_ID;
+const char *FIRMWARE_VERSION = "2.1.0-https";
 const unsigned long SYNC_INTERVAL_MS =
     2500; // Siklus kirim sensor & baca perintah (tiap 2.5 detik)
 
@@ -27,7 +32,6 @@ const unsigned long SYNC_INTERVAL_MS =
 
 byte bh1750Address =
     0; // Otomatis terdeteksi saat I2C scanning (biasanya 0x23 atau 0x5C)
-float lastLuxValue = 0.0;
 
 // ==========================================
 // ⚡ 3. KONFIGURASI RELAY AKTUATOR (ACTIVE-LOW)
@@ -125,19 +129,19 @@ void scanI2CDevices() {
   Serial.println("-----------------------------------------");
 }
 
-// Membaca intensitas cahaya dari BH1750 via I2C jika tersedia
-float readBH1750Lux() {
-  if (bh1750Address == 0)
-    return 650.0; // Nilai baseline jika sensor belum terpasang
+// Membaca intensitas cahaya nyata dari BH1750 via I2C (tanpa nilai dummy bila sensor tidak terpasang)
+bool readBH1750Lux(float &outLux) {
+  if (bh1750Address == 0) {
+    return false;
+  }
 
   Wire.requestFrom((int)bh1750Address, 2);
   if (Wire.available() == 2) {
-    uint16_t raw = (Wire.read() << 8) | Wire.read();
-    float lux = raw / 1.2;
-    lastLuxValue = lux;
-    return lux;
+    uint16_t raw = ((uint16_t)Wire.read() << 8) | Wire.read();
+    outLux = raw / 1.2f;
+    return true;
   }
-  return lastLuxValue;
+  return false;
 }
 
 // ==========================================
@@ -182,71 +186,107 @@ void syncWithDashboard() {
     return;
   }
 
+  WiFiClientSecure secureClient;
   HTTPClient http;
-  http.begin(SERVER_URL);
-  http.addHeader("Content-Type", "application/json");
-  http.setTimeout(4000);
+  const bool useHttps = strncmp(SERVER_URL, "https://", 8) == 0;
 
-  // 1. Siapkan Telemetri JSON yang dikirim ke Dashboard
+  if (useHttps) {
+    // Gunakan TLS tanpa mem-pin root CA agar tetap tahan rotasi sertifikat Let's Encrypt
+    secureClient.setInsecure();
+    if (!http.begin(secureClient, SERVER_URL)) {
+      Serial.println("⚠️ Gagal memulai sesi HTTPS ke backend.");
+      return;
+    }
+  } else if (!http.begin(SERVER_URL)) {
+    Serial.println("⚠️ Gagal memulai sesi HTTP ke backend.");
+    return;
+  }
+
+  http.addHeader("Content-Type", "application/json");
+  http.setTimeout(6000);
+
+  // 1. Siapkan Telemetri JSON Riil (sensor yang tidak terpasang TIDAK diisi nilai dummy)
+#if ARDUINOJSON_VERSION_MAJOR >= 7
+  JsonDocument reqDoc;
+#else
   StaticJsonDocument<512> reqDoc;
+#endif
+
   reqDoc["device_id"] = DEVICE_ID;
   reqDoc["wifi_rssi_dbm"] = WiFi.RSSI();
+  reqDoc["firmware_version"] = FIRMWARE_VERSION;
 
-  // Baca Lux dari I2C BH1750
-  float currentLux = readBH1750Lux();
-  reqDoc["lux"] = currentLux;
-  reqDoc["lightIntensity"] = currentLux;
+  float currentLux = 0.0f;
+  if (readBH1750Lux(currentLux)) {
+    reqDoc["lux"] = currentLux;
+    reqDoc["lightIntensity"] = currentLux;
+  }
 
   String reqJson;
   serializeJson(reqDoc, reqJson);
 
-  // 2. Kirim POST Request ke Backend
+  // 2. Kirim POST Request ke Backend (HTTPS / HTTP)
   int httpCode = http.POST(reqJson);
 
-  if (httpCode == HTTP_CODE_OK || httpCode == 201) {
+  if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_CREATED) {
     String responseJson = http.getString();
 
     // 3. Terima & Parse Perintah Aktuator dari Web Dashboard
-    StaticJsonDocument<1024> resDoc;
+#if ARDUINOJSON_VERSION_MAJOR >= 7
+    JsonDocument resDoc;
+#else
+    StaticJsonDocument<1536> resDoc;
+#endif
+
     DeserializationError error = deserializeJson(resDoc, responseJson);
 
     if (!error) {
       JsonObject commands = resDoc["commands"];
-      if (!commands.isNull() && !commands["actuators"].isNull()) {
+      if (!commands.isNull()) {
+        const bool feedPending =
+            !commands["feed_pending"].isNull() && commands["feed_pending"].as<bool>();
+
         JsonObject actuators = commands["actuators"];
+        if (!actuators.isNull()) {
+          bool newPump =
+              !actuators["waterPump"].isNull() ? actuators["waterPump"].as<bool>() : statePump;
+          bool newAerator =
+              !actuators["aerator"].isNull() ? actuators["aerator"].as<bool>() : stateAerator;
+          bool newGrowLight =
+              !actuators["growLight"].isNull() ? actuators["growLight"].as<bool>() : stateGrowLight;
+          bool rawFeeder =
+              !actuators["feeder"].isNull() ? actuators["feeder"].as<bool>() : stateFeeder;
+          bool newFeeder = feedPending || rawFeeder;
 
-        bool newPump = actuators["waterPump"] | statePump;
-        bool newAerator = actuators["aerator"] | stateAerator;
-        bool newGrowLight = actuators["growLight"] | stateGrowLight;
-        bool newFeeder = actuators["feeder"] | stateFeeder;
+          if (newPump != statePump || newAerator != stateAerator ||
+              newGrowLight != stateGrowLight || newFeeder != stateFeeder) {
+            Serial.println("\n⚡ [PERINTAH DITERIMA DARI WEB DASHBOARD]");
+            Serial.printf("  -> Pompa Sirkulasi: %s\n", newPump ? "ON" : "OFF");
+            Serial.printf("  -> Aerator O2     : %s\n", newAerator ? "ON" : "OFF");
+            Serial.printf("  -> LED Grow Light : %s\n", newGrowLight ? "ON" : "OFF");
+            Serial.printf("  -> Auto Feeder    : %s%s\n",
+                          newFeeder ? "ON" : "OFF",
+                          feedPending ? " (PULSE AKTIF)" : "");
+          }
 
-        // Cek jika ada saklar yang ditekan di Dashboard
-        if (newPump != statePump || newAerator != stateAerator ||
-            newGrowLight != stateGrowLight || newFeeder != stateFeeder) {
-          Serial.println("\n⚡ [PERINTAH DITERIMA DARI WEB DASHBOARD]");
-          Serial.printf("  -> Pompa Sirkulasi: %s\n", newPump ? "ON" : "OFF");
-          Serial.printf("  -> Aerator O2     : %s\n",
-                        newAerator ? "ON" : "OFF");
-          Serial.printf("  -> LED Grow Light : %s\n",
-                        newGrowLight ? "ON" : "OFF");
-          Serial.printf("  -> Auto Feeder    : %s\n", newFeeder ? "ON" : "OFF");
+          statePump = newPump;
+          stateAerator = newAerator;
+          stateGrowLight = newGrowLight;
+          stateFeeder = newFeeder;
+
+          applyRelay(RELAY_PUMP_PIN, statePump);
+          applyRelay(RELAY_AERATOR_PIN, stateAerator);
+          applyRelay(RELAY_FEEDER_PIN, stateFeeder);
+          applyRelay(RELAY_GROWLIGHT_PIN, stateGrowLight);
         }
-
-        // Terapkan perubahan ke modul Relay Fisik
-        statePump = newPump;
-        stateAerator = newAerator;
-        stateGrowLight = newGrowLight;
-        stateFeeder = newFeeder;
-
-        applyRelay(RELAY_PUMP_PIN, statePump);
-        applyRelay(RELAY_AERATOR_PIN, stateAerator);
-        applyRelay(RELAY_FEEDER_PIN, stateFeeder);
-        applyRelay(RELAY_GROWLIGHT_PIN, stateGrowLight);
       }
+    } else {
+      Serial.printf("⚠️ Gagal parse JSON perintah backend: %s\n", error.c_str());
     }
   } else {
-    Serial.printf("⚠️ Gagal komunikasi ke Dashboard (HTTP Code: %d)\n",
-                  httpCode);
+    Serial.printf("⚠️ Gagal komunikasi ke Dashboard (HTTP Code: %d - %s)\n",
+                  httpCode,
+                  http.errorToString(httpCode).c_str());
   }
 
   http.end();

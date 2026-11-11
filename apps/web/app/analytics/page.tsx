@@ -10,44 +10,50 @@ import { ScientificInsightsGrid } from "@/components/analytics/ScientificInsight
 import { RevealOnView } from "@/components/motion/RevealOnView";
 
 export default function AnalyticsPage() {
-  const { history, sensors, backendConnected } = useTelemetry();
+  const { history, sensors, backendConnected, systemMeta } = useTelemetry();
+
+  const hasPh = typeof sensors.ph === "number";
+  const hasWaterTemp = typeof sensors.waterTemperature === "number";
+  const hasTds = typeof sensors.tds === "number";
+  const hasAnyWaterSensor = hasPh || hasWaterTemp || hasTds;
 
   // Dynamic WQI score computed from active physical sensors (pH, Water Temp, TDS)
-  const tdsPenalty =
-    sensors.tds < 400
-      ? (400 - sensors.tds) * 0.03
-      : sensors.tds > 800
-      ? (sensors.tds - 800) * 0.03
-      : 0;
-  const wqiScore = Math.max(
-    50,
-    Math.min(
-      98,
-      Math.round(
-        100 -
-          Math.abs((sensors.ph ?? 7.0) - 7.0) * 16 -
-          Math.abs((sensors.waterTemperature ?? 24.5) - 24.5) * 2.5 -
-          tdsPenalty
+  const tdsPenalty = hasTds
+    ? (sensors.tds as number) < 400
+      ? (400 - (sensors.tds as number)) * 0.03
+      : (sensors.tds as number) > 800
+      ? ((sensors.tds as number) - 800) * 0.03
+      : 0
+    : 0;
+  const wqiScore = hasAnyWaterSensor
+    ? Math.max(
+        50,
+        Math.min(
+          98,
+          Math.round(
+            100 -
+              (hasPh ? Math.abs((sensors.ph as number) - 7.0) * 16 : 0) -
+              (hasWaterTemp ? Math.abs((sensors.waterTemperature as number) - 24.5) * 2.5 : 0) -
+              tdsPenalty
+          )
+        )
       )
-    )
-  );
+    : null;
 
-  const formattedTemp =
-    typeof sensors.waterTemperature === "number"
-      ? sensors.waterTemperature.toFixed(1)
-      : sensors.waterTemperature;
-  const formattedTDS =
-    typeof sensors.tds === "number" ? Math.round(sensors.tds) : sensors.tds;
-  const formattedPH =
-    typeof sensors.ph === "number" ? sensors.ph.toFixed(2) : sensors.ph;
-  const formattedDO =
-    typeof sensors.dissolvedOxygen === "number"
-      ? sensors.dissolvedOxygen.toFixed(2)
-      : sensors.dissolvedOxygen;
+  const formattedTemp = hasWaterTemp
+    ? (sensors.waterTemperature as number).toFixed(1)
+    : "--";
+  const formattedTDS = hasTds ? Math.round(sensors.tds as number) : "--";
+  const formattedPH = hasPh ? (sensors.ph as number).toFixed(2) : "--";
 
-  const isPhOptimal = sensors.ph >= 6.5 && sensors.ph <= 7.5;
-  const isTempOptimal = sensors.waterTemperature >= 22 && sensors.waterTemperature <= 27;
-  const isTdsOptimal = sensors.tds >= 400 && sensors.tds <= 800;
+  const isPhOptimal =
+    hasPh && (sensors.ph as number) >= 6.5 && (sensors.ph as number) <= 7.5;
+  const isTempOptimal =
+    hasWaterTemp &&
+    (sensors.waterTemperature as number) >= 22 &&
+    (sensors.waterTemperature as number) <= 27;
+  const isTdsOptimal =
+    hasTds && (sensors.tds as number) >= 400 && (sensors.tds as number) <= 800;
 
   return (
     <div className="space-y-6">
@@ -61,16 +67,25 @@ export default function AnalyticsPage() {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-[#68C194] animate-pulse" />
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  systemMeta.edgeOnline && systemMeta.liveSensorCount > 0
+                    ? "bg-[#68C194]"
+                    : "bg-[#9CA3AF]"
+                }`}
+              />
               <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#68C194]">
-                LABORATORY DATA STUDIO &bull; CONTINUOUS TIMESERIES STREAM
+                LABORATORY DATA STUDIO &bull;{" "}
+                {systemMeta.liveSensorCount > 0
+                  ? `${systemMeta.liveSensorCount} SENSOR ESP32 LIVE`
+                  : "MENUNGGU TELEMETRI ESP32"}
               </span>
             </div>
             <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white">
               Studio Deret Waktu &amp; Analisis Korelasi Bioproses
             </h2>
             <p className="text-xs text-white/75 max-w-2xl leading-relaxed">
-              Memetakan fluktuasi 6 parameter fisik secara sinkron (frekuensi 5.000 ms) untuk menguji korelasi kelarutan oksigen, serapan nutrisi nitrat, dan stabilitas termal akuaponik adaptif iklim.
+              Memetakan fluktuasi 6 parameter fisik ESP32 secara sinkron (frekuensi 5.000 ms) untuk menguji keseimbangan termal, serapan nutrisi nitrat, dan kestabilan akuaponik adaptif iklim.
             </p>
           </div>
 
@@ -79,7 +94,10 @@ export default function AnalyticsPage() {
             <div className="px-3 py-2 rounded-xl bg-white/10 border border-white/15">
               <div className="text-[9.5px] uppercase tracking-wider text-white/50">Water Quality Index</div>
               <div className="font-bold text-[#68C194] text-sm num-tabular mt-0.5">
-                {wqiScore} / 100 <span className="text-[10px] text-white/60 font-normal">Optimal</span>
+                {wqiScore !== null ? `${wqiScore} / 100` : "-- / 100"}{" "}
+                <span className="text-[10px] text-white/60 font-normal">
+                  {wqiScore !== null ? "Terukur" : "Offline"}
+                </span>
               </div>
             </div>
 
@@ -131,8 +149,20 @@ export default function AnalyticsPage() {
                   Neraca Kimiawi Air (ECAD Audit)
                 </h3>
               </div>
-              <span className="px-2 py-0.5 rounded bg-[#DCFCE7] text-[#166534] font-mono text-[10px] font-bold">
-                STABIL
+              <span
+                className={`px-2 py-0.5 rounded font-mono text-[10px] font-bold ${
+                  !hasAnyWaterSensor
+                    ? "bg-[#F3F4F6] text-[#4B5563]"
+                    : isPhOptimal && isTdsOptimal && isTempOptimal
+                    ? "bg-[#DCFCE7] text-[#166534]"
+                    : "bg-[#FEF3C7] text-[#B45309]"
+                }`}
+              >
+                {!hasAnyWaterSensor
+                  ? "OFFLINE"
+                  : isPhOptimal && isTdsOptimal && isTempOptimal
+                  ? "STABIL"
+                  : "PANTAU"}
               </span>
             </div>
 
@@ -143,8 +173,8 @@ export default function AnalyticsPage() {
                   <span className="text-[10px] text-[#6B7280]">Nilai: {formattedPH} pH</span>
                 </div>
                 <div className="text-right">
-                  <span className="font-bold text-[#166534] block">
-                    {isPhOptimal ? "Optimal (6.5 - 7.5)" : "Buffer Check"}
+                  <span className={`font-bold block ${!hasPh ? "text-[#6B7280]" : "text-[#166534]"}`}>
+                    {!hasPh ? "Sensor Offline" : isPhOptimal ? "Optimal (6.5 - 7.5)" : "Buffer Check"}
                   </span>
                 </div>
               </div>
@@ -155,20 +185,20 @@ export default function AnalyticsPage() {
                   <span className="text-[10px] text-[#6B7280]">Kepekatan: {formattedTDS} ppm</span>
                 </div>
                 <div className="text-right">
-                  <span className="font-bold text-[#D97706] block">
-                    {isTdsOptimal ? "Ideal (400 - 800)" : "Atur Pakan"}
+                  <span className={`font-bold block ${!hasTds ? "text-[#6B7280]" : "text-[#D97706]"}`}>
+                    {!hasTds ? "Sensor Offline" : isTdsOptimal ? "Ideal (400 - 800)" : "Atur Pakan"}
                   </span>
                 </div>
               </div>
 
               <div className="p-2.5 rounded-lg bg-[#F8F9FA] border border-[#E5E7EB] flex items-center justify-between font-mono">
                 <div>
-                  <span className="font-bold text-[#111827] block text-[11px] font-sans">Saturasi DO Kolam</span>
-                  <span className="text-[10px] text-[#6B7280]">Kadar: {formattedDO} mg/L</span>
+                  <span className="font-bold text-[#111827] block text-[11px] font-sans">Suhu Air Kolam (DS18B20)</span>
+                  <span className="text-[10px] text-[#6B7280]">Temperatur: {formattedTemp} °C</span>
                 </div>
                 <div className="text-right">
-                  <span className="font-bold text-[#0284C7] block">
-                    {Number(formattedDO) >= 5.0 ? "Aerasi Cukup" : "Booster DO"}
+                  <span className={`font-bold block ${!hasWaterTemp ? "text-[#6B7280]" : "text-[#0284C7]"}`}>
+                    {!hasWaterTemp ? "Sensor Offline" : isTempOptimal ? "Optimal (22 - 27°C)" : "Pantau Suhu"}
                   </span>
                 </div>
               </div>
@@ -182,7 +212,11 @@ export default function AnalyticsPage() {
                 Pipeline Status
               </span>
               <span className="text-[#38BDF8] text-[10.5px]">
-                {backendConnected ? "WebSocket Live" : "Connecting"}
+                {backendConnected
+                  ? systemMeta.edgeOnline
+                    ? `ESP32 Live (${systemMeta.edgeNode})`
+                    : "API Live • ESP32 Offline"
+                  : "Connecting API..."}
               </span>
             </div>
 
@@ -199,7 +233,7 @@ export default function AnalyticsPage() {
                 <ArrowUpRight className="h-3 w-3" />
               </Link>
               <span className="text-[10px] font-mono text-white/40">
-                Port 3000 &bull; WebSocket /ws
+                HTTPS API &bull; WS /api/telemetry/ws
               </span>
             </div>
           </div>

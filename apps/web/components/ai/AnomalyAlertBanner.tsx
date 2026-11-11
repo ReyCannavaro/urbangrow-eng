@@ -11,7 +11,11 @@ interface Props {
 }
 
 export function AnomalyAlertBanner({ anomaly }: Props) {
-  const { lastActuatorError, clearActuatorError } = useTelemetry();
+  const { lastActuatorError, clearActuatorError, systemMeta } = useTelemetry();
+  const isOffline =
+    !systemMeta.edgeOnline &&
+    systemMeta.liveSensorCount === 0 &&
+    (!anomaly || anomaly.offline || anomaly.risk_level === "OFFLINE");
 
   return (
     <div className="space-y-2.5">
@@ -33,14 +37,37 @@ export function AnomalyAlertBanner({ anomaly }: Props) {
         </div>
       )}
 
-      {!anomaly || !anomaly.is_anomaly ? (
+      {isOffline || anomaly?.risk_level === "OFFLINE" ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-[#E5E7EB] bg-white px-5 py-3.5 text-xs shadow-2xs">
+          <div className="flex items-center gap-3 text-[#4B5563]">
+            <div className="h-7 w-7 rounded-full bg-[#F3F4F6] flex items-center justify-center shrink-0">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#9CA3AF]" />
+            </div>
+            <span className="text-[#111827]">
+              <strong className="text-[#374151]">Menunggu Telemetri ESP32:</strong>{" "}
+              {anomaly?.recommended_action ||
+                "Node edge belum mengirimkan paket sensor ke server VPS. Hubungkan ESP32 ke Wi-Fi untuk mulai pemantauan live."}
+            </span>
+          </div>
+          <Link
+            href="/controls"
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] hover:border-[#D1D5DB] px-3.5 py-1.5 font-semibold text-[#111827] transition-colors group"
+          >
+            <span>Status Node IoT</span>
+            <ArrowUpRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:rotate-45" />
+          </Link>
+        </div>
+      ) : !anomaly || !anomaly.is_anomaly ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-[#E5E7EB] bg-white px-5 py-3.5 text-xs shadow-2xs">
           <div className="flex items-center gap-3 text-[#166534]">
             <div className="h-7 w-7 rounded-full bg-[#DCFCE7] flex items-center justify-center shrink-0">
               <CheckCircle2 className="h-4 w-4 text-[#165B39]" />
             </div>
             <span className="text-[#111827]">
-              <strong className="text-[#165B39]">Ekosistem Seimbang:</strong> Seluruh parameter air dan sensor cahaya LDR beroperasi dalam zona adaptasi iklim optimal.
+              <strong className="text-[#165B39]">Ekosistem Seimbang:</strong>{" "}
+              {systemMeta.liveSensorCount > 0
+                ? `${systemMeta.liveSensorCount} kanal sensor aktif dari ${systemMeta.edgeNode} beroperasi dalam zona adaptasi iklim optimal.`
+                : "Parameter sensor aktif berada dalam zona adaptasi iklim optimal."}
             </span>
           </div>
           <Link

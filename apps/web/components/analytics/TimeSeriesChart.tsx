@@ -83,10 +83,12 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
 
   const dataSamples = history && history.length >= 2 ? history : [];
 
-  // Compute min/max stats for each metric in the current sliding window
+  // Compute min/max stats strictly from valid numeric readings
   const getStats = (key: keyof SensorData) => {
-    if (dataSamples.length === 0) return { min: 0, max: 0, current: 0 };
-    const vals = dataSamples.map((d) => d.sensors[key] ?? 0);
+    const vals = dataSamples
+      .map((d) => d.sensors[key])
+      .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+    if (vals.length === 0) return null;
     return {
       min: Math.min(...vals),
       max: Math.max(...vals),
@@ -122,7 +124,15 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
   const renderLine = (config: MetricConfig, isHighlighted: boolean) => {
     if (dataSamples.length < 2) return null;
 
-    const vals = dataSamples.map((pt) => pt.sensors[config.key] ?? config.min);
+    const validSamples = dataSamples
+      .map((pt, idx) => ({ pt, idx, val: pt.sensors[config.key] }))
+      .filter(
+        (entry): entry is { pt: HistorySample; idx: number; val: number } =>
+          typeof entry.val === "number" && Number.isFinite(entry.val)
+      );
+    if (validSamples.length < 2) return null;
+
+    const vals = validSamples.map((entry) => entry.val);
     const valMin = Math.min(...vals);
     const valMax = Math.max(...vals);
     const rawSpan = valMax - valMin;
@@ -137,9 +147,8 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
     const bandBases = [0.05, 0.28, 0.51, 0.74];
     const bandHeight = 0.19;
 
-    const points = dataSamples.map((pt, idx) => {
+    const points = validSamples.map(({ idx, val }) => {
       const x = paddingX + (idx / (dataSamples.length - 1)) * (width - 2 * paddingX);
-      const val = pt.sensors[config.key] ?? config.min;
       const normalizedLocal = isFlat ? 0.5 : (val - valMin) / span;
 
       let normY = 0.5;
@@ -336,11 +345,11 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
               pH Air
             </span>
             <span className="font-mono text-[10px] text-[#9CA3AF]">
-              {dataSamples.length > 0 ? `${phStats.min.toFixed(2)}-${phStats.max.toFixed(2)}` : "6.5-7.5"}
+              {phStats ? `${phStats.min.toFixed(2)}-${phStats.max.toFixed(2)}` : "6.5-7.5"}
             </span>
           </div>
           <div className="text-xl font-bold tracking-tight text-[#111827] num-tabular mt-1">
-            {typeof sensors.ph === "number" ? sensors.ph.toFixed(2) : sensors.ph}
+            {typeof sensors.ph === "number" ? sensors.ph.toFixed(2) : "--"}
             <span className="text-xs font-normal text-[#6B7280] ml-1">pH</span>
           </div>
         </button>
@@ -361,13 +370,13 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
               Suhu Air
             </span>
             <span className="font-mono text-[10px] text-[#9CA3AF]">
-              {dataSamples.length > 0 ? `${tempStats.min.toFixed(1)}-${tempStats.max.toFixed(1)}°C` : "24-28°C"}
+              {tempStats ? `${tempStats.min.toFixed(1)}-${tempStats.max.toFixed(1)}°C` : "24-28°C"}
             </span>
           </div>
           <div className="text-xl font-bold tracking-tight text-[#111827] num-tabular mt-1">
             {typeof sensors.waterTemperature === "number"
               ? sensors.waterTemperature.toFixed(1)
-              : sensors.waterTemperature}
+              : "--"}
             <span className="text-xs font-normal text-[#6B7280] ml-1">°C</span>
           </div>
         </button>
@@ -388,11 +397,11 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
               TDS Nutrisi
             </span>
             <span className="font-mono text-[10px] text-[#9CA3AF]">
-              {dataSamples.length > 0 ? `${Math.round(tdsStats.min)}-${Math.round(tdsStats.max)}` : "400-800"}
+              {tdsStats ? `${Math.round(tdsStats.min)}-${Math.round(tdsStats.max)}` : "400-800"}
             </span>
           </div>
           <div className="text-xl font-bold tracking-tight text-[#111827] num-tabular mt-1">
-            {typeof sensors.tds === "number" ? Math.round(sensors.tds) : sensors.tds}
+            {typeof sensors.tds === "number" ? Math.round(sensors.tds) : "--"}
             <span className="text-xs font-normal text-[#6B7280] ml-1">ppm</span>
           </div>
         </button>
@@ -413,13 +422,13 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
               Cahaya LDR
             </span>
             <span className="font-mono text-[10px] text-[#9CA3AF]">
-              {dataSamples.length > 0 ? `${Math.round(luxStats.min)}-${Math.round(luxStats.max)}` : "300-2500"}
+              {luxStats ? `${Math.round(luxStats.min)}-${Math.round(luxStats.max)}` : "300-2500"}
             </span>
           </div>
           <div className="text-xl font-bold tracking-tight text-[#111827] num-tabular mt-1">
             {typeof sensors.lightIntensity === "number"
               ? Math.round(sensors.lightIntensity)
-              : sensors.lightIntensity}
+              : "--"}
             <span className="text-xs font-normal text-[#6B7280] ml-1">lux</span>
           </div>
         </button>
@@ -512,6 +521,18 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
           )}
         </svg>
 
+        {/* Empty chart state overlay */}
+        {dataSamples.length < 2 && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center pointer-events-none">
+            <span className="px-3 py-1 rounded-full bg-white border border-[#E5E7EB] font-mono text-[10.5px] font-semibold text-[#374151] shadow-2xs">
+              Menunggu Telemetri ESP32 ({history.length}/2 Sampel)
+            </span>
+            <p className="text-xs text-[#6B7280] mt-2 max-w-md">
+              Grafik spline otomatis tergambar setelah minimal 2 paket data sensor masuk dari ESP32-GROW-01 ke server backend.
+            </p>
+          </div>
+        )}
+
         {/* Hover Crosshair Tooltip Floating Card */}
         {activeSample && hoverIndex !== null && (
           <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm border border-[#E5E7EB] rounded-[16px] p-3 shadow-md text-xs font-mono space-y-1.5 pointer-events-none z-10 min-w-[190px]">
@@ -523,32 +544,48 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
                   : activeSample.timestamp}
               </span>
               <span className="text-[10px] text-[#166534] bg-[#DCFCE7] px-1.5 py-0.2 rounded-full font-bold">
-                T-{Math.max(0, (dataSamples.length - 1 - hoverIndex) * 1.5).toFixed(0)}s
+                T-{Math.max(0, (dataSamples.length - 1 - hoverIndex) * 5).toFixed(0)}s
               </span>
             </div>
             <div className="flex items-center justify-between text-[#111827]">
               <span className="flex items-center gap-1.5 text-[11px]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#165B39]" /> pH:
               </span>
-              <span className="font-bold">{activeSample.sensors.ph.toFixed(2)}</span>
+              <span className="font-bold">
+                {typeof activeSample.sensors.ph === "number"
+                  ? activeSample.sensors.ph.toFixed(2)
+                  : "--"}
+              </span>
             </div>
             <div className="flex items-center justify-between text-[#111827]">
               <span className="flex items-center gap-1.5 text-[11px]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#0284C7]" /> Suhu:
               </span>
-              <span className="font-bold">{activeSample.sensors.waterTemperature.toFixed(1)}°C</span>
+              <span className="font-bold">
+                {typeof activeSample.sensors.waterTemperature === "number"
+                  ? `${activeSample.sensors.waterTemperature.toFixed(1)}°C`
+                  : "--"}
+              </span>
             </div>
             <div className="flex items-center justify-between text-[#111827]">
               <span className="flex items-center gap-1.5 text-[11px]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#D97706]" /> TDS:
               </span>
-              <span className="font-bold">{Math.round(activeSample.sensors.tds)} ppm</span>
+              <span className="font-bold">
+                {typeof activeSample.sensors.tds === "number"
+                  ? `${Math.round(activeSample.sensors.tds)} ppm`
+                  : "--"}
+              </span>
             </div>
             <div className="flex items-center justify-between text-[#111827]">
               <span className="flex items-center gap-1.5 text-[11px]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#7C3AED]" /> LDR:
               </span>
-              <span className="font-bold">{Math.round(activeSample.sensors.lightIntensity)} lux</span>
+              <span className="font-bold">
+                {typeof activeSample.sensors.lightIntensity === "number"
+                  ? `${Math.round(activeSample.sensors.lightIntensity)} lux`
+                  : "--"}
+              </span>
             </div>
           </div>
         )}
@@ -557,13 +594,21 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
       {/* 4. Timeline Axis Markers & Telemetry Health Status */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-[#6B7280] font-mono pt-1 border-t border-[#F3F4F6]">
         <div className="flex items-center gap-6">
-          <span className="text-[#9CA3AF]">-60 Detik</span>
-          <span className="text-[#9CA3AF]">-45s</span>
-          <span className="text-[#9CA3AF] hidden sm:inline">-30s</span>
-          <span className="text-[#9CA3AF]">-15s</span>
-          <span className="font-bold text-[#165B39] flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-[#165B39]" />
-            Live Sekarang
+          <span className="text-[#9CA3AF]">-60 Sampel</span>
+          <span className="text-[#9CA3AF]">-45</span>
+          <span className="text-[#9CA3AF] hidden sm:inline">-30</span>
+          <span className="text-[#9CA3AF]">-15</span>
+          <span
+            className={`font-bold flex items-center gap-1.5 ${
+              dataSamples.length >= 2 ? "text-[#165B39]" : "text-[#6B7280]"
+            }`}
+          >
+            <span
+              className={`h-2 w-2 rounded-full ${
+                dataSamples.length >= 2 ? "bg-[#165B39]" : "bg-[#9CA3AF]"
+              }`}
+            />
+            {dataSamples.length >= 2 ? "Data Tersinkron" : "Menunggu Data"}
           </span>
         </div>
 

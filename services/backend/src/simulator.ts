@@ -1,12 +1,12 @@
 export interface SensorReading {
-  ph: number;
-  tds: number;
-  waterTemperature: number;
-  airTemperature: number;
-  humidity: number;
-  lightIntensity: number;
-  dissolvedOxygen: number;
-  waterLevel: number;
+  ph: number | null;
+  tds: number | null;
+  waterTemperature: number | null;
+  airTemperature: number | null;
+  humidity: number | null;
+  lightIntensity: number | null;
+  dissolvedOxygen: number | null;
+  waterLevel: number | null;
 }
 
 export interface ActuatorState {
@@ -30,7 +30,8 @@ export interface SystemAlert {
 }
 
 export type AnomalyType = "none" | "ph_drop" | "heatwave" | "tds_spike";
-export type SensorSource = "live_iot" | "auto_dummy";
+export type SensorSource = "live_iot" | "offline";
+export type SystemMode = "live_iot" | "partial_live_iot" | "heartbeat_only" | "offline";
 
 export interface IoTDeviceStatus {
   deviceId: string;
@@ -75,17 +76,30 @@ const ALL_SENSOR_KEYS: Array<keyof SensorReading> = [
   "waterLevel",
 ];
 
-class AquaponicsSimulator {
-  private state: SensorReading = {
-    ph: 6.95,
-    tds: 540,
-    waterTemperature: 24.2,
-    airTemperature: 27.5,
-    humidity: 66.0,
-    lightIntensity: 650,
-    dissolvedOxygen: 7.2,
-    waterLevel: 92.0,
+const PHYSICAL_SENSOR_KEYS: Array<keyof SensorReading> = [
+  "ph",
+  "tds",
+  "waterTemperature",
+  "airTemperature",
+  "humidity",
+  "lightIntensity",
+];
+
+function createEmptySensors(): SensorReading {
+  return {
+    ph: null,
+    tds: null,
+    waterTemperature: null,
+    airTemperature: null,
+    humidity: null,
+    lightIntensity: null,
+    dissolvedOxygen: null,
+    waterLevel: null,
   };
+}
+
+class AquaponicsSimulator {
+  private state: SensorReading = createEmptySensors();
 
   private actuators: Record<string, ActuatorState> = {
     waterPump: {
@@ -148,22 +162,11 @@ class AquaponicsSimulator {
   }> = [];
 
   constructor() {
-    // Pre-populate 30 data points representing the last 15 minutes of generative data
-    const now = Date.now();
-    for (let i = 30; i >= 0; i--) {
-      const pastTime = new Date(now - i * 30000).toISOString();
-      this.stepSimulation();
-      this.history.push({
-        timestamp: pastTime,
-        sensors: { ...this.state },
-        actuators: this.getActuatorStatuses(),
-      });
-    }
+    // Strictly start with empty real-telemetry buffer (no synthetic bootstrap waves)
+    this.history = [];
   }
 
-  private lastStepTimestamp: number = 0;
-  private readonly STEP_INTERVAL_MS = 1500; // Cadence: step physical simulation every 1.5 seconds
-  private liveSensorTtlMs: number = 15000; // Auto-fallback to dummy after 15s of silence
+  private liveSensorTtlMs: number = 15000; // Mark sensor offline after 15s of silence from ESP32
   private targetOverrides: Partial<SensorReading> = {};
   private liveSensorTimestamps: Partial<Record<keyof SensorReading, number>> = {};
   private connectedDevices: Map<string, IoTDeviceStatus> = new Map();
@@ -176,6 +179,7 @@ class AquaponicsSimulator {
       if (ts !== undefined && now - ts > this.liveSensorTtlMs) {
         delete this.liveSensorTimestamps[key];
         delete this.targetOverrides[key];
+        this.state[key] = null;
       }
     }
   }
@@ -194,23 +198,15 @@ class AquaponicsSimulator {
     this.liveSensorTimestamps = {};
     this.connectedDevices.clear();
     this.lastTelemetryAt = null;
-    this.state = {
-      ph: 6.95,
-      tds: 540,
-      waterTemperature: 24.2,
-      airTemperature: 27.5,
-      humidity: 66.0,
-      lightIntensity: 650,
-      dissolvedOxygen: 7.2,
-      waterLevel: 92.0,
-    };
+    this.history = [];
+    this.state = createEmptySensors();
   }
 
   public getSensorSources(now: number = Date.now()): Record<keyof SensorReading, SensorSource> {
     this.expireStaleLiveOverrides(now);
     const sources = {} as Record<keyof SensorReading, SensorSource>;
     for (const key of ALL_SENSOR_KEYS) {
-      sources[key] = this.isFieldLive(key, now) ? "live_iot" : "auto_dummy";
+      sources[key] = this.isFieldLive(key, now) ? "live_iot" : "offline";
     }
     return sources;
   }
@@ -220,96 +216,6 @@ class AquaponicsSimulator {
       ...dev,
       online: now - dev.lastSeenMs <= this.liveSensorTtlMs,
     }));
-  }
-
-  // Smooth random walk with biological correlations (preserves live hardware values)
-  public stepSimulation(force: boolean = false) {
-    const now = Date.now();
-    this.expireStaleLiveOverrides(now);
-
-    const round = (val: number, decimals: number = 2) =>
-      Number(val.toFixed(decimals));
-
-    // Target values depending on anomaly state or auto-dummy defaults
-    let targetPH = this.targetOverrides.ph ?? 7.0;
-    let targetWaterTemp = this.targetOverrides.waterTemperature ?? 24.5;
-    let targetTDS = this.targetOverrides.tds ?? 540;
-
-    if (this.anomalyMode === "ph_drop") targetPH = 5.85;
-    if (this.anomalyMode === "heatwave") targetWaterTemp = 30.2;
-    if (this.anomalyMode === "tds_spike") targetTDS = 1120;
-
-    // 1. pH
-    if (this.isFieldLive("ph", now) && this.targetOverrides.ph !== undefined) {
-      this.state.ph = this.targetOverrides.ph;
-    } else {
-      const phDelta = (targetPH - this.state.ph) * 0.01 + (Math.random() - 0.5) * 0.002;
-      this.state.ph = round(Math.max(4.0, Math.min(10.0, this.state.ph + phDelta)), 2);
-    }
-
-    // 2. Water Temperature
-    if (this.isFieldLive("waterTemperature", now) && this.targetOverrides.waterTemperature !== undefined) {
-      this.state.waterTemperature = this.targetOverrides.waterTemperature;
-    } else {
-      const tempDelta = (targetWaterTemp - this.state.waterTemperature) * 0.008 + (Math.random() - 0.5) * 0.004;
-      this.state.waterTemperature = round(this.state.waterTemperature + tempDelta, 1);
-    }
-
-    // 3. TDS
-    if (this.isFieldLive("tds", now) && this.targetOverrides.tds !== undefined) {
-      this.state.tds = this.targetOverrides.tds;
-    } else {
-      const tdsDelta = (targetTDS - this.state.tds) * 0.01 + (Math.random() - 0.5) * 0.3;
-      this.state.tds = Math.round(this.state.tds + tdsDelta);
-    }
-
-    // 4. Air Temperature & Humidity
-    if (this.isFieldLive("airTemperature", now) && this.targetOverrides.airTemperature !== undefined) {
-      this.state.airTemperature = this.targetOverrides.airTemperature;
-    } else {
-      const airDelta = (Math.random() - 0.5) * 0.015;
-      this.state.airTemperature = round(27.0 + (this.state.waterTemperature - 24.0) * 0.35 + airDelta, 1);
-    }
-
-    if (this.isFieldLive("humidity", now) && this.targetOverrides.humidity !== undefined) {
-      this.state.humidity = this.targetOverrides.humidity;
-    } else {
-      this.state.humidity = round(
-        Math.max(40, Math.min(90, 65.0 - (this.state.airTemperature - 25.0) * 1.2 + (Math.random() - 0.5) * 0.1)),
-        1
-      );
-    }
-
-    // 5. Dissolved Oxygen reacts biologically to aerator state unless live IoT overrides
-    if (this.isFieldLive("dissolvedOxygen", now) && this.targetOverrides.dissolvedOxygen !== undefined) {
-      this.state.dissolvedOxygen = this.targetOverrides.dissolvedOxygen;
-    } else {
-      const targetDO = this.actuators.aerator.isOn ? 7.4 : 4.4;
-      const doDelta = (targetDO - this.state.dissolvedOxygen) * 0.012 + (Math.random() - 0.5) * 0.003;
-      this.state.dissolvedOxygen = round(Math.max(2.0, Math.min(10.0, this.state.dissolvedOxygen + doDelta)), 2);
-    }
-
-    // 6. Light Intensity (Preserve exact hardware LDR reading when live!)
-    if (this.isFieldLive("lightIntensity", now) && this.targetOverrides.lightIntensity !== undefined) {
-      this.state.lightIntensity = this.targetOverrides.lightIntensity;
-    } else {
-      const baseLight = this.actuators.growLight.isOn ? 2400 : 550;
-      this.state.lightIntensity = Math.round(baseLight + (Math.random() - 0.5) * 8);
-    }
-
-    // 7. Water Level
-    if (this.isFieldLive("waterLevel", now) && this.targetOverrides.waterLevel !== undefined) {
-      this.state.waterLevel = this.targetOverrides.waterLevel;
-    } else {
-      const levelDelta = (this.actuators.waterPump.isOn ? 0 : -0.05) + (Math.random() - 0.5) * 0.02;
-      this.state.waterLevel = round(Math.max(60, Math.min(100, this.state.waterLevel + levelDelta)), 1);
-    }
-
-    if (force || now - this.lastStepTimestamp >= this.STEP_INTERVAL_MS) {
-      this.lastStepTimestamp = now;
-    }
-
-    this.appendHistorySnapshot();
   }
 
   private appendHistorySnapshot() {
@@ -326,18 +232,26 @@ class AquaponicsSimulator {
 
   public getSnapshot() {
     const now = Date.now();
-    if (now - this.lastStepTimestamp >= this.STEP_INTERVAL_MS) {
-      this.stepSimulation();
-      this.lastStepTimestamp = now;
-    } else {
-      this.expireStaleLiveOverrides(now);
-    }
+    this.expireStaleLiveOverrides(now);
 
     const alerts = this.evaluateAlerts();
     const sensorSources = this.getSensorSources(now);
     const liveSensorCount = Object.values(sensorSources).filter((s) => s === "live_iot").length;
+    const physicalLiveCount = PHYSICAL_SENSOR_KEYS.filter(
+      (k) => sensorSources[k] === "live_iot"
+    ).length;
     const devices = this.getIotDevices(now);
-    const activeDevice = devices.find((d) => d.online) || devices[0];
+    const activeOnlineDevice = devices.find((d) => d.online);
+    const edgeOnline = Boolean(activeOnlineDevice);
+
+    let mode: SystemMode = "offline";
+    if (physicalLiveCount >= PHYSICAL_SENSOR_KEYS.length || liveSensorCount >= PHYSICAL_SENSOR_KEYS.length) {
+      mode = "live_iot";
+    } else if (liveSensorCount > 0) {
+      mode = "partial_live_iot";
+    } else if (edgeOnline) {
+      mode = "heartbeat_only";
+    }
 
     return {
       timestamp: new Date().toISOString(),
@@ -356,15 +270,23 @@ class AquaponicsSimulator {
       actuators: this.actuators,
       alerts,
       system: {
-        status: alerts.some((a) => a.severity === "critical") ? "warning" : "optimal",
-        mode: liveSensorCount > 0 ? "hybrid_live_iot" : "auto_dummy_simulation",
+        status:
+          !edgeOnline && liveSensorCount === 0
+            ? "offline"
+            : alerts.some((a) => a.severity === "critical")
+            ? "warning"
+            : "optimal",
+        mode,
         anomalyMode: this.anomalyMode,
         uptimeSeconds: Math.floor(process.uptime()),
-        edgeNode: activeDevice?.deviceId || "ESP32-GROW-01",
-        edgeOnline: devices.some((d) => d.online),
+        edgeNode: activeOnlineDevice?.deviceId || devices[0]?.deviceId || "ESP32-GROW-01",
+        edgeOnline,
         liveSensorCount,
         lastTelemetryAt: this.lastTelemetryAt,
-        wifiSignalDbm: activeDevice?.wifiRssiDbm ?? -56,
+        wifiSignalDbm:
+          activeOnlineDevice && typeof activeOnlineDevice.wifiRssiDbm === "number"
+            ? activeOnlineDevice.wifiRssiDbm
+            : null,
       },
     };
   }
@@ -455,8 +377,11 @@ class AquaponicsSimulator {
       }
     }
 
-    if (updatedFields.length > 0) {
+    if (updatedFields.length > 0 || meta?.deviceId) {
       this.lastTelemetryAt = new Date(now).toISOString();
+    }
+
+    if (updatedFields.length > 0) {
       this.appendHistorySnapshot();
     }
 
@@ -478,27 +403,29 @@ class AquaponicsSimulator {
     const alerts: SystemAlert[] = [];
     const now = new Date().toISOString();
 
-    if (this.state.ph < 6.4) {
-      alerts.push({
-        id: "alert-ph-low",
-        severity: "critical",
-        metric: "ph",
-        message: `Low Water pH (${this.state.ph}): Acidosis risk for fish. Buffer dosing needed.`,
-        timestamp: now,
-        isResolved: false,
-      });
-    } else if (this.state.ph > 7.6) {
-      alerts.push({
-        id: "alert-ph-high",
-        severity: "warning",
-        metric: "ph",
-        message: `High Water pH (${this.state.ph}): Micronutrient lockout for plant roots.`,
-        timestamp: now,
-        isResolved: false,
-      });
+    if (typeof this.state.ph === "number") {
+      if (this.state.ph < 6.4) {
+        alerts.push({
+          id: "alert-ph-low",
+          severity: "critical",
+          metric: "ph",
+          message: `Low Water pH (${this.state.ph}): Acidosis risk for fish. Buffer dosing needed.`,
+          timestamp: now,
+          isResolved: false,
+        });
+      } else if (this.state.ph > 7.6) {
+        alerts.push({
+          id: "alert-ph-high",
+          severity: "warning",
+          metric: "ph",
+          message: `High Water pH (${this.state.ph}): Micronutrient lockout for plant roots.`,
+          timestamp: now,
+          isResolved: false,
+        });
+      }
     }
 
-    if (this.state.waterTemperature > 28.5) {
+    if (typeof this.state.waterTemperature === "number" && this.state.waterTemperature > 28.5) {
       alerts.push({
         id: "alert-temp-high",
         severity: "critical",
@@ -509,7 +436,7 @@ class AquaponicsSimulator {
       });
     }
 
-    if (this.state.dissolvedOxygen < 5.0) {
+    if (typeof this.state.dissolvedOxygen === "number" && this.state.dissolvedOxygen < 5.0) {
       alerts.push({
         id: "alert-do-low",
         severity: "critical",
@@ -520,7 +447,7 @@ class AquaponicsSimulator {
       });
     }
 
-    if (this.state.waterLevel < 25) {
+    if (typeof this.state.waterLevel === "number" && this.state.waterLevel < 25) {
       alerts.push({
         id: "alert-water-level-low",
         severity: "critical",
@@ -531,7 +458,11 @@ class AquaponicsSimulator {
       });
     }
 
-    if (this.state.lightIntensity < 250 && !this.actuators.growLight.isOn) {
+    if (
+      typeof this.state.lightIntensity === "number" &&
+      this.state.lightIntensity < 250 &&
+      !this.actuators.growLight.isOn
+    ) {
       alerts.push({
         id: "alert-light-low",
         severity: "warning",
