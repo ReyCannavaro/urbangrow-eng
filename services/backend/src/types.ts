@@ -1,11 +1,11 @@
 export interface SensorTelemetry {
-  ph: number;
-  tds_ppm: number;
-  water_temp_c: number;
-  air_temp_c: number;
-  humidity_pct: number;
-  lux: number;
-  dissolved_oxygen_mg_l: number;
+  ph: number | null;
+  tds_ppm: number | null;
+  water_temp_c: number | null;
+  air_temp_c: number | null;
+  humidity_pct: number | null;
+  lux: number | null;
+  dissolved_oxygen_mg_l: number | null;
   water_level_ok: boolean;
 }
 

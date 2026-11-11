@@ -11,9 +11,27 @@ import {
 
 interface AlertsBentoRowProps {
   activeCount: number;
+  warningCount: number;
+  resolvedCount: number;
+  edgeOnline: boolean;
+  liveSensorCount: number;
+  edgeNode: string;
 }
 
-export function AlertsBentoRow({ activeCount }: AlertsBentoRowProps) {
+export function AlertsBentoRow({
+  activeCount,
+  warningCount,
+  resolvedCount,
+  edgeOnline,
+  liveSensorCount,
+  edgeNode,
+}: AlertsBentoRowProps) {
+  const integrityScore = !edgeOnline
+    ? "--"
+    : warningCount === 0
+      ? "100"
+      : String(Math.max(40, 100 - warningCount * 10));
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* 1. THE INVERTED HERO ANCHOR CARD */}
@@ -35,11 +53,18 @@ export function AlertsBentoRow({ activeCount }: AlertsBentoRowProps) {
 
         <div>
           <div className="text-4xl font-bold tracking-tight num-tabular text-white">
-            100<span className="text-xl font-normal text-white/80">%</span>
+            {integrityScore}
+            <span className="text-xl font-normal text-white/80">%</span>
           </div>
           <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 text-[10px] font-mono text-white/90">
             <TrendingUp className="h-3 w-3 text-[#68C194]" />
-            <span>0 Anomali Kritis • Buffer Aman</span>
+            <span>
+              {!edgeOnline
+                ? "Menunggu Koneksi ESP32"
+                : warningCount === 0
+                  ? "0 Anomali Kritis • Sensor Live"
+                  : `${warningCount} Peringatan Anomali`}
+            </span>
           </div>
         </div>
       </div>
@@ -65,19 +90,21 @@ export function AlertsBentoRow({ activeCount }: AlertsBentoRowProps) {
           </div>
           <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#FEF3C7] text-[10px] font-medium text-[#B45309]">
             <CheckCircle2 className="h-3 w-3" />
-            <span>Sensor Telemetri &amp; Relay</span>
+            <span>
+              {warningCount > 0 ? `${warningCount} Anomali Tercatat` : "Sensor Telemetri & Relay"}
+            </span>
           </div>
         </div>
       </div>
 
-      {/* 3. TINGKAT RESOLUSI OTOMATIS */}
+      {/* 3. TINGKAT RESOLUSI & AUDIT DATABASE */}
       <div
         style={{ "--ug-delay": "170ms" } as React.CSSProperties}
         className="ug-enter rounded-[24px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] p-5 shadow-xs flex flex-col justify-between h-[170px] transition-colors"
       >
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-[#111827]">
-            Mitigasi Otomasi Berhasil
+            Riwayat Audit &amp; Resolusi
           </span>
           <div className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563]">
             <CheckCircle2 className="h-4 w-4 text-[#165B39]" />
@@ -86,12 +113,14 @@ export function AlertsBentoRow({ activeCount }: AlertsBentoRowProps) {
 
         <div>
           <div className="text-4xl font-bold tracking-tight num-tabular text-[#111827]">
-            100
-            <span className="text-xl font-normal text-[#9CA3AF] ml-0.5">%</span>
+            {resolvedCount}
+            <span className="text-xl font-normal text-[#9CA3AF] ml-1">Entri</span>
           </div>
           <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[10px] font-medium text-[#166534]">
             <CheckCircle2 className="h-3 w-3" />
-            <span>Aerator &amp; Pompa Siaga Aktif</span>
+            <span>
+              {resolvedCount > 0 ? "Tersimpan di Database SQLite" : "Belum ada riwayat aksi"}
+            </span>
           </div>
         </div>
       </div>
@@ -112,12 +141,22 @@ export function AlertsBentoRow({ activeCount }: AlertsBentoRowProps) {
 
         <div>
           <div className="text-4xl font-bold tracking-tight num-tabular text-[#111827]">
-            6 / 6
+            {edgeOnline ? liveSensorCount : 0} / 6
             <span className="text-xl font-normal text-[#9CA3AF] ml-1">Sensor</span>
           </div>
-          <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[10px] font-medium text-[#166534]">
+          <div
+            className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium ${
+              edgeOnline && liveSensorCount === 6
+                ? "bg-[#DCFCE7] text-[#166534]"
+                : edgeOnline
+                  ? "bg-[#FEF3C7] text-[#B45309]"
+                  : "bg-[#F3F4F6] text-[#4B5563]"
+            }`}
+          >
             <CheckCircle2 className="h-3 w-3" />
-            <span>pH, TDS, Air, Udara, RH, LDR</span>
+            <span>
+              {edgeOnline ? `${edgeNode} (${liveSensorCount}/6 Live)` : "Menunggu Telemetri ESP32"}
+            </span>
           </div>
         </div>
       </div>

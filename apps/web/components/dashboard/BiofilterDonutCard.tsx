@@ -65,27 +65,46 @@ export function BiofilterDonutCard() {
     return () => cancelAnimationFrame(rafId);
   }, [inView]);
 
-  // Compute nitrification breakdown strictly within [60%, 98.5%] from live ECAD telemetry
-  const phDeviation = Math.abs((sensors.ph ?? 6.95) - 7.0);
-  const tempDeviation = Math.abs((sensors.waterTemperature ?? 24.3) - 25.0);
+  const hasBiofilterSensors =
+    typeof sensors.ph === "number" ||
+    typeof sensors.waterTemperature === "number" ||
+    typeof sensors.tds === "number";
+
+  // Compute nitrification breakdown strictly within [60%, 98.5%] when live ESP32 sensors exist
+  const phDeviation =
+    typeof sensors.ph === "number" ? Math.abs(sensors.ph - 7.0) : 0;
+  const tempDeviation =
+    typeof sensors.waterTemperature === "number"
+      ? Math.abs(sensors.waterTemperature - 25.0)
+      : 0;
   const pumpBonus = actuators.waterPump?.isOn ? 0 : 8.5;
 
-  const totalEfficiency = Number(
-    Math.max(
-      62,
-      Math.min(
-        98.5,
-        97.2 - phDeviation * 5.2 - Math.max(0, tempDeviation - 2) * 1.6 - pumpBonus
+  const totalEfficiency = hasBiofilterSensors
+    ? Number(
+        Math.max(
+          62,
+          Math.min(
+            98.5,
+            97.2 - phDeviation * 5.2 - Math.max(0, tempDeviation - 2) * 1.6 - pumpBonus
+          )
+        ).toFixed(1)
       )
-    ).toFixed(1)
-  );
+    : 0;
 
   // Split decomposed ammonia into Nitrat absorbed by crops vs active Nitrifikasi conversion
   const nitrateRatio =
-    sensors.tds >= 400 && sensors.tds <= 800 ? 0.768 : 0.72;
-  const nitratePct = Number((totalEfficiency * nitrateRatio).toFixed(1));
-  const nitrificationPct = Number((totalEfficiency - nitratePct).toFixed(1));
-  const residuePct = Number((100 - totalEfficiency).toFixed(1));
+    typeof sensors.tds === "number" && sensors.tds >= 400 && sensors.tds <= 800
+      ? 0.768
+      : 0.72;
+  const nitratePct = hasBiofilterSensors
+    ? Number((totalEfficiency * nitrateRatio).toFixed(1))
+    : 0;
+  const nitrificationPct = hasBiofilterSensors
+    ? Number((totalEfficiency - nitratePct).toFixed(1))
+    : 0;
+  const residuePct = hasBiofilterSensors
+    ? Number((100 - totalEfficiency).toFixed(1))
+    : 0;
 
   // Exact concentric semicircular gauge geometry (cx=100, cy=94, r=74, strokeWidth=18)
   const cx = 100;
@@ -216,28 +235,28 @@ export function BiofilterDonutCard() {
         {/* Center Readout aligned cleanly inside inner radius */}
         <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex flex-col items-center text-center pointer-events-none">
           <span className="text-3xl font-bold tracking-tight text-[#111827] num-tabular leading-none">
-            {animatedEfficiency}
+            {hasBiofilterSensors ? animatedEfficiency : "--"}
             <span className="text-lg font-normal text-[#9CA3AF]">%</span>
           </span>
           <span className="text-[10px] font-medium text-[#9CA3AF] mt-1">
-            Amonia Terurai
+            {hasBiofilterSensors ? "Amonia Terurai" : "Menunggu Sensor"}
           </span>
         </div>
       </div>
 
       {/* Exact Data-Synced Legend */}
       <div className="flex items-center justify-center gap-4 pt-2 border-t border-[#E5E7EB] text-[10px] text-[#4B5563]">
-        <div className="flex items-center gap-1.5" title={`${nitratePct}% terserap tanaman`}>
+        <div className="flex items-center gap-1.5" title={hasBiofilterSensors ? `${nitratePct}% terserap tanaman` : "Sensor offline"}>
           <span className="h-2.5 w-2.5 rounded-full bg-[#165B39] shrink-0" />
-          <span>Nitrat <strong className="font-mono text-[#111827]">{nitratePct}%</strong></span>
+          <span>Nitrat <strong className="font-mono text-[#111827]">{hasBiofilterSensors ? `${nitratePct}%` : "--"}</strong></span>
         </div>
-        <div className="flex items-center gap-1.5" title={`${nitrificationPct}% proses biofilter`}>
+        <div className="flex items-center gap-1.5" title={hasBiofilterSensors ? `${nitrificationPct}% proses biofilter` : "Sensor offline"}>
           <span className="h-2.5 w-2.5 rounded-full bg-[#4EAB7C] shrink-0" />
-          <span>Nitrifikasi <strong className="font-mono text-[#111827]">{nitrificationPct}%</strong></span>
+          <span>Nitrifikasi <strong className="font-mono text-[#111827]">{hasBiofilterSensors ? `${nitrificationPct}%` : "--"}</strong></span>
         </div>
-        <div className="flex items-center gap-1.5" title={`${residuePct}% residu`}>
+        <div className="flex items-center gap-1.5" title={hasBiofilterSensors ? `${residuePct}% residu` : "Sensor offline"}>
           <span className="h-2.5 w-2.5 rounded-full bg-hatched-diagonal border border-[#9CA3AF] shrink-0" />
-          <span>Residu <strong className="font-mono text-[#111827]">{residuePct}%</strong></span>
+          <span>Residu <strong className="font-mono text-[#111827]">{hasBiofilterSensors ? `${residuePct}%` : "--"}</strong></span>
         </div>
       </div>
     </div>

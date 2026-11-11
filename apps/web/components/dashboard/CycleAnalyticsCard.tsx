@@ -7,50 +7,57 @@ import { useTelemetry } from "@/lib/telemetryContext";
 import { useInViewOnce } from "@/components/motion/RevealOnView";
 
 export function CycleAnalyticsCard() {
-  const { sensors, history } = useTelemetry();
+  const { history } = useTelemetry();
   const { ref, inView } = useInViewOnce<HTMLDivElement>(0.15);
 
-  const liveStability = Math.max(
-    55,
-    Math.min(
-      98,
-      Math.round(
-        100 -
-          Math.abs((sensors.ph ?? 7.0) - 7.0) * 14 -
-          Math.abs((sensors.waterTemperature ?? 24.5) - 24.5) * 2
-      )
+  // Compute stability scores strictly from actual recorded database/live samples
+  const validScores = history
+    .filter(
+      (sample) =>
+        typeof sample.sensors.ph === "number" ||
+        typeof sample.sensors.waterTemperature === "number"
     )
-  );
+    .slice(-7)
+    .map((sample) => {
+      const phPen =
+        typeof sample.sensors.ph === "number"
+          ? Math.abs(sample.sensors.ph - 7.0) * 14
+          : 0;
+      const tempPen =
+        typeof sample.sensors.waterTemperature === "number"
+          ? Math.abs(sample.sensors.waterTemperature - 24.5) * 2
+          : 0;
+      return Math.max(55, Math.min(98, Math.round(100 - phPen - tempPen)));
+    });
 
-  // Compute real stability percentages from recent database history points when available
-  const recentScores = history.slice(-3).map((sample) =>
-    Math.max(
-      55,
-      Math.min(
-        98,
-        Math.round(
-          100 -
-            Math.abs((sample.sensors.ph ?? 7.0) - 7.0) * 14 -
-            Math.abs((sample.sensors.waterTemperature ?? 24.5) - 24.5) * 2
-        )
-      )
-    )
-  );
+  const dayLabels = ["S", "M", "T", "W", "T", "F", "S"];
+  const hasRealSamples = validScores.length > 0;
+  const offset = Math.max(0, 7 - validScores.length);
 
-  const monPct = recentScores[0] ?? 74;
-  const tuePct = recentScores[1] ?? 91;
-  const wedPct = recentScores[2] ?? liveStability;
+  const days = dayLabels.map((day, idx) => {
+    const scoreIdx = idx - offset;
+    const score =
+      scoreIdx >= 0 && scoreIdx < validScores.length ? validScores[scoreIdx] : null;
+    const isLatest = scoreIdx === validScores.length - 1 && score !== null;
 
-  // 7-day weekly telemetry data matching Donezo capsule chart
-  const days = [
-    { day: "S", height: "65%", isHatched: true, isSolid: false },
-    { day: "M", height: `${Math.min(100, monPct)}%`, isHatched: false, isSolid: false, color: "#4EAB7C", badge: `${monPct}%` },
-    { day: "T", height: `${Math.min(100, tuePct)}%`, isHatched: false, isSolid: true, color: "#165B39" },
-    { day: "W", height: `${Math.min(100, wedPct)}%`, isHatched: false, isSolid: true, color: "#165B39" },
-    { day: "T", height: "70%", isHatched: true, isSolid: false },
-    { day: "F", height: "60%", isHatched: true, isSolid: false },
-    { day: "S", height: "75%", isHatched: true, isSolid: false },
-  ];
+    if (score === null) {
+      return {
+        day,
+        height: "28%",
+        isHatched: true,
+        color: undefined as string | undefined,
+        badge: undefined as string | undefined,
+      };
+    }
+
+    return {
+      day,
+      height: `${Math.min(100, score)}%`,
+      isHatched: false,
+      color: isLatest ? "#165B39" : "#4EAB7C",
+      badge: isLatest ? `${score}%` : undefined,
+    };
+  });
 
   return (
     <div
@@ -61,10 +68,12 @@ export function CycleAnalyticsCard() {
       <div className="flex items-center justify-between">
         <div>
           <span className="text-xs font-semibold text-[#111827]">
-            Stabilitas Siklus Mingguan
+            Stabilitas Siklus Telemetri
           </span>
           <p className="text-[10px] text-[#9CA3AF] mt-0.5">
-            Tren stabilitas pH, nutrisi TDS &amp; cahaya
+            {hasRealSamples
+              ? `${validScores.length} sampel terbaru pH & suhu air ESP32`
+              : "Menunggu sampel telemetri live dari ESP32"}
           </p>
         </div>
         <Link

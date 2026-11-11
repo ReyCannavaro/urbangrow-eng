@@ -25,8 +25,11 @@ import {
 
 initDatabase();
 
-function persistCurrentTelemetrySnapshot() {
+function persistCurrentTelemetrySnapshot(): boolean {
   const snap = simulator.getSnapshot();
+  if (snap.system.liveSensorCount === 0) {
+    return false;
+  }
   recordSensorReading({
     deviceId: snap.system.edgeNode || "ESP32-GROW-01",
     ph: snap.sensors.ph,
@@ -39,6 +42,7 @@ function persistCurrentTelemetrySnapshot() {
     waterLevel: snap.sensors.waterLevel,
     recordedAt: snap.timestamp,
   });
+  return true;
 }
 
 function evaluateAutomationRules() {
@@ -96,7 +100,7 @@ function evaluateAutomationRules() {
       sched.operator &&
       typeof sched.thresholdValue === "number"
     ) {
-      const currentVal = (snap.sensors as unknown as Record<string, number>)[sched.sensorMetric];
+      const currentVal = (snap.sensors as unknown as Record<string, number | null>)[sched.sensorMetric];
       if (typeof currentVal !== "number") continue;
 
       const conditionMet =
@@ -144,8 +148,6 @@ function evaluateAutomationRules() {
   }
 }
 
-persistCurrentTelemetrySnapshot();
-
 if (process.env.NODE_ENV !== "test") {
   setInterval(() => {
     persistCurrentTelemetrySnapshot();
@@ -191,6 +193,8 @@ function checkPumpSafetyIfEnabling(id: string, targetOn: boolean): { allowed: bo
   }
 
   const snap = simulator.getSnapshot();
+  const waterLevelOk =
+    typeof snap.sensors.waterLevel === "number" ? snap.sensors.waterLevel > 20 : true;
   return SafetyInterlockManager.canActivatePump({
     ph: snap.sensors.ph,
     tds_ppm: snap.sensors.tds,
@@ -199,7 +203,7 @@ function checkPumpSafetyIfEnabling(id: string, targetOn: boolean): { allowed: bo
     humidity_pct: snap.sensors.humidity,
     lux: snap.sensors.lightIntensity,
     dissolved_oxygen_mg_l: snap.sensors.dissolvedOxygen,
-    water_level_ok: snap.sensors.waterLevel > 20,
+    water_level_ok: waterLevelOk,
   });
 }
 
@@ -298,7 +302,7 @@ export const app = new Elysia()
     }
   )
 
-  // Flexible edge telemetry ingestion (supports partial payloads like LDR-only + auto-dummy fallback)
+  // Flexible edge telemetry ingestion (supports partial payloads cleanly; unsent sensors remain offline)
   .post(
     "/api/sensors/telemetry",
     ({ body }) => {
@@ -320,14 +324,14 @@ export const app = new Elysia()
     }
   )
 
-  // 1. Current real-time sensor snapshot (hybrid live IoT + smooth auto-dummy)
+  // 1. Current real-time sensor snapshot (strict live IoT / offline status)
   .get("/api/sensors/current", () => simulator.getSnapshot())
 
   // 2. Historical sensor data for telemetry trend charts (backed by SQLite + live ring buffer)
   .get("/api/sensors/history", () => {
     const dbRows = getPersistedSensorReadings(60);
     const liveHistory = simulator.getHistory();
-    if (dbRows.length >= 5) {
+    if (dbRows.length > 0) {
       const snap = simulator.getSnapshot();
       const actuatorMap = Object.fromEntries(
         Object.entries(snap.actuators).map(([k, v]) => [k, Boolean(v.isOn)])
@@ -614,8 +618,13 @@ export const app = new Elysia()
     };
   })
   .get("/api/sensors/export.csv", ({ set }) => {
-    persistCurrentTelemetrySnapshot();
     const rows = getPersistedSensorReadings(500);
+    const fmt = (val: number | null, digits?: number) =>
+      typeof val === "number" && Number.isFinite(val)
+        ? digits !== undefined
+          ? val.toFixed(digits)
+          : String(Math.round(val))
+        : "";
     const headers = [
       "ID",
       "Timestamp_UTC",
@@ -636,14 +645,14 @@ export const app = new Elysia()
           r.id,
           r.recordedAt,
           r.deviceId,
-          r.ph.toFixed(2),
-          Math.round(r.tds),
-          r.waterTemperature.toFixed(2),
-          r.airTemperature.toFixed(1),
-          r.humidity.toFixed(1),
-          Math.round(r.lightIntensity),
-          r.dissolvedOxygen.toFixed(2),
-          r.waterLevel.toFixed(1),
+          fmt(r.ph, 2),
+          fmt(r.tds),
+          fmt(r.waterTemperature, 2),
+          fmt(r.airTemperature, 1),
+          fmt(r.humidity, 1),
+          fmt(r.lightIntensity),
+          fmt(r.dissolvedOxygen, 2),
+          fmt(r.waterLevel, 1),
         ].join(",")
       ),
     ];
@@ -819,31 +828,77 @@ export const app = new Elysia()
   // 11. AI Engine Anomaly Evaluation Gateway
   .post("/api/ai/predict", async () => {
     const snap = simulator.getSnapshot();
+    if (snap.system.liveSensorCount === 0) {
+      return {
+        success: true,
+        offline: true,
+        is_anomaly: false,
+        anomaly_score: 0,
+        risk_level: "OFFLINE",
+        recommended_action: snap.system.edgeOnline
+          ? "Node ESP32-GROW-01 terhubung (heartbeat), namun belum ada pembacaan sensor yang dikirim ke backend."
+          : "Menunggu koneksi & paket telemetri pertama dari ESP32-GROW-01 ke server sebelum evaluasi anomali dijalankan.",
+        affected_metrics: [],
+      };
+    }
+
     const result = await AiEngineClient.predictAnomaly({
-      ph: snap.sensors.ph,
-      tds_ppm: snap.sensors.tds,
-      water_temp_c: snap.sensors.waterTemperature,
-      air_temp_c: snap.sensors.airTemperature,
-      humidity_pct: snap.sensors.humidity,
-      lux: snap.sensors.lightIntensity,
-      dissolved_oxygen: snap.sensors.dissolvedOxygen,
+      ph: snap.sensors.ph ?? 7.0,
+      tds_ppm: snap.sensors.tds ?? 540,
+      water_temp_c: snap.sensors.waterTemperature ?? 24.5,
+      air_temp_c: snap.sensors.airTemperature ?? 27.0,
+      humidity_pct: snap.sensors.humidity ?? 65.0,
+      lux: snap.sensors.lightIntensity ?? 600,
+      dissolved_oxygen: snap.sensors.dissolvedOxygen ?? 7.0,
     });
-    return { success: true, ...result };
+    return {
+      success: true,
+      offline: false,
+      partial_sensors: snap.system.liveSensorCount < 6,
+      live_sensor_count: snap.system.liveSensorCount,
+      ...result,
+    };
   })
 
   // 12. AI Engine Climate Adaptation Score Gateway
   .get("/api/ai/climate-score", async () => {
     const snap = simulator.getSnapshot();
+    if (snap.system.liveSensorCount === 0) {
+      return {
+        success: true,
+        offline: true,
+        climate_adaptation_score: null,
+        resilience_grade: "OFFLINE",
+        sub_scores: {
+          temperature_stability: null,
+          water_quality: null,
+          dissolved_oxygen: null,
+          photoperiod_consistency: null,
+        },
+        insights: [
+          snap.system.edgeOnline
+            ? "ESP32-GROW-01 terhubung (heartbeat), pasang sensor untuk menghitung Climate Adaptation Score."
+            : "Menunggu paket telemetri sensor live dari ESP32-GROW-01 untuk menghitung Climate Adaptation Score.",
+        ],
+      };
+    }
+
     const result = await AiEngineClient.calculateClimateScore({
-      ph: snap.sensors.ph,
-      tds_ppm: snap.sensors.tds,
-      water_temp_c: snap.sensors.waterTemperature,
-      air_temp_c: snap.sensors.airTemperature,
-      humidity_pct: snap.sensors.humidity,
-      lux: snap.sensors.lightIntensity,
-      dissolved_oxygen: snap.sensors.dissolvedOxygen,
+      ph: snap.sensors.ph ?? 7.0,
+      tds_ppm: snap.sensors.tds ?? 540,
+      water_temp_c: snap.sensors.waterTemperature ?? 24.5,
+      air_temp_c: snap.sensors.airTemperature ?? 27.0,
+      humidity_pct: snap.sensors.humidity ?? 65.0,
+      lux: snap.sensors.lightIntensity ?? 600,
+      dissolved_oxygen: snap.sensors.dissolvedOxygen ?? 7.0,
     });
-    return { success: true, ...result };
+    return {
+      success: true,
+      offline: false,
+      partial_sensors: snap.system.liveSensorCount < 6,
+      live_sensor_count: snap.system.liveSensorCount,
+      ...result,
+    };
   })
 
   // 13. Full-duplex WebSocket Telemetry Stream

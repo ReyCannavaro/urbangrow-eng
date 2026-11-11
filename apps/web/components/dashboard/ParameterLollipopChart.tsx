@@ -8,6 +8,9 @@ import { useTelemetry } from "@/lib/telemetryContext";
 export function ParameterLollipopChart() {
   const { sensors } = useTelemetry();
 
+  const formattedPH = typeof sensors.ph === "number" ? sensors.ph.toFixed(2) : "--";
+  const formattedTDS = typeof sensors.tds === "number" ? Math.round(sensors.tds) : "--";
+
   // Weekly historical stability points (S M T W T F S)
   const days = [
     { day: "S", val: 6.88, height: "45%" },
@@ -15,7 +18,7 @@ export function ParameterLollipopChart() {
     { day: "T", val: 6.95, height: "55%" },
     { day: "W", val: 6.91, height: "50%" },
     { day: "T", val: 6.94, height: "70%" },
-    { day: "F", val: 7.02, height: "85%", isHighlight: true, badge: `${sensors.ph} pH` },
+    { day: "F", val: 7.02, height: "85%", isHighlight: true, badge: `${formattedPH} pH` },
     { day: "S", val: 6.96, height: "40%" },
   ];
 
@@ -24,7 +27,7 @@ export function ParameterLollipopChart() {
       {/* Card Header with Arrow Button */}
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold text-[var(--text-primary)]">
-          Stabilitas pH & TDS
+          Stabilitas pH &amp; TDS
         </span>
         <Link
           href="/analytics"
@@ -39,11 +42,11 @@ export function ParameterLollipopChart() {
       <div>
         <div className="flex items-baseline gap-2">
           <span className="text-3xl font-light tracking-tight text-[var(--text-primary)] num-tabular">
-            {sensors.ph} <span className="text-lg font-normal text-[var(--text-muted)]">pH</span>
+            {formattedPH} <span className="text-lg font-normal text-[var(--text-muted)]">pH</span>
           </span>
         </div>
         <div className="text-[11px] text-[var(--text-secondary)] mt-0.5">
-          TDS {sensors.tds} ppm • Rentang optimal 6.5 - 7.5
+          TDS {formattedTDS} ppm • Rentang optimal 6.5 - 7.5
         </div>
       </div>
 

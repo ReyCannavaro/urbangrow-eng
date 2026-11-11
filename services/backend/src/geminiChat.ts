@@ -212,7 +212,7 @@ function worstSeverity(a: HealthSeverity, b: HealthSeverity): HealthSeverity {
 
 function addDaysIso(days: number): string {
   const d = new Date(Date.now() + days * 86400000);
-  return d.toISOString().split("T")[0];
+  return d.toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
 }
 
 function daysElapsedSinceIso(isoDate: string): number {
@@ -230,21 +230,30 @@ function computeFishHarvestItem(
   const label = isNila ? "Ikan Nila (Oreochromis niloticus)" : "Ikan Lele (Clarias sp.)";
   const level = isNila ? "Kolam Level 3 (DO Tinggi)" : "Kolam Level 1 (Dasar Sistem)";
 
-  // Water suitability factor from live ESP32 sensors
-  const tempDiff = Math.abs(sensors.waterTemperature - 26.5);
+  const waterTemp = typeof sensors.waterTemperature === "number" ? sensors.waterTemperature : 25.0;
+  // Water suitability factor from live ESP32 sensors (fallback neutral 1.0 if sensor offline)
+  const tempDiff = Math.abs(waterTemp - 26.5);
   const tempFactor = tempDiff <= 2.5 ? 1.0 : tempDiff <= 4.5 ? 0.86 : 0.7;
 
-  const doFactor = isNila
-    ? sensors.dissolvedOxygen >= 5.5
-      ? 1.0
-      : sensors.dissolvedOxygen >= 4.5
-      ? 0.82
-      : 0.62
-    : sensors.dissolvedOxygen >= 2.8
-    ? 1.0
-    : 0.85;
+  const doFactor =
+    typeof sensors.dissolvedOxygen === "number"
+      ? isNila
+        ? sensors.dissolvedOxygen >= 5.5
+          ? 1.0
+          : sensors.dissolvedOxygen >= 4.5
+          ? 0.82
+          : 0.62
+        : sensors.dissolvedOxygen >= 2.8
+        ? 1.0
+        : 0.85
+      : 1.0;
 
-  const phFactor = sensors.ph >= 6.5 && sensors.ph <= 7.8 ? 1.0 : 0.88;
+  const phFactor =
+    typeof sensors.ph === "number"
+      ? sensors.ph >= 6.5 && sensors.ph <= 7.8
+        ? 1.0
+        : 0.88
+      : 1.0;
   const densityFactor = input.count <= 45 ? 1.0 : input.count <= 70 ? 0.92 : 0.84;
 
   const suitability = tempFactor * doFactor * phFactor;
@@ -315,8 +324,8 @@ function computeFishHarvestItem(
 
 function computeHarvestItem(
   cropType: "pakcoy" | "kangkung",
-  waterTempC: number,
-  lightLux: number,
+  waterTempC: number | null,
+  lightLux: number | null,
   daysSincePlanting: number,
   cohort?: CropCohortInput
 ): HarvestForecastItem {
@@ -341,7 +350,9 @@ function computeHarvestItem(
   // Photosynthetic light factor modulated smoothly by live LDR reading
   // Ideal indoor/greenhouse aquaponic range ~1,500 - 15,000+ lux
   const lightEfficiency =
-    lightLux >= 1200
+    typeof lightLux !== "number"
+      ? 0.88
+      : lightLux >= 1200
       ? 1.0
       : lightLux >= 500
       ? 0.9
@@ -349,7 +360,8 @@ function computeHarvestItem(
       ? 0.78
       : 0.62;
 
-  const effectiveTemp = Math.max(2.0, waterTempC - config.baseTemp);
+  const effectiveWaterTemp = typeof waterTempC === "number" ? waterTempC : 25.0;
+  const effectiveTemp = Math.max(2.0, effectiveWaterTemp - config.baseTemp);
   const effectiveDailyGdd = effectiveTemp * lightEfficiency;
   const accumulatedGdd = Number((effectiveDailyGdd * daysSincePlanting).toFixed(1));
   const remainingGdd = Math.max(0, config.targetGdd - accumulatedGdd);
@@ -425,14 +437,14 @@ const VALID_CHART_THEMES = new Set<AgriBotChartTheme>([
 
 interface SampledHistoryPoint {
   timeWib: string;
-  ph: number;
-  waterTemperature: number;
-  tds: number;
-  dissolvedOxygen: number;
-  lightIntensity: number;
-  airTemperature: number;
-  humidity: number;
-  waterLevel: number;
+  ph: number | null;
+  waterTemperature: number | null;
+  tds: number | null;
+  dissolvedOxygen: number | null;
+  lightIntensity: number | null;
+  airTemperature: number | null;
+  humidity: number | null;
+  waterLevel: number | null;
 }
 
 function sanitizeChartSpecs(rawCharts: unknown): AgriBotChartSpec[] {
@@ -640,103 +652,134 @@ export class AgriBotEngine {
     const s = snap.sensors;
     const sources = snap.sensorSources;
     const actuators = snap.actuators;
+    const isEdgeOnline = snap.system.edgeOnline;
+    const hasAnyLiveSensor = snap.system.liveSensorCount > 0;
 
-    // 1. Time-Series Trend Analysis
+    // 1. Time-Series Trend Analysis (guarded for null offline readings)
+    const calcDelta = (a: number | null | undefined, b: number | null | undefined, decimals = 2) => {
+      if (typeof a !== "number" || typeof b !== "number") return 0;
+      return Number((a - b).toFixed(decimals));
+    };
     const first = history[0]?.sensors ?? s;
     const last = history[history.length - 1]?.sensors ?? s;
-    const phDelta = Number((last.ph - first.ph).toFixed(2));
-    const waterTempDelta = Number((last.waterTemperature - first.waterTemperature).toFixed(2));
-    const tdsDelta = Math.round(last.tds - first.tds);
-    const doDelta = Number((last.dissolvedOxygen - first.dissolvedOxygen).toFixed(2));
-    const lightDelta = Math.round(last.lightIntensity - first.lightIntensity);
+    const phDelta = calcDelta(last.ph, first.ph, 2);
+    const waterTempDelta = calcDelta(last.waterTemperature, first.waterTemperature, 2);
+    const tdsDelta = Math.round(calcDelta(last.tds, first.tds, 0));
+    const doDelta = calcDelta(last.dissolvedOxygen, first.dissolvedOxygen, 2);
+    const lightDelta = Math.round(calcDelta(last.lightIntensity, first.lightIntensity, 0));
 
     const emergingSymptoms: string[] = [];
-    if (waterTempDelta > 0.6 || s.waterTemperature > 28.0) {
+    if (typeof s.waterTemperature === "number" && (waterTempDelta > 0.6 || s.waterTemperature > 28.0)) {
       emergingSymptoms.push(
         "Pemanasan termal bertahap berisiko menurunkan kelarutan O2 (gejala awal ikan megap-megap di permukaan)."
       );
     }
-    if (doDelta < -0.35 || s.dissolvedOxygen < 5.2) {
+    if (typeof s.dissolvedOxygen === "number" && (doDelta < -0.35 || s.dissolvedOxygen < 5.2)) {
       emergingSymptoms.push(
         "Tren penurunan Dissolved Oxygen (DO): risiko stres hipoksia pada Ikan Nila Level 3 dalam beberapa jam ke depan."
       );
     }
-    if (phDelta < -0.18 || s.ph < 6.4) {
-      emergingSymptoms.push(
-        "Drift keasaman (asidosis nitrifikasi): aktivitas bakteri biofilter dapat melambat jika pH turun di bawah 6.2."
-      );
-    } else if (phDelta > 0.18 || s.ph > 7.5) {
-      emergingSymptoms.push(
-        "Kenaikan pH menuju basa: berpotensi memicu pengendapan Besi (Fe nutrient lockout) serta meningkatkan toksisitas amonia (NH3)."
-      );
+    if (typeof s.ph === "number") {
+      if (phDelta < -0.18 || s.ph < 6.4) {
+        emergingSymptoms.push(
+          "Drift keasaman (asidosis nitrifikasi): aktivitas bakteri biofilter dapat melambat jika pH turun di bawah 6.2."
+        );
+      } else if (phDelta > 0.18 || s.ph > 7.5) {
+        emergingSymptoms.push(
+          "Kenaikan pH menuju basa: berpotensi memicu pengendapan Besi (Fe nutrient lockout) serta meningkatkan toksisitas amonia (NH3)."
+        );
+      }
     }
-    if (s.lightIntensity < 300 && !actuators.growLight.isOn) {
-      emergingSymptoms.push(
-        `Pencahayaan sangat redup (${s.lightIntensity} lux dari sensor LDR): risiko etiolasi (batang kurus pucat) & perlambatan tanggal panen.`
-      );
-    } else if (s.lightIntensity > 18000) {
-      emergingSymptoms.push(
-        `Intensitas cahaya ekstrem (${s.lightIntensity} lux): potensi ledakan lumut hijau (algae bloom) dan penguapan air kolam lebih cepat.`
-      );
+    if (typeof s.lightIntensity === "number") {
+      if (s.lightIntensity < 300 && !actuators.growLight.isOn) {
+        emergingSymptoms.push(
+          `Pencahayaan sangat redup (${s.lightIntensity} lux dari sensor LDR): risiko etiolasi (batang kurus pucat) & perlambatan tanggal panen.`
+        );
+      } else if (s.lightIntensity > 18000) {
+        emergingSymptoms.push(
+          `Intensitas cahaya ekstrem (${s.lightIntensity} lux): potensi ledakan lumut hijau (algae bloom) dan penguapan air kolam lebih cepat.`
+        );
+      }
     }
-    if (s.tds < 380) {
-      emergingSymptoms.push(
-        "Nutrisi TDS menipis: risiko gejala daun tua menguning pucat (defisiensi Nitrogen) atau pertumbuhan daun melambat."
-      );
-    } else if (s.tds > 920) {
-      emergingSymptoms.push(
-        "Kepekatan TDS tinggi: risiko ujung daun terbakar (tip-burn / stres osmotik akar)."
-      );
+    if (typeof s.tds === "number") {
+      if (s.tds < 380) {
+        emergingSymptoms.push(
+          "Nutrisi TDS menipis: risiko gejala daun tua menguning pucat (defisiensi Nitrogen) atau pertumbuhan daun melambat."
+        );
+      } else if (s.tds > 920) {
+        emergingSymptoms.push(
+          "Kepekatan TDS tinggi: risiko ujung daun terbakar (tip-burn / stres osmotik akar)."
+        );
+      }
     }
-    if (emergingSymptoms.length === 0) {
+    if (!hasAnyLiveSensor) {
       emergingSymptoms.push(
-        "Tidak ada gejala anomali air yang mengkhawatirkan; kestabilan biokimia diprediksi terjaga aman dalam 6-12 jam ke depan."
+        isEdgeOnline
+          ? "ESP32 terhubung dalam mode heartbeat; menunggu pembacaan sensor fisik dikirim ke backend."
+          : "Belum ada telemetri sensor live yang masuk dari ESP32-GROW-01 ke server backend."
+      );
+    } else if (emergingSymptoms.length === 0) {
+      emergingSymptoms.push(
+        "Tidak ada gejala anomali pada sensor aktif; kestabilan biokimia diprediksi terjaga aman dalam 6-12 jam ke depan."
       );
     }
 
-    const waterForecast =
-      emergingSymptoms.length === 1 && emergingSymptoms[0].startsWith("Tidak ada")
-        ? `Parameter air cenderung stabil (ΔpH ${phDelta >= 0 ? "+" : ""}${phDelta}, ΔSuhu ${waterTempDelta >= 0 ? "+" : ""}${waterTempDelta}°C, ΔDO ${doDelta >= 0 ? "+" : ""}${doDelta} mg/L). Aman untuk sirkulasi kaskade 24 jam.`
-        : `Terdeteksi ${emergingSymptoms.length} sinyal gejala dini dari tren telemetri (ΔpH ${phDelta >= 0 ? "+" : ""}${phDelta}, ΔSuhu ${waterTempDelta >= 0 ? "+" : ""}${waterTempDelta}°C, ΔDO ${doDelta >= 0 ? "+" : ""}${doDelta} mg/L).`;
+    const waterForecast = !hasAnyLiveSensor
+      ? "Menunggu aliran telemetri sensor real-time dari ESP32-GROW-01 agar analisis tren kualitas air dapat dihitung."
+      : emergingSymptoms.length === 1 && emergingSymptoms[0].startsWith("Tidak ada")
+      ? `Parameter air terukur stabil (ΔpH ${phDelta >= 0 ? "+" : ""}${phDelta}, ΔSuhu ${waterTempDelta >= 0 ? "+" : ""}${waterTempDelta}°C). Aman untuk sirkulasi kaskade 24 jam.`
+      : `Terdeteksi ${emergingSymptoms.length} sinyal perhatian dari tren telemetri (ΔpH ${phDelta >= 0 ? "+" : ""}${phDelta}, ΔSuhu ${waterTempDelta >= 0 ? "+" : ""}${waterTempDelta}°C).`;
 
     // 2. Domain Diagnosis: WATER
     let waterStatus: HealthSeverity = "OPTIMAL";
     const waterDetails: string[] = [];
     const waterRecs: string[] = [];
 
-    if (s.ph < 6.2 || s.ph > 7.8) {
-      waterStatus = "CRITICAL";
-      waterDetails.push(`pH air kritis (${s.ph}) di luar zona aman simbiosis ikan-bakteri-tanaman (6.5-7.5).`);
-      waterRecs.push(
-        s.ph < 6.2
-          ? "Tambahkan buffer basa Kalium Bikarbonat (KHCO3) bertahap."
-          : "Turunkan pH perlahan dan ganti 15-20% air tandon."
-      );
-    } else if (s.ph < 6.5 || s.ph > 7.5) {
-      waterStatus = worstSeverity(waterStatus, "WARNING");
-      waterDetails.push(`pH air sedikit bergeser (${s.ph}, target ideal 6.5-7.5).`);
-      waterRecs.push("Pantau tren pH selama 1 jam ke depan sebelum melakukan buffering.");
+    if (typeof s.ph === "number") {
+      if (s.ph < 6.2 || s.ph > 7.8) {
+        waterStatus = "CRITICAL";
+        waterDetails.push(`pH air kritis (${s.ph}) di luar zona aman simbiosis ikan-bakteri-tanaman (6.5-7.5).`);
+        waterRecs.push(
+          s.ph < 6.2
+            ? "Tambahkan buffer basa Kalium Bikarbonat (KHCO3) bertahap."
+            : "Turunkan pH perlahan dan ganti 15-20% air tandon."
+        );
+      } else if (s.ph < 6.5 || s.ph > 7.5) {
+        waterStatus = worstSeverity(waterStatus, "WARNING");
+        waterDetails.push(`pH air sedikit bergeser (${s.ph}, target ideal 6.5-7.5).`);
+        waterRecs.push("Pantau tren pH selama 1 jam ke depan sebelum melakukan buffering.");
+      } else {
+        waterDetails.push(`pH netral ideal (${s.ph}) mendukung bakteri nitrifikasi & serapan hara.`);
+      }
     } else {
-      waterDetails.push(`pH netral ideal (${s.ph}) mendukung bakteri nitrifikasi & serapan hara.`);
+      waterStatus = worstSeverity(waterStatus, "WARNING");
+      waterDetails.push("Sensor pH air sedang offline / belum mengirim data live dari ESP32.");
     }
 
-    if (s.waterTemperature > 29.5 || s.waterTemperature < 20.0) {
-      waterStatus = "CRITICAL";
-      waterDetails.push(`Suhu air ekstrem (${s.waterTemperature}°C).`);
-      waterRecs.push("Aktifkan paranet peneduh / pendinginan evaporatif segera.");
-    } else if (s.waterTemperature > 27.5) {
-      waterStatus = worstSeverity(waterStatus, "WARNING");
-      waterDetails.push(`Suhu air mulai hangat (${s.waterTemperature}°C).`);
+    if (typeof s.waterTemperature === "number") {
+      if (s.waterTemperature > 29.5 || s.waterTemperature < 20.0) {
+        waterStatus = "CRITICAL";
+        waterDetails.push(`Suhu air ekstrem (${s.waterTemperature}°C).`);
+        waterRecs.push("Aktifkan paranet peneduh / pendinginan evaporatif segera.");
+      } else if (s.waterTemperature > 27.5) {
+        waterStatus = worstSeverity(waterStatus, "WARNING");
+        waterDetails.push(`Suhu air mulai hangat (${s.waterTemperature}°C).`);
+      } else {
+        waterDetails.push(`Suhu air sejuk stabil (${s.waterTemperature}°C).`);
+      }
     } else {
-      waterDetails.push(`Suhu air sejuk stabil (${s.waterTemperature}°C).`);
+      waterStatus = worstSeverity(waterStatus, "WARNING");
+      waterDetails.push("Sensor suhu air DS18B20 sedang offline / belum terbaca.");
     }
 
-    if (s.waterLevel < 25) {
-      waterStatus = "CRITICAL";
-      waterDetails.push(`Ketinggian air sump sangat rendah (${s.waterLevel}%): risiko pompa dry-run!`);
-      waterRecs.push("Segera isi ulang tandon Level 1 dengan air terdeklorinasi.");
-    } else {
-      waterDetails.push(`Volume air tandon tercukupi (${s.waterLevel}%).`);
+    if (typeof s.waterLevel === "number") {
+      if (s.waterLevel < 25) {
+        waterStatus = "CRITICAL";
+        waterDetails.push(`Ketinggian air sump sangat rendah (${s.waterLevel}%): risiko pompa dry-run!`);
+        waterRecs.push("Segera isi ulang tandon Level 1 dengan air terdeklorinasi.");
+      } else {
+        waterDetails.push(`Volume air tandon tercukupi (${s.waterLevel}%).`);
+      }
     }
 
     // 3. Domain Diagnosis: PLANT (Pakcoy & Kangkung)
@@ -744,37 +787,46 @@ export class AgriBotEngine {
     const plantDetails: string[] = [];
     const plantRecs: string[] = [];
 
-    if (s.lightIntensity < 250 && !actuators.growLight.isOn) {
-      plantStatus = worstSeverity(plantStatus, "WARNING");
-      plantDetails.push(
-        `Intensitas cahaya LDR sangat rendah (${s.lightIntensity} lux) sementara Grow Light LED sedang MATI.`
-      );
-      plantRecs.push("Nyalakan LED Grow Light (RELAY-03) agar Pakcoy tidak etiolasi/kuntet.");
-    } else if (s.lightIntensity > 22000) {
-      plantStatus = worstSeverity(plantStatus, "WARNING");
-      plantDetails.push(`Paparan cahaya sangat tinggi (${s.lightIntensity} lux), rawan penguapan berlebih.`);
-      plantRecs.push("Pasang jaring peneduh paranet agar daun tidak layu siang hari.");
+    if (typeof s.lightIntensity === "number") {
+      if (s.lightIntensity < 250 && !actuators.growLight.isOn) {
+        plantStatus = worstSeverity(plantStatus, "WARNING");
+        plantDetails.push(
+          `Intensitas cahaya LDR sangat rendah (${s.lightIntensity} lux) sementara Grow Light LED sedang MATI.`
+        );
+        plantRecs.push("Nyalakan LED Grow Light (RELAY-03) agar Pakcoy tidak etiolasi/kuntet.");
+      } else if (s.lightIntensity > 22000) {
+        plantStatus = worstSeverity(plantStatus, "WARNING");
+        plantDetails.push(`Paparan cahaya sangat tinggi (${s.lightIntensity} lux), rawan penguapan berlebih.`);
+        plantRecs.push("Pasang jaring peneduh paranet agar daun tidak layu siang hari.");
+      } else {
+        plantDetails.push(
+          `Pencahayaan fotosintesis memadai (${s.lightIntensity} lux${actuators.growLight.isOn ? " + Grow Light aktif" : ""}).`
+        );
+      }
     } else {
-      plantDetails.push(
-        `Pencahayaan fotosintesis memadai (${s.lightIntensity} lux${actuators.growLight.isOn ? " + Grow Light aktif" : ""}).`
-      );
+      plantStatus = worstSeverity(plantStatus, "WARNING");
+      plantDetails.push("Sensor cahaya LDR/BH1750 belum mengirim pembacaan live dari ESP32.");
     }
 
-    if (s.ph > 7.5) {
+    if (typeof s.ph === "number" && s.ph > 7.5) {
       plantStatus = worstSeverity(plantStatus, "WARNING");
       plantDetails.push(`pH basa (${s.ph}) menghambat serapan Zat Besi (Fe) → risiko daun muda menguning (klorosis).`);
       plantRecs.push("Tambahkan kelat besi Fe-DTPA 2 ppm atau turunkan pH ke ~6.9.");
     }
-    if (s.tds < 380) {
-      plantStatus = worstSeverity(plantStatus, "WARNING");
-      plantDetails.push(`Nutrisi TDS rendah (${s.tds} ppm) → suplai nitrat untuk Pakcoy/Kangkung kurang pekat.`);
-      plantRecs.push("Pertahankan jadwal pakan ikan agar mineralisasi nutrisi meningkat.");
-    } else if (s.tds > 950) {
-      plantStatus = "CRITICAL";
-      plantDetails.push(`TDS terlalu pekat (${s.tds} ppm) → risiko busuk/gosong tepi daun.`);
-      plantRecs.push("Encerkan air tandon sebesar 20%.");
+    if (typeof s.tds === "number") {
+      if (s.tds < 380) {
+        plantStatus = worstSeverity(plantStatus, "WARNING");
+        plantDetails.push(`Nutrisi TDS rendah (${s.tds} ppm) → suplai nitrat untuk Pakcoy/Kangkung kurang pekat.`);
+        plantRecs.push("Pertahankan jadwal pakan ikan agar mineralisasi nutrisi meningkat.");
+      } else if (s.tds > 950) {
+        plantStatus = "CRITICAL";
+        plantDetails.push(`TDS terlalu pekat (${s.tds} ppm) → risiko busuk/gosong tepi daun.`);
+        plantRecs.push("Encerkan air tandon sebesar 20%.");
+      } else {
+        plantDetails.push(`Ketersediaan nutrisi terlarut seimbang (${s.tds} ppm).`);
+      }
     } else {
-      plantDetails.push(`Ketersediaan nutrisi terlarut seimbang (${s.tds} ppm).`);
+      plantDetails.push("Sensor TDS nutrisi sedang offline / belum mengirim data.");
     }
 
     // 4. Domain Diagnosis: FISH (Nila L3 & Lele L1)
@@ -782,22 +834,44 @@ export class AgriBotEngine {
     const fishDetails: string[] = [];
     const fishRecs: string[] = [];
 
-    if (s.dissolvedOxygen < 4.5) {
-      fishStatus = "CRITICAL";
-      fishDetails.push(`Oksigen terlarut kritis (${s.dissolvedOxygen} mg/L) → bahaya hipoksia bagi Ikan Nila (L3)!`);
-      fishRecs.push("Nyalakan Aerator O2 maksimal & hentikan pemberian pakan sementara!");
-    } else if (s.dissolvedOxygen < 5.3) {
-      fishStatus = worstSeverity(fishStatus, "WARNING");
-      fishDetails.push(`Oksigen terlarut batas bawah untuk Nila (${s.dissolvedOxygen} mg/L; aman untuk Lele L1).`);
-      fishRecs.push("Pastikan selang batu aerator tidak tersumbat lumut.");
+    if (typeof s.dissolvedOxygen === "number") {
+      if (s.dissolvedOxygen < 4.5) {
+        fishStatus = "CRITICAL";
+        fishDetails.push(`Oksigen terlarut kritis (${s.dissolvedOxygen} mg/L) → bahaya hipoksia bagi Ikan Nila (L3)!`);
+        fishRecs.push("Nyalakan Aerator O2 maksimal & hentikan pemberian pakan sementara!");
+      } else if (s.dissolvedOxygen < 5.3) {
+        fishStatus = worstSeverity(fishStatus, "WARNING");
+        fishDetails.push(`Oksigen terlarut batas bawah untuk Nila (${s.dissolvedOxygen} mg/L; aman untuk Lele L1).`);
+        fishRecs.push("Pastikan selang batu aerator tidak tersumbat lumut.");
+      } else {
+        fishDetails.push(`Saturasi oksigen melimpah (${s.dissolvedOxygen} mg/L) untuk Nila L3 & Lele L1.`);
+      }
+    } else if (typeof s.waterTemperature === "number") {
+      if (s.waterTemperature > 28.5) {
+        fishStatus = worstSeverity(fishStatus, "WARNING");
+        fishDetails.push(
+          `Suhu kolam hangat (${s.waterTemperature}°C) menurunkan kelarutan O2 — pastikan aerator Level 3 tetap aktif untuk Ikan Nila.`
+        );
+      } else {
+        fishDetails.push(
+          `Suhu kolam mendukung metabolisme Ikan Nila L3 & Lele L1 (${s.waterTemperature}°C) dengan aerator ${actuators.aerator.isOn ? "AKTIF" : "MATI"}.`
+        );
+      }
     } else {
-      fishDetails.push(`Saturasi oksigen melimpah (${s.dissolvedOxygen} mg/L) untuk Nila L3 & Lele L1.`);
+      fishStatus = worstSeverity(fishStatus, "WARNING");
+      fishDetails.push("Menunggu pembacaan suhu air kolam (DS18B20) dari ESP32-GROW-01.");
     }
 
-    if (s.ph > 7.8 && s.waterTemperature > 28.0) {
+    if (typeof s.ph === "number" && typeof s.waterTemperature === "number" && s.ph > 7.8 && s.waterTemperature > 28.0) {
       fishStatus = "CRITICAL";
       fishDetails.push("Kombinasi pH tinggi + suhu hangat mempercepat konversi amonia menjadi racun NH3.");
       fishRecs.push("Kuras 20% air dasar dan tunda pakan selama 24 jam.");
+    }
+
+    if (!actuators.aerator.isOn) {
+      fishStatus = worstSeverity(fishStatus, "WARNING");
+      fishDetails.push("Aerator O2 sedang MATI → pastikan suplai oksigen kolam Nila Level 3 mencukupi.");
+      fishRecs.push("Aktifkan kembali Aerator O2 bila ikan tampak naik ke permukaan.");
     }
 
     if (!actuators.waterPump.isOn) {
@@ -832,15 +906,19 @@ export class AgriBotEngine {
 
     // 6. Suggested Safe Actuator Actions
     const suggestedActions: EcosystemDiagnosticReport["suggestedActions"] = [];
-    if (!actuators.aerator.isOn && (s.dissolvedOxygen < 5.8 || s.waterTemperature > 28.0)) {
+    if (
+      !actuators.aerator.isOn &&
+      ((typeof s.dissolvedOxygen === "number" && s.dissolvedOxygen < 5.8) ||
+        (typeof s.waterTemperature === "number" && s.waterTemperature > 28.0))
+    ) {
       suggestedActions.push({
         actuatorId: "aerator",
         label: "Nyalakan Aerator Oksigen",
         targetState: true,
-        reason: `DO (${s.dissolvedOxygen} mg/L) atau suhu (${s.waterTemperature}°C) butuh injeksi oksigen.`,
+        reason: `Suhu (${s.waterTemperature ?? "--"}°C) butuh injeksi oksigen aerator.`,
       });
     }
-    if (!actuators.growLight.isOn && s.lightIntensity < 300) {
+    if (!actuators.growLight.isOn && typeof s.lightIntensity === "number" && s.lightIntensity < 300) {
       suggestedActions.push({
         actuatorId: "growLight",
         label: "Nyalakan LED Grow Light",
@@ -848,15 +926,18 @@ export class AgriBotEngine {
         reason: `Sensor LDR mendeteksi cahaya rendah (${s.lightIntensity} lux).`,
       });
     }
-    if (!actuators.waterPump.isOn && s.waterLevel >= 25) {
+    if (
+      !actuators.waterPump.isOn &&
+      (typeof s.waterLevel !== "number" || s.waterLevel >= 25)
+    ) {
       suggestedActions.push({
         actuatorId: "waterPump",
         label: "Nyalakan Pompa Sirkulasi",
         targetState: true,
-        reason: "Sirkulasi air biofilter sedang mati padahal air tandon cukup.",
+        reason: "Sirkulasi air biofilter sedang mati.",
       });
     }
-    if (!actuators.dosingPump.isOn && s.ph < 6.4) {
+    if (!actuators.dosingPump.isOn && typeof s.ph === "number" && s.ph < 6.4) {
       suggestedActions.push({
         actuatorId: "dosingPump",
         label: "Aktifkan Pompa Buffer pH",
@@ -877,30 +958,49 @@ export class AgriBotEngine {
       diagnosis: {
         plant: {
           status: plantStatus,
-          headline:
-            plantStatus === "OPTIMAL"
-              ? "Pertumbuhan Pakcoy & Kangkung Sehat"
-              : "Perlu Penyesuaian Cahaya / Hara Tanaman",
+          headline: !hasAnyLiveSensor
+            ? isEdgeOnline
+              ? "ESP32 Terhubung (Menunggu Sensor Tanaman)"
+              : "Menunggu Telemetri ESP32-GROW-01 (Offline)"
+            : plantStatus === "OPTIMAL"
+            ? "Pertumbuhan Pakcoy & Kangkung Sehat"
+            : "Perlu Penyesuaian Cahaya / Hara Tanaman",
           details: plantDetails,
-          recommendation: plantRecs.join(" ") || "Pertahankan jadwal penyinaran 12-14 jam/hari dan TDS 500-750 ppm.",
+          recommendation:
+            plantRecs.join(" ") ||
+            (hasAnyLiveSensor
+              ? "Pertahankan jadwal penyinaran 12-14 jam/hari dan TDS 500-750 ppm."
+              : "Pastikan ESP32-GROW-01 terhubung ke Wi-Fi & endpoint HTTPS backend untuk mulai membaca sensor."),
         },
         water: {
           status: waterStatus,
-          headline:
-            waterStatus === "OPTIMAL"
-              ? "Kualitas Fisiko-Kimia Air Seimbang"
-              : "Terdeteksi Deviasi Kualitas Air",
+          headline: !hasAnyLiveSensor
+            ? isEdgeOnline
+              ? "ESP32 Terhubung (Menunggu Sensor Air)"
+              : "Menunggu Telemetri Kualitas Air (Offline)"
+            : waterStatus === "OPTIMAL"
+            ? "Kualitas Fisiko-Kimia Air Seimbang"
+            : "Terdeteksi Deviasi Kualitas Air",
           details: waterDetails,
-          recommendation: waterRecs.join(" ") || "Sirkulasi biofilter berjalan baik tanpa perlu koreksi kimia.",
+          recommendation:
+            waterRecs.join(" ") ||
+            (hasAnyLiveSensor
+              ? "Sirkulasi biofilter berjalan baik tanpa perlu koreksi kimia."
+              : "Hubungkan sensor pH, TDS, dan suhu DS18B20 ke ESP32 untuk evaluasi kualitas air live."),
         },
         fish: {
           status: fishStatus,
-          headline:
-            fishStatus === "OPTIMAL"
-              ? "Ikan Nila & Lele Aktif & Bebas Stres"
-              : "Waspada Stres Oksigen / Kualitas Kolam Ikan",
+          headline: !hasAnyLiveSensor
+            ? isEdgeOnline
+              ? "ESP32 Terhubung (Menunggu Sensor Kolam)"
+              : "Status Kolam Menunggu Telemetri ESP32 (Offline)"
+            : fishStatus === "OPTIMAL"
+            ? "Ikan Nila & Lele Aktif & Bebas Stres"
+            : "Waspada Suhu / Kondisi Kolam Ikan",
           details: fishDetails,
-          recommendation: fishRecs.join(" ") || "Pertahankan pemberian pakan 2x sehari (07:00 & 16:30 WIB) agar FCR tetap optimal.",
+          recommendation:
+            fishRecs.join(" ") ||
+            "Pertahankan pemberian pakan 2x sehari (07:00 & 16:30 WIB) dan pastikan aerator tetap aktif.",
         },
       },
       predictions: {
@@ -980,11 +1080,13 @@ export class AgriBotEngine {
     const s = diag.sensors;
     const { pakcoy, kangkung } = diag.predictions.harvest;
     const ldrBadge = "Sensor LDR ESP32";
+    const fmt = (val: number | null, suffix = "") =>
+      typeof val === "number" ? `${val}${suffix}` : "Belum terbaca (Offline)";
 
     if (hasImages) {
       return [
         `### 🔍 Foto Diterima — Sinkronisasi Telemetri & Evaluasi Awal`,
-        `Gambar berhasil diterima (${ldrBadge} saat ini: **${s.lightIntensity} lux**, pH **${s.ph}**, TDS **${s.tds} ppm**, Suhu **${s.waterTemperature}°C**, DO **${s.dissolvedOxygen} mg/L**).`,
+        `Gambar berhasil diterima (${ldrBadge} saat ini: **${fmt(s.lightIntensity, " lux")}**, pH **${fmt(s.ph)}**, TDS **${fmt(s.tds, " ppm")}**, Suhu **${fmt(s.waterTemperature, "°C")}**).`,
         `- **Analisis Visual AI Penuh**: Pemeriksaan pola bercak daun / gejala eksternal ikan memerlukan model Vision Gemini aktif pada backend.`,
         `- **Korelasi Parameter IoT Saat Ini**:\n  - Tumbuhan: ${diag.diagnosis.plant.details[0]}\n  - Kualitas Air: ${diag.diagnosis.water.details[0]}\n  - Ikan Nila & Lele: ${diag.diagnosis.fish.details[0]}`,
         `**Rekomendasi**: ${diag.diagnosis.plant.recommendation}`,
@@ -1030,7 +1132,7 @@ export class AgriBotEngine {
           `- **Pakcoy (Level 4 — ${pakcoy.plantCount} netpot, semai ${pakcoy.seedingDate})**: **${pakcoy.estimatedDaysRemaining} hari lagi** (${pakcoy.estimatedHarvestDate}) • Progress **${pakcoy.progressPct}%** (${pakcoy.accumulatedGdd}/${pakcoy.targetGdd} °C·Hari) • Estimasi bobot **~${pakcoy.projectedBiomassGrams}g/pod** (total **~${pakcoy.projectedTotalYieldKg} kg**).`,
           `- **Kangkung (Level 2 — ${kangkung.plantCount} netpot, semai ${kangkung.seedingDate})**: **${kangkung.estimatedDaysRemaining} hari lagi** (${kangkung.estimatedHarvestDate}) • Progress **${kangkung.progressPct}%** (${kangkung.accumulatedGdd}/${kangkung.targetGdd} °C·Hari) • Estimasi bobot **~${kangkung.projectedBiomassGrams}g/ikat** (total **~${kangkung.projectedTotalYieldKg} kg**).`,
           ...fishLines,
-          `- **Faktor Cahaya (${ldrBadge})**: Terukur **${s.lightIntensity} lux** (Efisiensi fotosintesis **${pakcoy.lightEfficiencyPct}%**). ${s.lightIntensity < 300 ? "Cahaya sangat redup berpotensi memundurkan panen jika Grow Light tidak dinyalakan." : "Cahaya mendukung laju pematangan daun."}`,
+          `- **Faktor Cahaya (${ldrBadge})**: Terukur **${fmt(s.lightIntensity, " lux")}** (Efisiensi fotosintesis **${pakcoy.lightEfficiencyPct}%**). ${typeof s.lightIntensity === "number" && s.lightIntensity < 300 ? "Cahaya sangat redup berpotensi memundurkan panen jika Grow Light tidak dinyalakan." : typeof s.lightIntensity === "number" ? "Cahaya mendukung laju pematangan daun." : "Menggunakan referensi baseline sampai sensor cahaya ESP32 terhubung."}`,
         ].join("\n\n");
       }
 
@@ -1047,7 +1149,7 @@ export class AgriBotEngine {
         return [
           `### 🐟 Diagnosis Kondisi Ikan (${diag.diagnosis.fish.status})`,
           diag.diagnosis.fish.details.map((d) => `- ${d}`).join("\n"),
-          `**Parameter Pendukung**: DO **${s.dissolvedOxygen} mg/L** | Suhu Air **${s.waterTemperature}°C** | pH **${s.ph}**.`,
+          `**Parameter Pendukung**: Suhu Air **${fmt(s.waterTemperature, "°C")}** | pH **${fmt(s.ph)}** | TDS **${fmt(s.tds, " ppm")}**.`,
           `**Saran Tindakan**: ${diag.diagnosis.fish.recommendation}`,
         ].join("\n\n");
       }
@@ -1056,7 +1158,7 @@ export class AgriBotEngine {
         return [
           `### 🌱 Diagnosis Kondisi Tumbuhan (${diag.diagnosis.plant.status})`,
           diag.diagnosis.plant.details.map((d) => `- ${d}`).join("\n"),
-          `**Pembacaan Cahaya (${ldrBadge})**: **${s.lightIntensity} lux** | **pH**: **${s.ph}** | **TDS Nutrisi**: **${s.tds} ppm**.`,
+          `**Pembacaan Cahaya (${ldrBadge})**: **${fmt(s.lightIntensity, " lux")}** | **pH**: **${fmt(s.ph)}** | **TDS Nutrisi**: **${fmt(s.tds, " ppm")}**.`,
           `**Saran Tindakan**: ${diag.diagnosis.plant.recommendation}`,
         ].join("\n\n");
       }
@@ -1073,9 +1175,9 @@ export class AgriBotEngine {
     // Comprehensive 3-domain diagnosis + predictions summary
     return [
       `### 🔬 Ringkasan Diagnosis & Prediksi UrbanGrow (${diag.overallStatus})`,
-      `**1. 🌱 Tumbuhan (${diag.diagnosis.plant.status})**: ${diag.diagnosis.plant.details[0]} *(Cahaya ${ldrBadge}: ${s.lightIntensity} lux)*`,
-      `**2. 💧 Air (${diag.diagnosis.water.status})**: pH **${s.ph}**, Suhu **${s.waterTemperature}°C**, TDS **${s.tds} ppm**. ${diag.diagnosis.water.recommendation}`,
-      `**3. 🐟 Ikan (${diag.diagnosis.fish.status})**: DO **${s.dissolvedOxygen} mg/L**. ${diag.diagnosis.fish.details[0]}`,
+      `**1. 🌱 Tumbuhan (${diag.diagnosis.plant.status})**: ${diag.diagnosis.plant.details[0]} *(Cahaya ${ldrBadge}: ${fmt(s.lightIntensity, " lux")})*`,
+      `**2. 💧 Air (${diag.diagnosis.water.status})**: pH **${fmt(s.ph)}**, Suhu **${fmt(s.waterTemperature, "°C")}**, TDS **${fmt(s.tds, " ppm")}**. ${diag.diagnosis.water.recommendation}`,
+      `**3. 🐟 Ikan (${diag.diagnosis.fish.status})**: ${diag.diagnosis.fish.details[0]}`,
       `**4. 🔮 Prediksi Panen & Gejala Air**:\n- Pakcoy siap panen **${pakcoy.estimatedDaysRemaining} hari lagi**; Kangkung **${kangkung.estimatedDaysRemaining} hari lagi**.\n- ${diag.predictions.trends.emergingSymptoms[0]}`,
     ].join("\n\n");
   }
@@ -1138,26 +1240,44 @@ export class AgriBotEngine {
     }
 
     if (chartType === "radar" || chartType === "radial") {
-      const phScore = Math.max(0, Math.min(100, Math.round(100 - Math.abs(s.ph - 7.0) * 35)));
-      const doScore = Math.max(0, Math.min(100, Math.round((s.dissolvedOxygen / 8.0) * 100)));
-      const tempScore = Math.max(0, Math.min(100, Math.round(100 - Math.abs(s.waterTemperature - 24.5) * 12)));
-      const tdsScore = Math.max(0, Math.min(100, Math.round(100 - Math.abs(s.tds - 580) * 0.12)));
-      const luxScore = Math.max(25, Math.min(100, Math.round((s.lightIntensity / 1200) * 100)));
+      const phScore =
+        typeof s.ph === "number"
+          ? Math.max(0, Math.min(100, Math.round(100 - Math.abs(s.ph - 7.0) * 35)))
+          : 0;
+      const tempScore =
+        typeof s.waterTemperature === "number"
+          ? Math.max(0, Math.min(100, Math.round(100 - Math.abs(s.waterTemperature - 24.5) * 12)))
+          : 0;
+      const tdsScore =
+        typeof s.tds === "number"
+          ? Math.max(0, Math.min(100, Math.round(100 - Math.abs(s.tds - 580) * 0.12)))
+          : 0;
+      const airTempScore =
+        typeof s.airTemperature === "number"
+          ? Math.max(0, Math.min(100, Math.round(100 - Math.abs(s.airTemperature - 27.0) * 10)))
+          : 0;
+      const humScore = typeof s.humidity === "number" ? Math.max(0, Math.min(100, Math.round(s.humidity))) : 0;
+      const luxScore =
+        typeof s.lightIntensity === "number"
+          ? Math.max(25, Math.min(100, Math.round((s.lightIntensity / 1200) * 100)))
+          : 0;
       return [
         {
           id: "fallback-radar",
           title: "Indeks Kesehatan Multi-Parameter Akuaponik (%)",
-          subtitle: "Skor kelayakan ekosistem berdasarkan standar ECAD v2.0",
+          subtitle: diag.edgeOnline
+            ? "Skor sensor hardware aktif berdasarkan standar ECAD v2.0"
+            : "Belum ada data sensor live (ESP32 Offline)",
           chartType,
-          labels: ["pH Air", "Oksigen DO", "Suhu Air", "TDS Nutrisi", "Cahaya LDR", "Level Air"],
+          labels: ["pH Air", "Suhu Air", "TDS Nutrisi", "Suhu Udara", "Kelembaban", "Cahaya LDR"],
           series: [
             {
               name: "Kondisi Aktual",
               unit: "%",
-              values: [phScore, doScore, tempScore, tdsScore, luxScore, Math.round(s.waterLevel)],
+              values: [phScore, tempScore, tdsScore, airTempScore, humScore, luxScore],
             },
             ...(chartType === "radar"
-              ? [{ name: "Target Optimal", unit: "%", values: [95, 95, 95, 95, 90, 95] }]
+              ? [{ name: "Target Optimal", unit: "%", values: [95, 95, 95, 90, 80, 90] }]
               : []),
           ],
           style: { theme, showGrid: true, showLegend: true, unit: "%" },
@@ -1166,26 +1286,29 @@ export class AgriBotEngine {
     }
 
     if (chartType === "scatter") {
+      const validPoints = sampledHistory.filter(
+        (h) => typeof h.waterTemperature === "number" && typeof h.lightIntensity === "number"
+      );
       return [
         {
           id: "fallback-scatter",
-          title: "Korelasi Suhu Air vs Oksigen Terlarut (DO)",
-          subtitle: `${sampledHistory.length} titik pembacaan terbaru ESP32-GROW-01`,
+          title: "Korelasi Suhu Air vs Intensitas Cahaya",
+          subtitle: `${validPoints.length} titik pembacaan live ESP32-GROW-01`,
           chartType: "scatter",
-          labels,
+          labels: validPoints.map((h) => h.timeWib),
           series: [
             {
-              name: "Suhu vs DO",
-              unit: "mg/L",
-              values: sampledHistory.map((h) => h.dissolvedOxygen),
-              points: sampledHistory.map((h) => ({
-                x: h.waterTemperature,
-                y: h.dissolvedOxygen,
+              name: "Suhu vs Cahaya",
+              unit: "lux",
+              values: validPoints.map((h) => h.lightIntensity ?? 0),
+              points: validPoints.map((h) => ({
+                x: h.waterTemperature ?? 0,
+                y: h.lightIntensity ?? 0,
                 label: h.timeWib,
               })),
             },
           ],
-          style: { theme, showGrid: true, xLabel: "Suhu Air (°C)", yLabel: "DO (mg/L)" },
+          style: { theme, showGrid: true, xLabel: "Suhu Air (°C)", yLabel: "Cahaya (lux)" },
         },
       ];
     }
@@ -1195,19 +1318,21 @@ export class AgriBotEngine {
         {
           id: "fallback-bar",
           title: "Ringkasan Telemetri Sensor IoT Terkini",
-          subtitle: "Pembacaan langsung node ESP32-GROW-01",
+          subtitle: diag.edgeOnline
+            ? "Pembacaan langsung node ESP32-GROW-01"
+            : "Menunggu telemetri live ESP32-GROW-01",
           chartType,
-          labels: ["pH (×10)", "Suhu (°C)", "TDS (÷10)", "DO (×10)", "Cahaya (÷10 lux)", "Tandon (%)"],
+          labels: ["pH (×10)", "Suhu Air (°C)", "TDS (÷10)", "Suhu Udara (°C)", "Kelembaban (%)", "Cahaya (÷10 lux)"],
           series: [
             {
               name: "Nilai Terukur (Ternormalisasi)",
               values: [
-                Number((s.ph * 10).toFixed(1)),
-                Number(s.waterTemperature.toFixed(1)),
-                Math.round(s.tds / 10),
-                Number((s.dissolvedOxygen * 10).toFixed(1)),
-                Math.round(s.lightIntensity / 10),
-                Math.round(s.waterLevel),
+                typeof s.ph === "number" ? Number((s.ph * 10).toFixed(1)) : 0,
+                typeof s.waterTemperature === "number" ? Number(s.waterTemperature.toFixed(1)) : 0,
+                typeof s.tds === "number" ? Math.round(s.tds / 10) : 0,
+                typeof s.airTemperature === "number" ? Number(s.airTemperature.toFixed(1)) : 0,
+                typeof s.humidity === "number" ? Number(s.humidity.toFixed(1)) : 0,
+                typeof s.lightIntensity === "number" ? Math.round(s.lightIntensity / 10) : 0,
               ],
             },
           ],
@@ -1224,17 +1349,19 @@ export class AgriBotEngine {
         chartType,
         labels,
         series: [
-          { name: "pH Air", unit: "pH", values: sampledHistory.map((h) => h.ph), type: "line" },
+          { name: "pH Air", unit: "pH", values: sampledHistory.map((h) => h.ph ?? 0), type: "line" },
           {
-            name: "Oksigen DO",
-            unit: "mg/L",
-            values: sampledHistory.map((h) => h.dissolvedOxygen),
+            name: "Cahaya LDR (÷10)",
+            unit: "lux",
+            values: sampledHistory.map((h) =>
+              typeof h.lightIntensity === "number" ? Math.round(h.lightIntensity / 10) : 0
+            ),
             type: "line",
           },
           {
             name: "Suhu Air",
             unit: "°C",
-            values: sampledHistory.map((h) => h.waterTemperature),
+            values: sampledHistory.map((h) => h.waterTemperature ?? 0),
             type: "bar",
           },
         ],
@@ -1306,8 +1433,15 @@ export class AgriBotEngine {
     });
 
     const summarizeMetric = (key: keyof typeof snap.sensors) => {
-      const vals = rawHistory.map((pt) => pt.sensors[key]);
-      if (vals.length === 0) return { min: snap.sensors[key], max: snap.sensors[key], avg: snap.sensors[key] };
+      const vals = rawHistory
+        .map((pt) => pt.sensors[key])
+        .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+      if (vals.length === 0) {
+        const current = snap.sensors[key];
+        return typeof current === "number"
+          ? { min: current, max: current, avg: current }
+          : null;
+      }
       const sum = vals.reduce((acc, v) => acc + v, 0);
       return {
         min: Number(Math.min(...vals).toFixed(2)),
@@ -1319,17 +1453,20 @@ export class AgriBotEngine {
     const telemetryContextForAi = {
       timestamp: diagnostics.timestamp,
       overallStatus: diagnostics.overallStatus,
-      edgeNode: "ESP32-GROW-01",
-      edgeOnline: true,
+      edgeNode: snap.system.edgeNode,
+      edgeOnline: snap.system.edgeOnline,
+      systemMode: snap.system.mode,
+      lastTelemetryAt: snap.system.lastTelemetryAt,
+      sensorSources: snap.sensorSources,
       sensors: diagnostics.sensors,
       sensorSummaryStats: {
         sampleCount: rawHistory.length,
         ph: summarizeMetric("ph"),
         waterTemperature: summarizeMetric("waterTemperature"),
         tds: summarizeMetric("tds"),
-        dissolvedOxygen: summarizeMetric("dissolvedOxygen"),
+        airTemperature: summarizeMetric("airTemperature"),
+        humidity: summarizeMetric("humidity"),
         lightIntensity: summarizeMetric("lightIntensity"),
-        waterLevel: summarizeMetric("waterLevel"),
       },
       recentTimeSeries: sampledHistory,
       actuators: Object.values(snap.actuators).map((a) => ({
@@ -1353,7 +1490,8 @@ Mandat utamamu:
 
 ATURAN KETAT:
 - Selalu gunakan waktu lokal WIB jika menyebut jam.
-- Selalu dasarkan angka pada **DATA TELEMETRI REAL-TIME & HISTORI** di bawah (jangan mengarang angka sensor).
+- Selalu dasarkan angka pada **DATA TELEMETRI REAL-TIME & HISTORI** di bawah (jangan pernah mengarang angka sensor!).
+- **Jika \`edgeOnline\` adalah \`false\` atau nilai sensor bernilai \`null\` / \`sensorSources[key] === "offline"\`**: sampaikan secara jujur dan tegas bahwa sensor tersebut atau node ESP32 sedang **offline / belum mengirim data live ke VPS** — jangan sekali-kali mengasumsikan atau memalsukan pembacaan sensor!
 - **Jika user mengunggah gambar**: lakukan analisis patologi visual mendetail terhadap gambar tersebut (misal: klorosis tepi daun, defisiensi Fe/N/K, bercak jamur, kutu/hama, busuk akar, white spot/Ich, fin rot, jamur kapas, bercak merah hemoragik, mata menonjol, atau air keruh algae), jelaskan tingkat keyakinanmu, kaitkan dengan data telemetri IoT aktual di bawah, dan berikan langkah perawatan praktis. Jika gambar buram atau bukan tanaman/ikan, jelaskan dengan jujur.
 - **Jika user meminta grafik, chart, diagram, plot, visualisasi, statistik, atau ringkasan data IoT**: sertakan array \`"charts"\` pada output JSON menggunakan data nyata dari \`recentTimeSeries\`, \`sensorSummaryStats\`, \`actuators\`, atau \`predictions.harvest\`.
   - Pilih \`chartType\` paling sesuai atau persis sesuai permintaan user: \`"line"\`, \`"area"\`, \`"bar"\`, \`"horizontal_bar"\`, \`"pie"\`, \`"donut"\`, \`"radar"\`, \`"scatter"\`, \`"composed"\`, \`"radial"\`, atau \`"heatmap"\`.

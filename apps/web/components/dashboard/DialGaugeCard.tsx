@@ -13,7 +13,11 @@ export function DialGaugeCard() {
   const radius = 42;
   const circumference = 2 * Math.PI * radius;
   // Normalized temperature: 20°C to 30°C
-  const norm = Math.max(0, Math.min(1, (sensors.waterTemperature - 20) / 10));
+  const hasTemp = typeof sensors.waterTemperature === "number";
+  const hasPh = typeof sensors.ph === "number";
+  const norm = hasTemp
+    ? Math.max(0, Math.min(1, ((sensors.waterTemperature as number) - 20) / 10))
+    : 0;
   const strokeDashoffset = circumference - norm * (circumference * 0.75);
 
   return (
@@ -21,7 +25,7 @@ export function DialGaugeCard() {
       {/* Card Header with Arrow Button */}
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold text-[var(--text-primary)]">
-          Suhu & Oksigen (DO)
+          Suhu &amp; Kualitas Air
         </span>
         <Link
           href="/ecosystem"
@@ -74,10 +78,11 @@ export function DialGaugeCard() {
         {/* Center Readouts */}
         <div className="absolute flex flex-col items-center justify-center text-center">
           <span className="text-2xl font-light tracking-tight text-[var(--text-primary)] num-tabular">
-            {sensors.waterTemperature}<span className="text-sm font-normal text-[var(--text-muted)]">°C</span>
+            {hasTemp ? (sensors.waterTemperature as number).toFixed(1) : "--"}
+            <span className="text-sm font-normal text-[var(--text-muted)]">°C</span>
           </span>
           <span className="text-[10px] font-mono text-[var(--text-secondary)] mt-0.5">
-            DO {sensors.dissolvedOxygen} mg/L
+            {hasPh ? `pH ${(sensors.ph as number).toFixed(2)}` : "pH --"}
           </span>
         </div>
       </div>

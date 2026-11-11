@@ -12,7 +12,17 @@ describe("Hybrid IoT Bridge, Actuator Sync & AgriBot AI Tests", () => {
     simulator.setActuator("waterPump", true, "auto");
   });
 
-  it("should accept partial LDR-only ESP32 telemetry and keep pH/temp on auto_dummy", async () => {
+  it("should accept partial LDR-only ESP32 telemetry and mark unsent sensors offline with null values", async () => {
+    // 0. Baseline before any ESP32 connects must be completely offline
+    const initRes = await app.handle(new Request("http://localhost/api/iot/status"));
+    expect(initRes.status).toBe(200);
+    const initBody = await initRes.json();
+    expect(initBody.edgeOnline).toBe(false);
+    expect(initBody.mode).toBe("offline");
+    expect(initBody.liveSensorCount).toBe(0);
+    expect(initBody.sensorSources.ph).toBe("offline");
+
+    // 1. Partial LDR-only payload
     const res = await app.handle(
       new Request("http://localhost/api/sensors/telemetry", {
         method: "POST",
@@ -31,17 +41,37 @@ describe("Hybrid IoT Bridge, Actuator Sync & AgriBot AI Tests", () => {
     expect(body.device_id).toBe("ESP32-LDR-01");
     expect(body.accepted_fields).toEqual(["lightIntensity"]);
     expect(body.sensorSources.lightIntensity).toBe("live_iot");
-    expect(body.sensorSources.ph).toBe("auto_dummy");
-    expect(body.sensorSources.waterTemperature).toBe("auto_dummy");
+    expect(body.sensorSources.ph).toBe("offline");
+    expect(body.sensorSources.waterTemperature).toBe("offline");
     expect(body.commands.actuators).toHaveProperty("waterPump");
 
     const snap = simulator.getSnapshot();
     expect(snap.sensors.lightIntensity).toBe(185);
-    expect(snap.system.mode).toBe("hybrid_live_iot");
+    expect(snap.sensors.ph).toBeNull();
+    expect(snap.system.mode).toBe("partial_live_iot");
     expect(snap.system.edgeOnline).toBe(true);
+    expect(snap.system.wifiSignalDbm).toBe(-52);
+
+    // 2. Heartbeat-only payload from ESP32 without sensors must keep edgeOnline=true
+    const hbRes = await app.handle(
+      new Request("http://localhost/api/sensors/telemetry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          device_id: "ESP32-HB-01",
+          wifi_rssi_dbm: -49,
+          firmware_version: "2.1.0",
+        }),
+      })
+    );
+    expect(hbRes.status).toBe(200);
+    const statusRes = await app.handle(new Request("http://localhost/api/iot/status"));
+    const statusJson = await statusRes.json();
+    expect(statusJson.edgeOnline).toBe(true);
+    expect(statusJson.lastTelemetryAt).not.toBeNull();
   });
 
-  it("should automatically fall back to auto_dummy when live sensor stops sending after TTL", async () => {
+  it("should mark live sensor offline and reset reading to null after TTL expires", async () => {
     simulator.setLiveSensorTtlMs(100);
 
     await app.handle(
@@ -60,8 +90,11 @@ describe("Hybrid IoT Bridge, Actuator Sync & AgriBot AI Tests", () => {
     await new Promise((r) => setTimeout(r, 150));
 
     const snap = simulator.getSnapshot();
-    expect(snap.sensorSources.lightIntensity).toBe("auto_dummy");
-    expect(snap.system.mode).toBe("auto_dummy_simulation");
+    expect(snap.sensorSources.lightIntensity).toBe("offline");
+    expect(snap.sensors.lightIntensity).toBeNull();
+    expect(snap.system.mode).toBe("offline");
+    expect(snap.system.edgeOnline).toBe(false);
+    expect(snap.system.wifiSignalDbm).toBeNull();
   });
 
   it("should synchronize actuator toggles to /api/iot/commands and enforce pump dry-run protection", async () => {
@@ -230,7 +263,7 @@ describe("Hybrid IoT Bridge, Actuator Sync & AgriBot AI Tests", () => {
     expect(initialJson.diagnostics.predictions.fish.nila).toBeDefined();
     expect(initialJson.diagnostics.predictions.fish.lele).toBeDefined();
 
-    const todayIso = new Date().toISOString().split("T")[0];
+    const todayIso = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
     const updateRes = await app.handle(
       new Request("http://localhost/api/ai/cohort", {
         method: "POST",
@@ -339,6 +372,22 @@ describe("Hybrid IoT Bridge, Actuator Sync & AgriBot AI Tests", () => {
     expect(csvRes.status).toBe(200);
     const csvText = await csvRes.text();
     expect(csvText).toContain("Timestamp_UTC,Device_ID,pH_Air");
+
+    // 5. Verify /api/ai/predict and /api/ai/climate-score report OFFLINE honestly when unsent
+    const predictRes = await app.handle(
+      new Request("http://localhost/api/ai/predict", { method: "POST" })
+    );
+    expect(predictRes.status).toBe(200);
+    const predictJson = await predictRes.json();
+    expect(predictJson.offline).toBe(true);
+    expect(predictJson.risk_level).toBe("OFFLINE");
+
+    const climateRes = await app.handle(new Request("http://localhost/api/ai/climate-score"));
+    expect(climateRes.status).toBe(200);
+    const climateJson = await climateRes.json();
+    expect(climateJson.offline).toBe(true);
+    expect(climateJson.resilience_grade).toBe("OFFLINE");
+    expect(climateJson.climate_adaptation_score).toBeNull();
   });
 });
 

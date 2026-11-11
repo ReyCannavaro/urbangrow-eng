@@ -14,51 +14,60 @@ export function SafetyInterlockPanel({
   actuators,
   edgeNode = "ESP32-GROW-01",
 }: SafetyInterlockPanelProps) {
-  const tempSafe = sensors.waterTemperature >= 22 && sensors.waterTemperature <= 28;
-  const tdsSafe = sensors.tds >= 400 && sensors.tds <= 800;
-  const phSafe = sensors.ph >= 6.4 && sensors.ph <= 7.6;
-  const lightSafe = sensors.lightIntensity >= 300 || Boolean(actuators.growLight?.isOn);
+  const hasTemp = typeof sensors.waterTemperature === "number";
+  const hasTds = typeof sensors.tds === "number";
+  const hasPh = typeof sensors.ph === "number";
+  const hasLux = typeof sensors.lightIntensity === "number";
 
-  const interlockCount = [tempSafe, tdsSafe, phSafe, lightSafe].filter(Boolean).length;
+  const tempSafe =
+    hasTemp &&
+    (sensors.waterTemperature as number) >= 22 &&
+    (sensors.waterTemperature as number) <= 28;
+  const tdsSafe =
+    hasTds && (sensors.tds as number) >= 400 && (sensors.tds as number) <= 800;
+  const phSafe =
+    hasPh && (sensors.ph as number) >= 6.4 && (sensors.ph as number) <= 7.6;
+  const lightSafe =
+    hasLux &&
+    ((sensors.lightIntensity as number) >= 300 || Boolean(actuators.growLight?.isOn));
 
   const rules = [
     {
       id: "temp-guard",
       title: "Suhu Air DS18B20",
+      live: hasTemp,
       ok: tempSafe,
-      okLabel: "Optimal",
-      warnLabel: "Cek Suhu",
-      liveValue: `${sensors.waterTemperature.toFixed(1)}°C`,
+      liveValue: hasTemp ? `${(sensors.waterTemperature as number).toFixed(1)}°C` : "--",
       threshold: "22 – 28°C • RELAY-02",
     },
     {
       id: "tds-balance",
       title: "Nutrisi TDS Kolam",
+      live: hasTds,
       ok: tdsSafe,
-      okLabel: "Seimbang",
-      warnLabel: "Pantau TDS",
-      liveValue: `${Math.round(sensors.tds)} ppm`,
+      liveValue: hasTds ? `${Math.round(sensors.tds as number)} ppm` : "--",
       threshold: "400 – 800 ppm • RELAY-01",
     },
     {
       id: "ph-buffer",
       title: "Penyangga pH Air",
+      live: hasPh,
       ok: phSafe,
-      okLabel: "Stabil",
-      warnLabel: "Buffer Check",
-      liveValue: `${sensors.ph.toFixed(2)} pH`,
+      liveValue: hasPh ? `${(sensors.ph as number).toFixed(2)} pH` : "--",
       threshold: "6.4 – 7.6 pH • RELAY-05",
     },
     {
       id: "ldr-light",
       title: "Fotoperiode LDR (L4)",
+      live: hasLux,
       ok: lightSafe,
-      okLabel: "Cukup",
-      warnLabel: "Butuh LED",
-      liveValue: `${Math.round(sensors.lightIntensity)} lux`,
+      liveValue: hasLux ? `${Math.round(sensors.lightIntensity as number)} lux` : "--",
       threshold: "≥ 300 lux • RELAY-03",
     },
   ];
+
+  const liveRulesCount = rules.filter((r) => r.live).length;
+  const safeCount = rules.filter((r) => r.ok).length;
 
   return (
     <div className="rounded-[20px] bg-white border border-[#E5E7EB] p-5 shadow-xs space-y-3.5">
@@ -75,12 +84,16 @@ export function SafetyInterlockPanel({
 
         <span
           className={`px-2.5 py-1 rounded-full text-[10.5px] font-mono font-bold ${
-            interlockCount === 4
+            liveRulesCount === 0
+              ? "bg-[#F3F4F6] text-[#4B5563] border border-[#E5E7EB]"
+              : safeCount === liveRulesCount
               ? "bg-[#DCFCE7] text-[#166534] border border-[#166534]/15"
               : "bg-[#FEF3C7] text-[#B45309] border border-[#F59E0B]/25"
           }`}
         >
-          {interlockCount}/4 AMAN
+          {liveRulesCount === 0
+            ? "0/4 SENSOR OFFLINE"
+            : `${safeCount}/${liveRulesCount} AMAN`}
         </span>
       </div>
 
@@ -91,7 +104,9 @@ export function SafetyInterlockPanel({
             <div
               key={rule.id}
               className={`p-3 rounded-xl border flex flex-col justify-between min-h-[96px] transition-colors font-mono ${
-                rule.ok
+                !rule.live
+                  ? "bg-[#F9FAFB] border-[#E5E7EB]"
+                  : rule.ok
                   ? "bg-[#F8F9FA] border-[#E5E7EB]"
                   : "bg-[#FEF3C7]/40 border-[#F59E0B]/30"
               }`}
@@ -102,7 +117,11 @@ export function SafetyInterlockPanel({
                 </span>
                 <span
                   className={`h-2 w-2 rounded-full shrink-0 ${
-                    rule.ok ? "bg-[#165B39]" : "bg-[#D97706]"
+                    !rule.live
+                      ? "bg-[#9CA3AF]"
+                      : rule.ok
+                      ? "bg-[#165B39]"
+                      : "bg-[#D97706]"
                   }`}
                 />
               </div>

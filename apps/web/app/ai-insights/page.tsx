@@ -2,12 +2,8 @@
 
 import React, { useEffect, useState, useSyncExternalStore } from "react";
 import {
-  Sparkles,
   RefreshCw,
   SlidersHorizontal,
-  Fish,
-  Sprout,
-  CalendarCheck2,
   Power,
   Check,
 } from "lucide-react";
@@ -37,14 +33,14 @@ import {
 } from "../../lib/types";
 
 const DEFAULT_FALLBACK_SENSORS: SensorData = {
-  ph: 6.95,
-  tds: 540,
-  waterTemperature: 25.4,
-  airTemperature: 27.6,
-  humidity: 66.0,
-  lightIntensity: 1350,
-  dissolvedOxygen: 6.8,
-  waterLevel: 92.0,
+  ph: null,
+  tds: null,
+  waterTemperature: null,
+  airTemperature: null,
+  humidity: null,
+  lightIntensity: null,
+  dissolvedOxygen: null,
+  waterLevel: null,
 };
 
 let cachedCohortSnapshot: PredictionCohortConfig | null = null;
@@ -88,7 +84,7 @@ function notifyCohortUpdated() {
 }
 
 export default function AiInsightsPage() {
-  const { actuators, setActuatorState } = useTelemetry();
+  const { actuators, setActuatorState, systemMeta } = useTelemetry();
   const storedCohort = useSyncExternalStore(
     subscribeCohortStorage,
     getCohortSnapshot,
@@ -241,16 +237,25 @@ export default function AiInsightsPage() {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#68C194] animate-pulse" />
+              <span
+                className={`h-2.5 w-2.5 rounded-full ${
+                  systemMeta.edgeOnline && systemMeta.liveSensorCount > 0
+                    ? "bg-[#68C194]"
+                    : "bg-[#9CA3AF]"
+                }`}
+              />
               <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#68C194]">
-                ECAD PREDICTIVE ENGINE &bull; ACTIVE HARVEST HORIZON
+                ECAD PREDICTIVE ENGINE &bull;{" "}
+                {systemMeta.liveSensorCount > 0
+                  ? `${systemMeta.liveSensorCount} SENSOR LIVE (${systemMeta.edgeNode})`
+                  : "BASELINE GDD (MENUNGGU ESP32)"}
               </span>
             </div>
             <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
               <span>Horizon Panen &amp; Akumulasi Pertumbuhan Hayati</span>
             </h2>
             <p className="text-xs text-white/80 max-w-2xl leading-relaxed">
-              Model matematis GDD (*Growing Degree Days*) memproyeksikan laju kematangan tanaman dari tanggal semai benih, disinkronkan dengan estimasi bobot rata-rata harian (ADG) bibit ikan.
+              Model matematis GDD (<em>Growing Degree Days</em>) memproyeksikan laju kematangan tanaman dari tanggal semai benih, disinkronkan dengan estimasi bobot rata-rata harian (ADG) bibit ikan.
             </p>
           </div>
 
@@ -366,7 +371,17 @@ export default function AiInsightsPage() {
                       Rekomendasi Tindakan Adaptif AI
                     </h3>
                   </div>
-                  <span className="rounded-full border border-[#165B39]/20 bg-[#DCFCE7] px-2.5 py-0.5 font-mono text-xs font-bold text-[#166534]">
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 font-mono text-xs font-bold ${
+                      anomaly.risk_level === "OFFLINE"
+                        ? "border border-[#E5E7EB] bg-[#F3F4F6] text-[#4B5563]"
+                        : anomaly.risk_level === "CRITICAL"
+                        ? "border border-rose-200 bg-rose-50 text-rose-700"
+                        : anomaly.is_anomaly
+                        ? "border border-amber-200 bg-amber-50 text-amber-700"
+                        : "border border-[#165B39]/20 bg-[#DCFCE7] text-[#166534]"
+                    }`}
+                  >
                     {anomaly.risk_level}
                   </span>
                 </div>

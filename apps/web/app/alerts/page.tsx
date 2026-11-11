@@ -56,7 +56,7 @@ function mapAuditLogsToNotifications(logs: ActuatorAuditLog[]): AlertNotificatio
 }
 
 export default function AlertsPage() {
-  const { alerts } = useTelemetry();
+  const { alerts, systemMeta } = useTelemetry();
   const [persistedAlerts, setPersistedAlerts] = useState<PersistedSystemAlert[]>([]);
   const [auditLogs, setAuditLogs] = useState<ActuatorAuditLog[]>([]);
   const [filter, setFilter] = useState<FilterType>("all");
@@ -122,7 +122,14 @@ export default function AlertsPage() {
       <AlertsHeader onClearAll={clearAll} activeCount={activeAlerts.length} />
 
       {/* 2. 4-Metric Bento Row */}
-      <AlertsBentoRow activeCount={activeAlerts.length} />
+      <AlertsBentoRow
+        activeCount={activeAlerts.length}
+        warningCount={warningCount}
+        resolvedCount={resolvedAndAuditLogs.length}
+        edgeOnline={systemMeta.edgeOnline}
+        liveSensorCount={systemMeta.liveSensorCount}
+        edgeNode={systemMeta.edgeNode}
+      />
 
       {/* 3. Filter Navigation Strip */}
       <div

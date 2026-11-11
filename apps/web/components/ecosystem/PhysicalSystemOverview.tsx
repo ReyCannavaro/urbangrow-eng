@@ -5,24 +5,26 @@ import { ArrowDown, ArrowUp } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
 
 export function PhysicalSystemOverview() {
-  const { sensors, actuators, toggleActuator } = useTelemetry();
+  const { sensors, actuators, systemMeta, toggleActuator } = useTelemetry();
   const isPumpOn = actuators.waterPump?.isOn ?? true;
   const isAeratorOn = actuators.aerator?.isOn ?? true;
 
   const formattedPH =
-    typeof sensors.ph === "number" ? sensors.ph.toFixed(2) : sensors.ph;
+    typeof sensors.ph === "number" ? sensors.ph.toFixed(2) : "--";
   const formattedTDS =
-    typeof sensors.tds === "number" ? Math.round(sensors.tds) : sensors.tds;
+    typeof sensors.tds === "number" ? String(Math.round(sensors.tds)) : "--";
   const formattedTemp =
     typeof sensors.waterTemperature === "number"
       ? sensors.waterTemperature.toFixed(1)
-      : sensors.waterTemperature;
-  const formattedDO =
-    typeof sensors.dissolvedOxygen === "number"
-      ? sensors.dissolvedOxygen.toFixed(2)
-      : sensors.dissolvedOxygen;
-  const isPhOptimal = sensors.ph >= 6.5 && sensors.ph <= 7.5;
-  const isTdsOptimal = sensors.tds >= 400 && sensors.tds <= 800;
+      : "--";
+  const formattedLux =
+    typeof sensors.lightIntensity === "number"
+      ? String(Math.round(sensors.lightIntensity))
+      : "--";
+  const isPhOptimal =
+    typeof sensors.ph === "number" && sensors.ph >= 6.5 && sensors.ph <= 7.5;
+  const isTdsOptimal =
+    typeof sensors.tds === "number" && sensors.tds >= 400 && sensors.tds <= 800;
 
   return (
     <div className="space-y-6">
@@ -33,7 +35,7 @@ export function PhysicalSystemOverview() {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${isPumpOn ? "bg-[#68C194] animate-pulse" : "bg-rose-400"}`} />
+              <span className={`h-2 w-2 rounded-full ${isPumpOn ? "bg-[#68C194]" : "bg-rose-400"}`} />
               <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#68C194]">
                 ECAD-STD-2026 &bull; 4-LEVEL GRAVITY HYDRAULIC LOOP
               </span>
@@ -56,16 +58,16 @@ export function PhysicalSystemOverview() {
             </div>
 
             <div className="px-3 py-2 rounded-xl bg-white/10 border border-white/15 font-mono text-xs">
-              <div className="text-[9.5px] uppercase tracking-wider text-white/60">Retensi Pasif</div>
+              <div className="text-[9.5px] uppercase tracking-wider text-white/60">Status Sensor</div>
               <div className="font-bold text-[#68C194] text-sm num-tabular mt-0.5">
-                98.4%
+                {systemMeta.edgeOnline ? `${systemMeta.liveSensorCount}/6 Live` : "Offline"}
               </div>
             </div>
 
             <div className="px-3 py-2 rounded-xl bg-white/10 border border-white/15 font-mono text-xs">
-              <div className="text-[9.5px] uppercase tracking-wider text-white/60">Kadar DO Puncak</div>
+              <div className="text-[9.5px] uppercase tracking-wider text-white/60">Cahaya LDR (L4)</div>
               <div className="font-bold text-[#38BDF8] text-sm num-tabular mt-0.5">
-                {formattedDO} mg/L
+                {formattedLux === "--" ? "-- lux" : `${formattedLux} lux`}
               </div>
             </div>
           </div>
@@ -126,7 +128,9 @@ export function PhysicalSystemOverview() {
               </div>
               <div className="bg-[#F8F9FA] p-2.5 rounded-lg border border-[#E5E7EB]">
                 <div className="text-[9.5px] text-[#6B7280]">pH Masuk</div>
-                <div className="font-bold text-[#166534] mt-0.5">{formattedPH} pH</div>
+                <div className="font-bold text-[#166534] mt-0.5">
+                  {formattedPH === "--" ? "--" : `${formattedPH} pH`}
+                </div>
               </div>
               <div className="bg-[#F8F9FA] p-2.5 rounded-lg border border-[#E5E7EB]">
                 <div className="text-[9.5px] text-[#6B7280]">Kemiringan</div>
@@ -198,7 +202,9 @@ export function PhysicalSystemOverview() {
               </div>
               <div className="bg-[#F0F9FF] p-2.5 rounded-lg border border-[#BAE6FD]">
                 <div className="text-[9.5px] text-[#0369A1]">Suhu Kolam</div>
-                <div className="font-bold text-[#0C4A6E] mt-0.5">{formattedTemp} °C</div>
+                <div className="font-bold text-[#0C4A6E] mt-0.5">
+                  {formattedTemp === "--" ? "--" : `${formattedTemp} °C`}
+                </div>
               </div>
               <div className="bg-[#F0F9FF] p-2.5 rounded-lg border border-[#BAE6FD]">
                 <div className="text-[9.5px] text-[#0369A1]">Batas Kritis DO</div>
@@ -261,7 +267,9 @@ export function PhysicalSystemOverview() {
               </div>
               <div className="bg-[#F8F9FA] p-2.5 rounded-lg border border-[#E5E7EB]">
                 <div className="text-[9.5px] text-[#6B7280]">TDS Terukur</div>
-                <div className="font-bold text-[#111827] mt-0.5">{formattedTDS} ppm</div>
+                <div className="font-bold text-[#111827] mt-0.5">
+                  {formattedTDS === "--" ? "--" : `${formattedTDS} ppm`}
+                </div>
               </div>
               <div className="bg-[#F8F9FA] p-2.5 rounded-lg border border-[#E5E7EB]">
                 <div className="text-[9.5px] text-[#6B7280]">Media Akar</div>
@@ -332,8 +340,10 @@ export function PhysicalSystemOverview() {
                 <div className="font-bold text-white mt-0.5">~18.5 kg</div>
               </div>
               <div className="bg-black/30 p-2.5 rounded-lg border border-white/10">
-                <div className="text-[9.5px] text-white/50">Water Level Sump</div>
-                <div className="font-bold text-white mt-0.5">Aman (GPIO 18)</div>
+                <div className="text-[9.5px] text-white/50">Node Hardware</div>
+                <div className={`font-bold mt-0.5 ${systemMeta.edgeOnline ? "text-[#68C194]" : "text-white/70"}`}>
+                  {systemMeta.edgeOnline ? systemMeta.edgeNode : "ESP32 Offline"}
+                </div>
               </div>
               <div className="bg-black/30 p-2.5 rounded-lg border border-white/10">
                 <div className="text-[9.5px] text-white/50">Sirkulasi Lift</div>
@@ -439,15 +449,41 @@ export function PhysicalSystemOverview() {
               <div className="bg-white p-2.5 rounded-lg border border-[#E5E7EB]">
                 <div className="text-[9.5px] text-[#6B7280]">Kadar pH</div>
                 <div className="text-base font-bold text-[#111827] num-tabular mt-0.5">{formattedPH}</div>
-                <div className="text-[9px] text-[#166534] mt-0.5 font-sans">
-                  {isPhOptimal ? "Optimal" : "Buffer Check"}
+                <div
+                  className={`text-[9px] mt-0.5 font-sans ${
+                    typeof sensors.ph !== "number"
+                      ? "text-[#6B7280]"
+                      : isPhOptimal
+                        ? "text-[#166534]"
+                        : "text-[#B45309]"
+                  }`}
+                >
+                  {typeof sensors.ph !== "number"
+                    ? "Sensor Offline"
+                    : isPhOptimal
+                      ? "Optimal"
+                      : "Buffer Check"}
                 </div>
               </div>
               <div className="bg-white p-2.5 rounded-lg border border-[#E5E7EB]">
                 <div className="text-[9.5px] text-[#6B7280]">TDS Nutrisi</div>
-                <div className="text-base font-bold text-[#111827] num-tabular mt-0.5">{formattedTDS} ppm</div>
-                <div className="text-[9px] text-[#166534] mt-0.5 font-sans">
-                  {isTdsOptimal ? "Optimal" : "Check Nutrisi"}
+                <div className="text-base font-bold text-[#111827] num-tabular mt-0.5">
+                  {formattedTDS === "--" ? "--" : `${formattedTDS} ppm`}
+                </div>
+                <div
+                  className={`text-[9px] mt-0.5 font-sans ${
+                    typeof sensors.tds !== "number"
+                      ? "text-[#6B7280]"
+                      : isTdsOptimal
+                        ? "text-[#166534]"
+                        : "text-[#B45309]"
+                  }`}
+                >
+                  {typeof sensors.tds !== "number"
+                    ? "Sensor Offline"
+                    : isTdsOptimal
+                      ? "Optimal"
+                      : "Check Nutrisi"}
                 </div>
               </div>
             </div>

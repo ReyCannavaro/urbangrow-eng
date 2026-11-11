@@ -225,7 +225,7 @@ interface StarterPrompt {
 const STARTER_PROMPTS: StarterPrompt[] = [
   {
     title: "Ringkas Data IoT & Grafik",
-    description: "Area & bar chart tren pH, DO, suhu, dan TDS gaya dark neon",
+    description: "Area & bar chart tren pH, suhu air, TDS, dan cahaya LDR",
     prompt:
       "Ringkas data sensor IoT akuaponik saya hari ini dan tampilkan area chart tren air serta bar chart kondisi metrik dengan gaya dark neon.",
     icon: BarChart3,
@@ -1054,7 +1054,7 @@ export function ChatWindow() {
 
               {isTyping && (
                 <div className="flex items-start gap-3 sm:gap-3.5">
-                  <div className="h-7 w-7 rounded-full bg-[#DCFCE7] border border-[#165B39]/15 text-[#165B39] flex items-center justify-center shrink-0 animate-pulse">
+                  <div className="h-7 w-7 rounded-full bg-[#DCFCE7] border border-[#165B39]/15 text-[#165B39] flex items-center justify-center shrink-0">
                     <Sparkles className="h-3.5 w-3.5" />
                   </div>
                   <div className="py-1.5 flex items-center gap-2 text-xs text-[#6B7280]">
@@ -1189,7 +1189,9 @@ export function ChatWindow() {
           </div>
 
           <p className="text-[10px] text-[#9CA3AF] text-center mt-1.5 font-mono truncate">
-            Terhubung telemetri real-time {systemMeta.edgeNode} • Mendukung analisis foto penyakit &amp; grafik dinamis
+            {systemMeta.edgeOnline && systemMeta.liveSensorCount > 0
+              ? `Terhubung telemetri live ${systemMeta.edgeNode} (${systemMeta.liveSensorCount}/6 sensor) • Mendukung analisis foto & grafik dinamis`
+              : `Backend AI siap • Menunggu koneksi ESP32 (${systemMeta.edgeNode}) • Mendukung analisis foto & grafik dinamis`}
           </p>
         </div>
       </div>

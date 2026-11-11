@@ -63,9 +63,16 @@ export default function ControlsPage() {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-[#38BDF8] animate-pulse" />
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  systemMeta.edgeOnline ? "bg-[#38BDF8]" : "bg-[#9CA3AF]"
+                }`}
+              />
               <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#38BDF8]">
-                EDGE POWER BUS &bull; HARDWARE INTERLOCK DECK
+                EDGE POWER BUS &bull;{" "}
+                {systemMeta.edgeOnline
+                  ? `${systemMeta.edgeNode} ONLINE (${systemMeta.liveSensorCount} SENSOR)`
+                  : `${systemMeta.edgeNode} OFFLINE`}
               </span>
             </div>
             <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white">
@@ -211,11 +218,26 @@ export default function ControlsPage() {
           </div>
 
           {/* 3. Hardware Fail-Safe Specifications */}
-          <div className="rounded-[20px] bg-[#F8F9FA] border border-[#E5E7EB] p-4 space-y-2">
+          <div
+            id="hardware-esp32"
+            className="rounded-[20px] bg-[#F8F9FA] border border-[#E5E7EB] p-4 space-y-2 scroll-mt-4"
+          >
             <span className="text-[10px] font-mono font-bold text-[#6B7280] uppercase tracking-wider block">
-              Spesifikasi Sirkuit Relay ESP32
+              Spesifikasi Sirkuit Relay &amp; Node ESP32
             </span>
             <div className="space-y-1.5 text-xs text-[#4B5563] font-mono">
+              <div className="flex items-center justify-between py-1 border-b border-[#E5E7EB]">
+                <span className="text-[#6B7280]">Status ESP32</span>
+                <span
+                  className={`font-bold ${
+                    systemMeta.edgeOnline ? "text-[#165B39]" : "text-[#6B7280]"
+                  }`}
+                >
+                  {systemMeta.edgeOnline
+                    ? `ONLINE (${systemMeta.liveSensorCount}/6 Sensor)`
+                    : "OFFLINE"}
+                </span>
+              </div>
               <div className="flex items-center justify-between py-1 border-b border-[#E5E7EB]">
                 <span className="text-[#6B7280]">Trigger Koil</span>
                 <span className="font-bold text-[#111827]">Active-LOW (0V)</span>

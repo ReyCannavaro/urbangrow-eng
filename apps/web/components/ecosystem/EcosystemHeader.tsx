@@ -10,11 +10,11 @@ export function EcosystemHeader() {
   const isPumpOn = actuators.waterPump?.isOn ?? true;
 
   const formattedPH =
-    typeof sensors.ph === "number" ? sensors.ph.toFixed(2) : sensors.ph;
+    typeof sensors.ph === "number" ? sensors.ph.toFixed(2) : "--";
   const formattedTemp =
     typeof sensors.waterTemperature === "number"
-      ? sensors.waterTemperature.toFixed(1)
-      : sensors.waterTemperature;
+      ? `${sensors.waterTemperature.toFixed(1)}°C`
+      : "--°C";
 
   return (
     <div
@@ -48,7 +48,7 @@ export function EcosystemHeader() {
         </div>
 
         <div className="px-3 py-1.5 rounded-full bg-white border border-[#E5E7EB] text-[#111827]">
-          pH {formattedPH} &bull; {formattedTemp}°C
+          pH {formattedPH} &bull; {formattedTemp}
         </div>
 
         <Link

@@ -13,3 +13,6 @@
 services/backend/data/*.sqlite
 services/backend/data/*.sqlite-wal
 services/backend/data/*.sqlite-shm
+
+# ESP32 local Wi-Fi / server credentials (keep out of git)
+firmware/esp32_urbangrow/secrets.h
