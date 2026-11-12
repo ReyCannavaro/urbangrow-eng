@@ -5,20 +5,26 @@ import React from "react";
 interface QuickFeedBannerProps {
   onDispense: () => void;
   feedActive: boolean;
+  edgeOnline: boolean;
+  edgeNode?: string;
 }
 
-export function QuickFeedBanner({ onDispense, feedActive }: QuickFeedBannerProps) {
+export function QuickFeedBanner({
+  onDispense,
+  feedActive,
+  edgeOnline,
+  edgeNode = "ESP32-GROW-01",
+}: QuickFeedBannerProps) {
   return (
-    <div className="rounded-[20px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB]/50 hover:border-[#D1D5DB] transition-colors p-5 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
-      <div>
-        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#165B39] block">
-          Manual Feed Pulse &bull; Solenoid 12V
-        </span>
-        <h3 className="font-bold text-sm text-[#111827] mt-0.5">
+    <div className="rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="space-y-1">
+        <h3 className="font-bold text-sm text-[#111827]">
           Dispensasi Pakan Cepat (35g Pelet Terapung)
         </h3>
-        <p className="text-xs text-[#6B7280] mt-1 max-w-xl leading-relaxed">
-          Aktuator mendistribusikan 35g pelet protein 32% ke kolam Nila &amp; Lele secara instan di luar siklus jadwal otomatis.
+        <p className="text-xs text-[#6B7280] max-w-xl leading-relaxed">
+          {edgeOnline
+            ? `Mengirim pulse 3 detik ke dispenser ${edgeNode} untuk menjatuhkan 35g pelet di luar jadwal.`
+            : "Maaf, alat sedang offline — perintah pulse dispenser pakan dalam mode siaga."}
         </p>
       </div>
 
@@ -26,13 +32,23 @@ export function QuickFeedBanner({ onDispense, feedActive }: QuickFeedBannerProps
         type="button"
         onClick={onDispense}
         disabled={feedActive}
-        className={`w-full sm:w-auto px-5 py-2.5 rounded-full font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0 ${
+        className={`w-full sm:w-auto px-5 py-2.5 rounded-full font-semibold text-xs flex items-center justify-center transition-colors shrink-0 ${
           feedActive
-            ? "bg-[#DCFCE7] text-[#166534] border border-[#166534]/25 cursor-default"
-            : "bg-[#165B39] hover:bg-[#124B2E] text-white"
+            ? edgeOnline
+              ? "bg-[#DCFCE7] text-[#166534] border border-[#166534]/20 cursor-default"
+              : "bg-[#F3F4F6] text-[#4B5563] border border-[#E5E7EB] cursor-default"
+            : edgeOnline
+            ? "bg-[#165B39] hover:bg-[#124B2E] text-white cursor-pointer"
+            : "bg-white hover:bg-[#F9FAFB] text-[#111827] border border-[#E5E7EB] hover:border-[#D1D5DB] cursor-pointer"
         }`}
       >
-        <span>{feedActive ? "Pakan Sedang Disebar..." : "Beri Pakan Sekarang (35g)"}</span>
+        {feedActive
+          ? edgeOnline
+            ? "Mengirim Pulse 35g..."
+            : "Mencoba Sinyal..."
+          : edgeOnline
+          ? "Beri Pakan Sekarang (35g)"
+          : "Beri Pakan (Standby)"}
       </button>
     </div>
   );

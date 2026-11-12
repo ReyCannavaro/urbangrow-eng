@@ -11,7 +11,6 @@ import {
   BarChart3,
   Bot,
   Bell,
-  Cpu,
   Smartphone,
   Download,
   Sparkles,
@@ -72,22 +71,21 @@ export function AppSidebar() {
       icon: Bell,
       badge: alerts.length > 0 ? alerts.length : null,
     },
-    { label: "Hardware ESP32", href: "/controls#hardware-esp32", icon: Cpu },
   ];
 
   return (
     <aside className="app-sidebar-panel hidden lg:flex shrink-0 flex-col justify-between p-4 sm:p-5 rounded-[24px] lg:rounded-[28px] bg-white border border-[#E5E7EB] shadow-xs select-none">
       <div className="min-h-0 flex flex-col">
         {/* Brand Logo Header */}
-        <div className="app-sidebar-brand flex items-center justify-between gap-2 mb-3.5 pl-1 shrink-0">
-          <Link href="/" className="inline-flex items-center shrink-0">
+        <div className="app-sidebar-brand flex items-center justify-between gap-2 mb-4 px-1 shrink-0">
+          <Link href="/" className="inline-flex items-center min-w-0 max-w-full">
             <Image
               src="/urbangrow-logo.png"
               alt="UrbanGrow"
-              width={150}
-              height={42}
+              width={185}
+              height={48}
               priority
-              className="app-sidebar-logo h-7 w-auto object-contain"
+              className="app-sidebar-logo h-10 w-auto max-w-full object-contain object-left"
             />
           </Link>
           <span className="lg:hidden px-2.5 py-0.5 rounded-full bg-[#DCFCE7]/80 text-[#165B39] font-mono text-[10px] font-bold">

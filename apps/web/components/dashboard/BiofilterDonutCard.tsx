@@ -67,8 +67,7 @@ export function BiofilterDonutCard() {
 
   const hasBiofilterSensors =
     typeof sensors.ph === "number" ||
-    typeof sensors.waterTemperature === "number" ||
-    typeof sensors.tds === "number";
+    typeof sensors.waterTemperature === "number";
 
   // Compute nitrification breakdown strictly within [60%, 98.5%] when live ESP32 sensors exist
   const phDeviation =

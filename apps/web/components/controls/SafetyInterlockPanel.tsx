@@ -12,57 +12,58 @@ interface SafetyInterlockPanelProps {
 export function SafetyInterlockPanel({
   sensors,
   actuators,
-  edgeNode = "ESP32-GROW-01",
 }: SafetyInterlockPanelProps) {
-  const hasTemp = typeof sensors.waterTemperature === "number";
-  const hasTds = typeof sensors.tds === "number";
+  const hasWaterTemp = typeof sensors.waterTemperature === "number";
+  const hasAirTemp = typeof sensors.airTemperature === "number";
   const hasPh = typeof sensors.ph === "number";
   const hasLux = typeof sensors.lightIntensity === "number";
 
-  const tempSafe =
-    hasTemp &&
+  const waterTempSafe =
+    hasWaterTemp &&
     (sensors.waterTemperature as number) >= 22 &&
     (sensors.waterTemperature as number) <= 28;
-  const tdsSafe =
-    hasTds && (sensors.tds as number) >= 400 && (sensors.tds as number) <= 800;
+  const airTempSafe =
+    hasAirTemp &&
+    (sensors.airTemperature as number) >= 24 &&
+    (sensors.airTemperature as number) <= 32;
   const phSafe =
-    hasPh && (sensors.ph as number) >= 6.4 && (sensors.ph as number) <= 7.6;
+    hasPh && (sensors.ph as number) >= 6.5 && (sensors.ph as number) <= 7.5;
   const lightSafe =
     hasLux &&
     ((sensors.lightIntensity as number) >= 300 || Boolean(actuators.growLight?.isOn));
 
   const rules = [
     {
-      id: "temp-guard",
-      title: "Suhu Air DS18B20",
-      live: hasTemp,
-      ok: tempSafe,
-      liveValue: hasTemp ? `${(sensors.waterTemperature as number).toFixed(1)}°C` : "--",
-      threshold: "22 – 28°C • RELAY-02",
-    },
-    {
-      id: "tds-balance",
-      title: "Nutrisi TDS Kolam",
-      live: hasTds,
-      ok: tdsSafe,
-      liveValue: hasTds ? `${Math.round(sensors.tds as number)} ppm` : "--",
-      threshold: "400 – 800 ppm • RELAY-01",
-    },
-    {
       id: "ph-buffer",
-      title: "Penyangga pH Air",
+      title: "pH Air Probe (Dalam Air)",
       live: hasPh,
       ok: phSafe,
       liveValue: hasPh ? `${(sensors.ph as number).toFixed(2)} pH` : "--",
-      threshold: "6.4 – 7.6 pH • RELAY-05",
+      threshold: "6.5 – 7.5 pH • Biofilter",
+    },
+    {
+      id: "temp-water",
+      title: "Suhu Air DS18B20 (Dalam Air)",
+      live: hasWaterTemp,
+      ok: waterTempSafe,
+      liveValue: hasWaterTemp ? `${(sensors.waterTemperature as number).toFixed(1)}°C` : "--",
+      threshold: "22 – 28°C • RELAY-01",
+    },
+    {
+      id: "temp-air",
+      title: "Suhu Udara DHT22 (Luar Air)",
+      live: hasAirTemp,
+      ok: airTempSafe,
+      liveValue: hasAirTemp ? `${(sensors.airTemperature as number).toFixed(1)}°C` : "--",
+      threshold: "24 – 32°C • Mikroklimat",
     },
     {
       id: "ldr-light",
-      title: "Fotoperiode LDR (L4)",
+      title: "Fotoperiode Sensor LDR (Luar Air)",
       live: hasLux,
       ok: lightSafe,
       liveValue: hasLux ? `${Math.round(sensors.lightIntensity as number)} lux` : "--",
-      threshold: "≥ 300 lux • RELAY-03",
+      threshold: "≥ 300 lux • Fotosintesis",
     },
   ];
 
@@ -70,73 +71,63 @@ export function SafetyInterlockPanel({
   const safeCount = rules.filter((r) => r.ok).length;
 
   return (
-    <div className="rounded-[20px] bg-white border border-[#E5E7EB] p-5 shadow-xs space-y-3.5">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#E5E7EB]">
+    <div className="rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs">
+      <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#F3F4F6]">
         <div>
-          <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#165B39] block">
-            Node: {edgeNode} &bull; Fail-Safe
-          </span>
-          <h3 className="font-bold text-sm text-[#111827] mt-0.5">
-            Aturan Otomasi &amp; Proteksi Interlock Hardware
+          <h3 className="font-bold text-sm text-[#111827]">
+            Proteksi Interlock 4 Sensor
           </h3>
+          <span className="text-[10px] text-[#6B7280]">
+            2 dalam air (pH &amp; DS18B20) &bull; 2 luar air (DHT22 &amp; LDR)
+          </span>
         </div>
 
         <span
-          className={`px-2.5 py-1 rounded-full text-[10.5px] font-mono font-bold ${
+          className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
             liveRulesCount === 0
-              ? "bg-[#F3F4F6] text-[#4B5563] border border-[#E5E7EB]"
+              ? "bg-[#F3F4F6] text-[#6B7280]"
               : safeCount === liveRulesCount
-              ? "bg-[#DCFCE7] text-[#166534] border border-[#166534]/15"
-              : "bg-[#FEF3C7] text-[#B45309] border border-[#F59E0B]/25"
+              ? "bg-[#DCFCE7] text-[#166534]"
+              : "bg-[#FEF3C7] text-[#B45309]"
           }`}
         >
           {liveRulesCount === 0
-            ? "0/4 SENSOR OFFLINE"
-            : `${safeCount}/${liveRulesCount} AMAN`}
+            ? "Maaf, alat offline"
+            : `${safeCount}/${liveRulesCount} Aman`}
         </span>
       </div>
 
-      {/* 4 Live Hardware Interlock Rule Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-0.5">
-        {rules.map((rule) => {
-          return (
-            <div
-              key={rule.id}
-              className={`p-3 rounded-xl border flex flex-col justify-between min-h-[96px] transition-colors font-mono ${
-                !rule.live
-                  ? "bg-[#F9FAFB] border-[#E5E7EB]"
-                  : rule.ok
-                  ? "bg-[#F8F9FA] border-[#E5E7EB]"
-                  : "bg-[#FEF3C7]/40 border-[#F59E0B]/30"
-              }`}
-            >
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-[10.5px] font-sans font-bold text-[#111827] truncate">
+      <div className="divide-y divide-[#F3F4F6]">
+        {rules.map((rule) => (
+          <div
+            key={rule.id}
+            className="py-3 first:pt-3 last:pb-0 flex items-center justify-between gap-3"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span
+                className={`h-2 w-2 rounded-full shrink-0 ${
+                  !rule.live
+                    ? "bg-[#D1D5DB]"
+                    : rule.ok
+                    ? "bg-[#165B39]"
+                    : "bg-[#D97706]"
+                }`}
+              />
+              <div className="min-w-0">
+                <div className="text-xs font-semibold text-[#111827] truncate">
                   {rule.title}
-                </span>
-                <span
-                  className={`h-2 w-2 rounded-full shrink-0 ${
-                    !rule.live
-                      ? "bg-[#9CA3AF]"
-                      : rule.ok
-                      ? "bg-[#165B39]"
-                      : "bg-[#D97706]"
-                  }`}
-                />
-              </div>
-
-              <div className="pt-2">
-                <div className="text-base font-bold text-[#111827] num-tabular">
-                  {rule.liveValue}
                 </div>
-                <div className="text-[9.5px] text-[#6B7280] truncate mt-0.5">
+                <div className="text-[11px] text-[#6B7280] truncate">
                   {rule.threshold}
                 </div>
               </div>
             </div>
-          );
-        })}
+
+            <span className="text-sm font-bold text-[#111827] num-tabular shrink-0">
+              {rule.liveValue}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );

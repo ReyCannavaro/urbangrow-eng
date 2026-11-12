@@ -14,7 +14,8 @@ export function AutomationReminderCard({
   schedules = [],
   onManageSchedules,
 }: AutomationReminderCardProps) {
-  const { dispenseFeed, feedActive } = useTelemetry();
+  const { dispenseFeed, feedActive, systemMeta } = useTelemetry();
+  const edgeOnline = systemMeta.edgeOnline;
 
   const activeSchedules = schedules.filter((s) => s.enabled);
   const primarySchedule = activeSchedules[0];
@@ -64,7 +65,7 @@ export function AutomationReminderCard({
           </div>
           <p className="text-[10.5px] text-[#6B7280] mt-2 leading-relaxed line-clamp-2">
             {primarySchedule?.notes ||
-              "Pakan pelet apung protein 32% untuk kolam Ikan Nila L3 & Lele L1."}
+              "Pakan pelet apung protein 32% untuk kolam Ikan Nila & Lele."}
           </p>
         </div>
       </div>
@@ -81,12 +82,18 @@ export function AutomationReminderCard({
         {feedActive ? (
           <>
             <Check className="h-4 w-4 stroke-[3]" />
-            <span>35g Pakan Telah Didistribusikan!</span>
+            <span>
+              {edgeOnline
+                ? "Pulse Pakan 35g Terkirim!"
+                : "Maaf, alat sedang offline"}
+            </span>
           </>
         ) : (
           <>
             <Send className="h-3.5 w-3.5" />
-            <span>+ Beri Pakan Sekarang</span>
+            <span>
+              {edgeOnline ? "+ Beri Pakan Sekarang" : "+ Beri Pakan (Offline)"}
+            </span>
           </>
         )}
       </button>

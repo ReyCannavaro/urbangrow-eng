@@ -76,12 +76,13 @@ const ALL_SENSOR_KEYS: Array<keyof SensorReading> = [
   "waterLevel",
 ];
 
+// Real physical hardware sensors on prototype:
+// 1. Dalam air: ph (Probe Analog pH), waterTemperature (DS18B20 Waterproof)
+// 2. Luar air: airTemperature (DHT22), lightIntensity (Sensor Cahaya LDR)
 const PHYSICAL_SENSOR_KEYS: Array<keyof SensorReading> = [
   "ph",
-  "tds",
   "waterTemperature",
   "airTemperature",
-  "humidity",
   "lightIntensity",
 ];
 
@@ -104,27 +105,27 @@ class AquaponicsSimulator {
   private actuators: Record<string, ActuatorState> = {
     waterPump: {
       id: "waterPump",
-      name: "Submersible Pump 12V",
+      name: "Pompa Sirkulasi 12V",
       code: "RELAY-01",
       type: "pump",
-      isOn: true,
+      isOn: false,
       mode: "auto",
       powerWatts: 45,
       voltage: "12V DC",
     },
     aerator: {
       id: "aerator",
-      name: "Dual-Port Air Pump",
+      name: "Aerator Oksigen Nila",
       code: "RELAY-02",
       type: "aerator",
-      isOn: true,
+      isOn: false,
       mode: "auto",
       powerWatts: 18,
       voltage: "12V DC",
     },
     growLight: {
       id: "growLight",
-      name: "Full-Spectrum LED Bar",
+      name: "Grow Light Fotosintesis",
       code: "RELAY-03",
       type: "light",
       isOn: false,
@@ -134,17 +135,17 @@ class AquaponicsSimulator {
     },
     feeder: {
       id: "feeder",
-      name: "Feeder Otomatis Terjadwal",
+      name: "Auto-Feeder Dispenser",
       code: "RELAY-04",
       type: "feeder",
-      isOn: true,
+      isOn: false,
       mode: "auto",
       powerWatts: 12,
       voltage: "12V DC",
     },
     dosingPump: {
       id: "dosingPump",
-      name: "pH Buffer Dosing Pump",
+      name: "Pompa Dosing Buffer pH",
       code: "RELAY-05",
       type: "dosing",
       isOn: false,
@@ -219,13 +220,22 @@ class AquaponicsSimulator {
   }
 
   private appendHistorySnapshot() {
+    const nowMs = Date.now();
+    const prev = this.history[this.history.length - 1];
+    if (prev) {
+      const prevMs = Date.parse(prev.timestamp);
+      if (Number.isFinite(prevMs) && nowMs - prevMs > 120_000) {
+        this.history = [];
+      }
+    }
+
     const snapshot = {
-      timestamp: new Date().toISOString(),
+      timestamp: new Date(nowMs).toISOString(),
       sensors: { ...this.state },
       actuators: this.getActuatorStatuses(),
     };
     this.history.push(snapshot);
-    if (this.history.length > 40) {
+    if (this.history.length > 60) {
       this.history.shift();
     }
   }
@@ -281,7 +291,7 @@ class AquaponicsSimulator {
         uptimeSeconds: Math.floor(process.uptime()),
         edgeNode: activeOnlineDevice?.deviceId || devices[0]?.deviceId || "ESP32-GROW-01",
         edgeOnline,
-        liveSensorCount,
+        liveSensorCount: physicalLiveCount,
         lastTelemetryAt: this.lastTelemetryAt,
         wifiSignalDbm:
           activeOnlineDevice && typeof activeOnlineDevice.wifiRssiDbm === "number"
@@ -338,6 +348,20 @@ class AquaponicsSimulator {
     this.actuators[resolvedId].isOn = isOn;
     if (mode) {
       this.actuators[resolvedId].mode = mode;
+    }
+
+    // Hardware physical reality:
+    // Only waterPump has a physical relay attached. If edge is offline or actuator is absent,
+    // auto-revert to false after pulse duration to prevent hanging in stuck ON state.
+    const isEdgeOnline = Array.from(this.connectedDevices.values()).some(
+      (dev) => Date.now() - dev.lastSeenMs <= this.liveSensorTtlMs
+    );
+    if (isOn && (!isEdgeOnline || resolvedId !== "waterPump")) {
+      setTimeout(() => {
+        if (this.actuators[resolvedId]) {
+          this.actuators[resolvedId].isOn = false;
+        }
+      }, 2500);
     }
 
     if (resolvedId === "dosingPump" && isOn && this.anomalyMode === "ph_drop") {

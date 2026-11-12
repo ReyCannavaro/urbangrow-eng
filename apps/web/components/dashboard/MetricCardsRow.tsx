@@ -17,18 +17,10 @@ export function MetricCardsRow() {
 
   const hasWaterTemp = typeof sensors.waterTemperature === "number";
   const hasPh = typeof sensors.ph === "number";
-  const hasTds = typeof sensors.tds === "number";
   const hasLux = typeof sensors.lightIntensity === "number";
-  const hasAnyWaterSensor = hasPh || hasWaterTemp || hasTds;
+  const hasAnyWaterSensor = hasPh || hasWaterTemp;
 
-  // Dynamic WQI score computed from active physical sensors (pH, Water Temp, TDS)
-  const tdsPenalty = hasTds
-    ? (sensors.tds as number) < 400
-      ? (400 - (sensors.tds as number)) * 0.03
-      : (sensors.tds as number) > 800
-      ? ((sensors.tds as number) - 800) * 0.03
-      : 0
-    : 0;
+  // Dynamic WQI score computed from active physical sensors in water (pH, Water Temp)
   const wqiScore = hasAnyWaterSensor
     ? Math.max(
         50,
@@ -36,9 +28,8 @@ export function MetricCardsRow() {
           98,
           Math.round(
             100 -
-              (hasPh ? Math.abs((sensors.ph as number) - 7.0) * 16 : 0) -
-              (hasWaterTemp ? Math.abs((sensors.waterTemperature as number) - 24.5) * 2.5 : 0) -
-              tdsPenalty
+              (hasPh ? Math.abs((sensors.ph as number) - 7.0) * 20 : 0) -
+              (hasWaterTemp ? Math.abs((sensors.waterTemperature as number) - 24.5) * 3.5 : 0)
           )
         )
       )
@@ -46,15 +37,10 @@ export function MetricCardsRow() {
 
   const formattedTemp = hasWaterTemp ? (sensors.waterTemperature as number).toFixed(1) : "--";
   const formattedPH = hasPh ? (sensors.ph as number).toFixed(2) : "--";
-  const formattedTDS = hasTds ? Math.round(sensors.tds as number) : "--";
   const formattedLux = hasLux ? Math.round(sensors.lightIntensity as number) : "--";
   const formattedAirTemp =
     typeof sensors.airTemperature === "number"
       ? sensors.airTemperature.toFixed(1)
-      : "--";
-  const formattedHumidity =
-    typeof sensors.humidity === "number"
-      ? sensors.humidity.toFixed(0)
       : "--";
 
   const luxLabel = !hasLux
@@ -99,26 +85,27 @@ export function MetricCardsRow() {
             <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 text-[10px] font-mono text-white/90">
               <TrendingUp className="h-3 w-3 text-[#68C194]" />
               <span>
-                {systemMeta.liveSensorCount > 0
-                  ? `${systemMeta.edgeNode} • ${systemMeta.liveSensorCount} Sensor Live`
-                  : systemMeta.edgeOnline
-                  ? `${systemMeta.edgeNode} terhubung • Menunggu sensor`
-                  : "Menunggu Koneksi ESP32"}
+                {systemMeta.edgeOnline && systemMeta.liveSensorCount > 0
+                  ? `${systemMeta.edgeNode} • ${systemMeta.liveSensorCount}/4 Sensor Live`
+                  : "Maaf, alat sedang offline"}
               </span>
             </div>
           </div>
         </Link>
 
-        {/* 2. SUHU AIR KOLAM */}
+        {/* 2. SUHU AIR KOLAM (SENSOR DALAM AIR) */}
         <Link
           href="/ecosystem"
           style={{ "--ug-delay": "145ms" } as React.CSSProperties}
           className="ug-enter rounded-[24px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] p-5 shadow-xs flex flex-col justify-between h-[164px] transition-colors group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#111827] block">
-              Suhu Air Kolam
-            </span>
+            <div>
+              <span className="text-xs font-semibold text-[#111827] block">
+                Suhu Air Kolam
+              </span>
+              <span className="text-[10px] text-[#6B7280]">Sensor Dalam Air (DS18B20)</span>
+            </div>
             <span
               className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563] group-hover:text-[#111827] group-hover:border-[#D1D5DB] transition-colors"
               title="Detail Ekosistem"
@@ -141,28 +128,35 @@ export function MetricCardsRow() {
                   : "bg-[#FEF3C7] text-[#B45309]"
               }`}
             >
-              <CheckCircle2 className="h-3 w-3" />
+              {hasWaterTemp ? (
+                <CheckCircle2 className="h-3 w-3" />
+              ) : (
+                <span className="h-1.5 w-1.5 rounded-full bg-[#9CA3AF]" />
+              )}
               <span>
                 {!hasWaterTemp
-                  ? "Sensor DS18B20 offline"
+                  ? "Maaf, alat sedang offline"
                   : isTempOptimal
-                  ? "Ideal rentang 24 - 28°C"
-                  : "Di luar rentang 24 - 28°C"}
+                  ? "Ideal rentang 22 - 27°C"
+                  : "Di luar rentang 22 - 27°C"}
               </span>
             </div>
           </div>
         </Link>
 
-        {/* 3. KADAR pH & TDS */}
+        {/* 3. KADAR pH AIR (SENSOR DALAM AIR) */}
         <Link
           href="/analytics"
           style={{ "--ug-delay": "200ms" } as React.CSSProperties}
           className="ug-enter rounded-[24px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] p-5 shadow-xs flex flex-col justify-between h-[164px] transition-colors group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#111827] block">
-              Kadar pH &amp; Nutrisi
-            </span>
+            <div>
+              <span className="text-xs font-semibold text-[#111827] block">
+                Kadar pH Air
+              </span>
+              <span className="text-[10px] text-[#6B7280]">Sensor Dalam Air (Probe pH)</span>
+            </div>
             <span
               className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563] group-hover:text-[#111827] group-hover:border-[#D1D5DB] transition-colors"
               title="Analitik pH"
@@ -176,9 +170,23 @@ export function MetricCardsRow() {
               {formattedPH}
               <span className="text-base font-normal text-[#9CA3AF] ml-1">pH</span>
             </div>
-            <div className="mt-2 text-[10px] text-[#4B5563] font-mono">
-              TDS <span className="font-bold text-[#111827]">{formattedTDS} ppm</span> •{" "}
-              {hasPh || hasTds ? "Live Sensor ESP32" : "Menunggu Sensor"}
+            <div
+              className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium ${
+                !hasPh
+                  ? "bg-[#F3F4F6] text-[#6B7280]"
+                  : (sensors.ph as number) >= 6.5 && (sensors.ph as number) <= 7.5
+                  ? "bg-[#DCFCE7] text-[#166534]"
+                  : "bg-[#FEF3C7] text-[#B45309]"
+              }`}
+            >
+              {hasPh ? (
+                <CheckCircle2 className="h-3 w-3" />
+              ) : (
+                <span className="h-1.5 w-1.5 rounded-full bg-[#9CA3AF]" />
+              )}
+              <span>
+                {!hasPh ? "Maaf, alat sedang offline" : "Ideal: 6.5 – 7.5 pH"}
+              </span>
             </div>
           </div>
         </Link>
@@ -186,7 +194,7 @@ export function MetricCardsRow() {
 
       {/* Secondary Telemetry & AgriBot Shortcut Strip */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {/* LDR Light Sensor (Clean White Card) */}
+        {/* LDR Light Sensor (Sensor Luar Air) */}
         <div
           style={{ "--ug-delay": "255ms" } as React.CSSProperties}
           className="ug-enter rounded-[20px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] px-4 py-3 flex items-center justify-between gap-3 transition-colors"
@@ -196,32 +204,43 @@ export function MetricCardsRow() {
               <Sun className="h-4 w-4" />
             </div>
             <div className="min-w-0">
-              <span className="text-[11px] font-semibold text-[#111827] block truncate">
-                Cahaya LDR
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-semibold text-[#111827] block truncate">
+                  Cahaya LDR
+                </span>
+                <span className="text-[9.5px] font-mono text-[#6B7280]">[Luar Air]</span>
+              </div>
               <div className="text-sm font-bold text-[#111827] num-tabular">
                 {formattedLux} <span className="text-[11px] font-normal text-[#6B7280]">lux</span>
-                <span className="text-[10px] font-normal text-[#6B7280] ml-1.5">• {luxLabel}</span>
+                <span className="text-[10px] font-normal text-[#6B7280] ml-1.5">
+                  • {hasLux ? luxLabel : "Maaf, alat sedang offline"}
+                </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Air Temp & Humidity */}
+        {/* Suhu Udara Lingkungan (Sensor Luar Air - DHT22) */}
         <div
           style={{ "--ug-delay": "305ms" } as React.CSSProperties}
           className="ug-enter rounded-[20px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] px-4 py-3 flex items-center justify-between gap-3 transition-colors"
         >
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-[#E0F2FE] text-[#0284C7] flex items-center justify-center shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-9 w-9 rounded-xl bg-[#DCFCE7] text-[#165B39] flex items-center justify-center shrink-0">
               <ThermometerSun className="h-4 w-4" />
             </div>
-            <div>
-              <span className="text-[11px] font-semibold text-[#111827] block">
-                Iklim Mikro
-              </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-semibold text-[#111827] block truncate">
+                  Suhu Udara
+                </span>
+                <span className="text-[9.5px] font-mono text-[#6B7280]">[Luar Air - DHT22]</span>
+              </div>
               <div className="text-sm font-bold text-[#111827] num-tabular">
-                {formattedAirTemp}°C <span className="text-[11px] font-normal text-[#6B7280]">• RH {formattedHumidity}%</span>
+                {formattedAirTemp}°C{" "}
+                <span className="text-[10px] font-normal text-[#6B7280]">
+                  • {typeof sensors.airTemperature === "number" ? "Mikroklimat" : "Maaf, alat sedang offline"}
+                </span>
               </div>
             </div>
           </div>

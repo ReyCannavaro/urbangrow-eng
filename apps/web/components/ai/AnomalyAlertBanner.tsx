@@ -44,9 +44,9 @@ export function AnomalyAlertBanner({ anomaly }: Props) {
               <span className="h-2.5 w-2.5 rounded-full bg-[#9CA3AF]" />
             </div>
             <span className="text-[#111827]">
-              <strong className="text-[#374151]">Menunggu Telemetri ESP32:</strong>{" "}
+              <strong className="text-[#374151]">Maaf, alat sedang offline:</strong>{" "}
               {anomaly?.recommended_action ||
-                "Node edge belum mengirimkan paket sensor ke server VPS. Hubungkan ESP32 ke Wi-Fi untuk mulai pemantauan live."}
+                "Node edge ESP32 belum mengirimkan paket 4 sensor fisik ke server VPS. Hubungkan perangkat ke Wi-Fi untuk pemantauan live."}
             </span>
           </div>
           <Link

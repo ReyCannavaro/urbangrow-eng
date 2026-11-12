@@ -73,7 +73,7 @@ export function CycleAnalyticsCard() {
           <p className="text-[10px] text-[#9CA3AF] mt-0.5">
             {hasRealSamples
               ? `${validScores.length} sampel terbaru pH & suhu air ESP32`
-              : "Menunggu sampel telemetri live dari ESP32"}
+              : "Maaf, alat sedang offline"}
           </p>
         </div>
         <Link

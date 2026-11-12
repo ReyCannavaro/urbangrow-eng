@@ -225,28 +225,28 @@ interface StarterPrompt {
 const STARTER_PROMPTS: StarterPrompt[] = [
   {
     title: "Ringkas Data IoT & Grafik",
-    description: "Area & bar chart tren pH, suhu air, TDS, dan cahaya LDR",
+    description: "Grafik tren pH, suhu air, TDS, dan cahaya LDR",
     prompt:
       "Ringkas data sensor IoT akuaponik saya hari ini dan tampilkan area chart tren air serta bar chart kondisi metrik dengan gaya dark neon.",
     icon: BarChart3,
   },
   {
     title: "Analisis Foto Penyakit",
-    description: "Unggah foto daun menguning, busuk akar, atau gejala pada ikan",
+    description: "Unggah foto daun atau gejala fisik pada ikan",
     prompt: "",
     icon: Camera,
     isPhotoTip: true,
   },
   {
     title: "Radar & Donat Ekosistem",
-    description: "Skor kelayakan ekosistem ECAD & distribusi daya aktuator",
+    description: "Skor kelayakan ECAD & distribusi daya aktuator",
     prompt:
       "Buatkan radar chart skor kelayakan parameter air akuaponik dan donut chart beban daya aktuator dengan gaya emerald.",
     icon: Radar,
   },
   {
     title: "Prediksi Air & Panen GDD",
-    description: "Proyeksi hari panen Pakcoy L4 & Kangkung L2 dari data aktual",
+    description: "Estimasi panen Pakcoy & Kangkung aktual",
     prompt:
       "Analisis kondisi tumbuhan, air, dan ikan saat ini, prediksi gejala dini yang perlu diwaspadai, dan hitung estimasi hari panen Pakcoy serta Kangkung.",
     icon: TrendingUp,
@@ -826,10 +826,10 @@ export function ChatWindow() {
         aria-label="Pilih gambar tanaman atau ikan"
       />
 
-      {/* 1. Minimal Gemini/ChatGPT Top Bar */}
+      {/* 1. Minimal Top Bar */}
       <div className="shrink-0 px-4 sm:px-6 py-3 border-b border-[#F3F4F6] flex items-center justify-between gap-3 bg-white">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-[#165B39] to-[#0B2C1B] text-white flex items-center justify-center shadow-2xs shrink-0">
+          <div className="h-8 w-8 rounded-xl bg-[#165B39] text-white flex items-center justify-center shadow-2xs shrink-0">
             <Sparkles className="h-4 w-4" />
           </div>
           <h1 className="text-sm font-bold text-[#111827] tracking-tight">
@@ -849,24 +849,24 @@ export function ChatWindow() {
         </button>
       </div>
 
-      {/* 2. Pure Centered Conversation Area (Scrollable) */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-2.5 sm:py-4">
-        <div className="max-w-3xl mx-auto w-full min-h-full flex flex-col">
+      {/* 2. Centered Scrollable Conversation Area */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-4">
+        <div className="max-w-3xl mx-auto w-full min-h-full flex flex-col justify-start sm:justify-center">
           {messages.length === 0 ? (
-            /* Empty Welcome Canvas matching ChatGPT / Gemini */
-            <div className="my-auto w-full flex flex-col items-center py-1 sm:py-3">
-              <div className="h-9 w-9 sm:h-11 sm:w-11 rounded-2xl bg-gradient-to-br from-[#165B39] via-[#124B2E] to-[#0B2C1B] text-white flex items-center justify-center shadow-sm mb-2 sm:mb-3">
+            /* Welcome Canvas sized to fit cleanly without clipping on 720p+ */
+            <div className="w-full flex flex-col items-center py-2">
+              <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-2xl bg-[#165B39] text-white flex items-center justify-center shadow-xs mb-2.5">
                 <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
 
-              <h2 className="text-lg sm:text-[22px] font-bold tracking-tight text-[#111827] text-center leading-tight">
+              <h2 className="text-lg sm:text-[21px] font-bold tracking-tight text-[#111827] text-center leading-tight">
                 Halo, ada yang bisa AgriBot bantu?
               </h2>
-              <p className="text-[11.5px] sm:text-[13px] text-[#6B7280] text-center max-w-lg mt-1 leading-snug">
-                Unggah foto daun atau ikan untuk diagnosis gejala penyakit, atau minta ringkasan grafik IoT dalam gaya apa pun.
+              <p className="text-xs text-[#6B7280] text-center max-w-md mt-1 leading-relaxed">
+                Unggah foto daun atau ikan untuk diagnosis gejala penyakit, atau minta ringkasan grafik IoT.
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-2xl mt-3.5 sm:mt-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full max-w-2xl mt-4">
                 {STARTER_PROMPTS.map((item) => {
                   const Icon = item.icon;
                   return (
@@ -881,16 +881,16 @@ export function ChatWindow() {
                           void handleSend(item.prompt);
                         }
                       }}
-                      className="text-left p-2.5 sm:p-3 rounded-2xl border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] hover:border-[#D1D5DB] transition-colors flex items-start gap-2.5 cursor-pointer"
+                      className="text-left px-3.5 py-3 rounded-[18px] border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] hover:border-[#165B39]/35 transition-colors flex items-center gap-3 cursor-pointer"
                     >
-                      <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-xl bg-[#F8F9FA] border border-[#E5E7EB] text-[#165B39] flex items-center justify-center shrink-0">
-                        <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      <div className="h-8 w-8 rounded-xl bg-[#DCFCE7] text-[#165B39] flex items-center justify-center shrink-0">
+                        <Icon className="h-4 w-4" />
                       </div>
                       <div className="min-w-0">
-                        <div className="text-xs font-semibold text-[#111827] leading-tight">
+                        <div className="text-xs font-semibold text-[#111827] leading-tight truncate">
                           {item.title}
                         </div>
-                        <div className="text-[11px] text-[#6B7280] mt-0.5 leading-snug line-clamp-2">
+                        <div className="text-[11px] text-[#6B7280] mt-0.5 leading-snug line-clamp-1">
                           {item.description}
                         </div>
                       </div>
@@ -1019,7 +1019,9 @@ export function ChatWindow() {
                                   title={act.reason}
                                   className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold transition cursor-pointer ${
                                     alreadyMatches
-                                      ? "bg-[#DCFCE7] text-[#166534] border border-[#165B39]/25 cursor-default"
+                                      ? systemMeta.edgeOnline
+                                        ? "bg-[#DCFCE7] text-[#166534] border border-[#165B39]/25 cursor-default"
+                                        : "bg-[#F3F4F6] text-[#6B7280] border border-[#E5E7EB] cursor-default"
                                       : "bg-[#165B39] hover:bg-[#124B2E] text-white shadow-2xs"
                                   }`}
                                 >
@@ -1032,8 +1034,10 @@ export function ChatWindow() {
                                   )}
                                   <span>
                                     {alreadyMatches
-                                      ? `${act.label} (Aktif)`
-                                      : act.label}
+                                      ? `${act.label} (${systemMeta.edgeOnline ? "Aktif" : "Di Antrean"})`
+                                      : systemMeta.edgeOnline
+                                      ? act.label
+                                      : `${act.label} (Antrekan)`}
                                   </span>
                                 </button>
                                 {feedback && !feedback.ok && (
@@ -1081,8 +1085,8 @@ export function ChatWindow() {
         </div>
       </div>
 
-      {/* 3. Anchored Rounded Gemini/ChatGPT Pill Composer */}
-      <div className="shrink-0 px-3 sm:px-6 pb-3 sm:pb-4 pt-1 bg-white">
+      {/* 3. Anchored Pill Composer */}
+      <div className="shrink-0 px-3 sm:px-6 pb-3 sm:pb-4 pt-2.5 border-t border-[#F3F4F6] bg-white">
         <div className="max-w-3xl mx-auto w-full">
           {uploadError && (
             <div className="mb-2 px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-[11px] text-rose-700 flex items-center justify-between gap-2">

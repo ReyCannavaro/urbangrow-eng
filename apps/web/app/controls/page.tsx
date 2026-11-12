@@ -1,12 +1,18 @@
 "use client";
 
-import React from "react";
-import { AlertOctagon, X } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import { AlertOctagon, ArrowUpRight, CheckCircle2, X } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
 import { ControlsHeader } from "@/components/controls/ControlsHeader";
 import { RelaySwitchCard } from "@/components/controls/RelaySwitchCard";
 import { QuickFeedBanner } from "@/components/controls/QuickFeedBanner";
 import { SafetyInterlockPanel } from "@/components/controls/SafetyInterlockPanel";
+import {
+  fetchAutomationSchedules,
+  toggleAutomationScheduleItem,
+} from "@/lib/operationsApi";
+import { AutomationSchedule } from "@/lib/types";
 
 export default function ControlsPage() {
   const {
@@ -20,18 +26,36 @@ export default function ControlsPage() {
     clearActuatorError,
   } = useTelemetry();
 
+  const [schedules, setSchedules] = useState<AutomationSchedule[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchAutomationSchedules().then((items) => {
+      if (!cancelled) setSchedules(items);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleToggleSchedule = async (id: string) => {
+    const updated = await toggleAutomationScheduleItem(id);
+    setSchedules(updated);
+  };
+
   const actuatorList = Object.values(actuators);
-  const totalLoad = actuatorList.reduce(
-    (acc, a) => acc + (a.isOn ? a.powerWatts : 0),
-    0
-  );
-  const activeCount = actuatorList.filter((a) => a.isOn).length;
+  const activeCount = systemMeta.edgeOnline ? actuatorList.filter((a) => a.isOn).length : 0;
+  const totalLoad = systemMeta.edgeOnline
+    ? actuatorList.reduce((acc, a) => acc + (a.isOn ? a.powerWatts : 0), 0)
+    : 0;
   const totalCount = actuatorList.length;
+  const enabledSchedulesCount = schedules.filter((s) => s.enabled).length;
 
   return (
     <div className="space-y-6">
-      {/* 1. Header with Active Relay Telemetry */}
       <ControlsHeader
+        edgeOnline={systemMeta.edgeOnline}
+        edgeNode={systemMeta.edgeNode}
         totalLoadWatts={totalLoad}
         activeCount={activeCount}
         totalCount={totalCount}
@@ -56,204 +80,149 @@ export default function ControlsPage() {
         </div>
       )}
 
-      {/* ===================================================================
-          2. INDUSTRIAL EDGE POWER & CIRCUIT HUD (Calm, Typography-Led)
-          =================================================================== */}
-      <div className="rounded-[20px] bg-[#1E293B] text-white p-5 sm:p-6 shadow-sm border border-[#334155]">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span
-                className={`h-2 w-2 rounded-full ${
-                  systemMeta.edgeOnline ? "bg-[#38BDF8]" : "bg-[#9CA3AF]"
-                }`}
-              />
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#38BDF8]">
-                EDGE POWER BUS &bull;{" "}
-                {systemMeta.edgeOnline
-                  ? `${systemMeta.edgeNode} ONLINE (${systemMeta.liveSensorCount} SENSOR)`
-                  : `${systemMeta.edgeNode} OFFLINE`}
-              </span>
-            </div>
-            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white">
-              Konsol Daya Catu Ganda 12V DC &amp; Saklar Optocoupler
-            </h2>
-            <p className="text-xs text-white/75 max-w-2xl leading-relaxed">
-              Semua modul relay 4-channel dikendalikan via Active-Low logic dengan isolasi optocoupler PC817. Relay otomatis berpindah ke baterai SLA 12V 7Ah tanpa jeda (0ms transfer) saat suplai PLN terputus.
-            </p>
-          </div>
-
-          {/* Integrated Circuit Telemetry Gauges */}
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0 font-mono text-xs">
-            <div className="px-3 py-2 rounded-xl bg-black/40 border border-white/10">
-              <div className="text-[9.5px] uppercase tracking-wider text-white/50">Total Beban</div>
-              <div className="font-bold text-white text-sm num-tabular mt-0.5">
-                <span className="text-[#F59E0B]">{totalLoad} W</span>
-                <span className="text-[10px] text-white/40 ml-1">/ 180W</span>
-              </div>
-            </div>
-
-            <div className="px-3 py-2 rounded-xl bg-black/40 border border-white/10">
-              <div className="text-[9.5px] uppercase tracking-wider text-white/50">Tegangan Bus</div>
-              <div className="font-bold text-[#38BDF8] text-sm num-tabular mt-0.5">
-                12.2 V DC
-              </div>
-            </div>
-
-            <div className="px-3 py-2 rounded-xl bg-black/40 border border-white/10">
-              <div className="text-[9.5px] uppercase tracking-wider text-white/50">Kanal Aktif</div>
-              <div className="font-bold text-[#68C194] text-sm num-tabular mt-0.5">
-                {activeCount} / {totalCount} ON
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Slim Single-Line Connectivity Strip */}
+      <div
+        className={`flex items-center gap-2.5 rounded-[18px] border px-4 py-2.5 text-xs ${
+          systemMeta.edgeOnline
+            ? "border-[#165B39]/20 bg-[#DCFCE7]/40 text-[#166534]"
+            : "border-[#E5E7EB] bg-white text-[#4B5563]"
+        }`}
+      >
+        {systemMeta.edgeOnline ? (
+          <CheckCircle2 className="h-4 w-4 text-[#165B39] shrink-0" />
+        ) : (
+          <span className="h-2 w-2 rounded-full bg-[#9CA3AF] shrink-0" />
+        )}
+        <span>
+          {systemMeta.edgeOnline
+            ? `${systemMeta.edgeNode} terhubung — perintah relay aktif via HTTPS (${systemMeta.liveSensorCount}/4 sensor fisik live).`
+            : `Maaf, alat sedang offline — saklar otomatis kembali OFF karena node ${systemMeta.edgeNode} belum terhubung.`}
+        </span>
       </div>
 
-      {/* ===================================================================
-          3. ASYMMETRIC 2-COLUMN MAIN CONSOLE:
-             LEFT (60%): 4-BAY TACTICAL HARDWARE SWITCHBOARD
-             RIGHT (40%): SAFETY INTERLOCK & SCHEDULED AUTOMATION
-          =================================================================== */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* LEFT COLUMN: 4-CHANNEL RELAY SWITCHBOARD */}
+      {/* Main Switchboard + Right Panels */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        {/* LEFT COLUMN: FLAT RELAY SWITCHBOARD */}
         <div className="lg:col-span-7 space-y-4">
-          <div className="rounded-[20px] bg-white border border-[#E5E7EB] p-5 sm:p-6 shadow-xs">
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 mb-4 border-b border-[#E5E7EB]">
-              <div>
-                <h2 className="text-base font-bold text-[#111827]">
-                  Kanal Relay Fisik (Optoisolated 10A)
-                </h2>
-                <p className="text-xs text-[#6B7280]">
-                  Klik saklar geser untuk mengubah status kontak fisik relay seketika.
-                </p>
-              </div>
-
-              <span className="px-2.5 py-1 rounded bg-[#F8F9FA] border border-[#E5E7EB] text-[#165B39] font-mono text-[10.5px] font-bold">
-                ACTIVE-LOW GPIO
-              </span>
-            </div>
-
-            {/* List of 4-5 Relays in a Clean Single-Stack or 2-Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {actuatorList.map((act) => (
-                <RelaySwitchCard
-                  key={act.id}
-                  actuator={act}
-                  onToggle={toggleActuator}
-                />
-              ))}
-            </div>
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-sm font-bold text-[#111827]">
+              Kanal Relay ({systemMeta.edgeNode})
+            </h2>
+            <span className="text-xs text-[#6B7280]">
+              {systemMeta.edgeOnline ? "Active-LOW GPIO" : "Maaf, alat sedang offline"}
+            </span>
           </div>
 
-          {/* Quick Immediate Action Bar (Fish Feeder Pulse) */}
-          <QuickFeedBanner onDispense={dispenseFeed} feedActive={feedActive} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {actuatorList.map((act) => (
+              <RelaySwitchCard
+                key={act.id}
+                actuator={act}
+                edgeOnline={systemMeta.edgeOnline}
+                onToggle={toggleActuator}
+              />
+            ))}
+          </div>
+
+          <QuickFeedBanner
+            onDispense={dispenseFeed}
+            feedActive={feedActive}
+            edgeOnline={systemMeta.edgeOnline}
+            edgeNode={systemMeta.edgeNode}
+          />
         </div>
 
-        {/* RIGHT COLUMN: SAFETY INTERLOCKS & AUTOMATION TIMELINE */}
+        {/* RIGHT COLUMN: INTERLOCKS & SCHEDULES */}
         <div className="lg:col-span-5 space-y-4">
-          {/* 1. Real-time Hardware Safety Interlock Bay */}
           <SafetyInterlockPanel
             sensors={sensors}
             actuators={actuators}
             edgeNode={systemMeta.edgeNode}
           />
 
-          {/* 2. Scheduled Automation Timeline (ECAD Routine) */}
-          <div className="rounded-[20px] bg-white border border-[#E5E7EB] p-5 shadow-xs space-y-3">
-            <div className="flex items-center justify-between pb-2.5 border-b border-[#E5E7EB]">
-              <div>
-                <span className="text-[10px] font-mono font-bold text-[#165B39] uppercase tracking-wider block">
-                  Jadwal Otomasi
-                </span>
-                <h4 className="text-xs font-bold text-[#111827] uppercase tracking-wide mt-0.5">
-                  Agenda Siklus Harian (WIB)
-                </h4>
-              </div>
-              <span className="text-[10px] font-mono font-semibold text-[#166534] bg-[#DCFCE7] px-2 py-0.5 rounded">
-                Auto Aktif
+          <div className="rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs">
+            <div className="flex items-center justify-between gap-2 pb-3 border-b border-[#F3F4F6]">
+              <h3 className="text-sm font-bold text-[#111827]">
+                Jadwal Otomasi (WIB)
+              </h3>
+              <span
+                className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${
+                  !systemMeta.edgeOnline
+                    ? "bg-[#F3F4F6] text-[#6B7280]"
+                    : enabledSchedulesCount > 0
+                    ? "bg-[#DCFCE7] text-[#166534]"
+                    : "bg-[#F3F4F6] text-[#6B7280]"
+                }`}
+              >
+                {!systemMeta.edgeOnline
+                  ? `${enabledSchedulesCount} Siaga`
+                  : enabledSchedulesCount > 0
+                  ? `${enabledSchedulesCount} Aktif`
+                  : "Nonaktif"}
               </span>
             </div>
 
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#F8F9FA] border border-[#E5E7EB]">
-                <div className="flex items-center gap-2">
-                  <span className="px-1.5 py-0.5 rounded bg-[#165B39] text-white font-mono text-[10px] font-bold">
-                    07:00
-                  </span>
-                  <div>
-                    <span className="font-bold text-[#111827] block text-[11px]">Pakan Pagi Nila &amp; Lele</span>
-                    <span className="text-[10px] text-[#6B7280]">Dispense 35g pelet protein 32%</span>
-                  </div>
-                </div>
-                <span className="text-[10px] font-mono text-[#165B39] font-bold">Terjadwal</span>
-              </div>
+            {schedules.length === 0 ? (
+              <p className="py-4 text-xs text-[#6B7280]">
+                Belum ada jadwal tersimpan. Tambah aturan baru lewat Dashboard.
+              </p>
+            ) : (
+              <div className="divide-y divide-[#F3F4F6]">
+                {schedules.map((sched) => (
+                  <div
+                    key={sched.id}
+                    className={`py-3 flex items-center justify-between gap-2.5 ${
+                      sched.enabled ? "" : "opacity-60"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10.5px] font-semibold num-tabular shrink-0 ${
+                          sched.triggerType === "sensor_threshold"
+                            ? "bg-[#FEF3C7] text-[#B45309]"
+                            : sched.enabled
+                            ? "bg-[#DCFCE7] text-[#166534]"
+                            : "bg-[#F3F4F6] text-[#6B7280]"
+                        }`}
+                      >
+                        {sched.triggerType === "time"
+                          ? sched.scheduleTime || "--:--"
+                          : `${sched.operator || ">"}${sched.thresholdValue ?? ""}`}
+                      </span>
+                      <div className="min-w-0">
+                        <span className="font-semibold text-[#111827] block text-xs truncate">
+                          {sched.title}
+                        </span>
+                        <span className="text-[11px] text-[#6B7280] block truncate">
+                          {sched.actuatorId} &rarr; {sched.targetState ? "ON" : "OFF"}
+                        </span>
+                      </div>
+                    </div>
 
-              <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#F8F9FA] border border-[#E5E7EB]">
-                <div className="flex items-center gap-2">
-                  <span className="px-1.5 py-0.5 rounded bg-[#165B39] text-white font-mono text-[10px] font-bold">
-                    16:30
-                  </span>
-                  <div>
-                    <span className="font-bold text-[#111827] block text-[11px]">Pakan Sore Nila &amp; Lele</span>
-                    <span className="text-[10px] text-[#6B7280]">Dispense 35g pelet sore</span>
+                    <button
+                      type="button"
+                      onClick={() => void handleToggleSchedule(sched.id)}
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors shrink-0 cursor-pointer ${
+                        sched.enabled
+                          ? "bg-white border-[#165B39]/30 text-[#165B39] hover:bg-[#DCFCE7]/50"
+                          : "bg-white border-[#E5E7EB] text-[#6B7280] hover:bg-[#F3F4F6]"
+                      }`}
+                    >
+                      {sched.enabled ? "Aktif" : "Jeda"}
+                    </button>
                   </div>
-                </div>
-                <span className="text-[10px] font-mono text-[#165B39] font-bold">Terjadwal</span>
+                ))}
               </div>
+            )}
 
-              <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#FEF3C7]/40 border border-[#FDE68A]">
-                <div className="flex items-center gap-2">
-                  <span className="px-1.5 py-0.5 rounded bg-[#D97706] text-white font-mono text-[10px] font-bold">
-                    18:00
-                  </span>
-                  <div>
-                    <span className="font-bold text-[#92400E] block text-[11px]">Grow Light Fotoperiode</span>
-                    <span className="text-[10px] text-[#B45309]">Siklus 12 Jam LED Full-Spectrum</span>
-                  </div>
-                </div>
-                <span className="text-[10px] font-mono text-[#B45309] font-bold">12 Jam</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 3. Hardware Fail-Safe Specifications */}
-          <div
-            id="hardware-esp32"
-            className="rounded-[20px] bg-[#F8F9FA] border border-[#E5E7EB] p-4 space-y-2 scroll-mt-4"
-          >
-            <span className="text-[10px] font-mono font-bold text-[#6B7280] uppercase tracking-wider block">
-              Spesifikasi Sirkuit Relay &amp; Node ESP32
-            </span>
-            <div className="space-y-1.5 text-xs text-[#4B5563] font-mono">
-              <div className="flex items-center justify-between py-1 border-b border-[#E5E7EB]">
-                <span className="text-[#6B7280]">Status ESP32</span>
-                <span
-                  className={`font-bold ${
-                    systemMeta.edgeOnline ? "text-[#165B39]" : "text-[#6B7280]"
-                  }`}
-                >
-                  {systemMeta.edgeOnline
-                    ? `ONLINE (${systemMeta.liveSensorCount}/6 Sensor)`
-                    : "OFFLINE"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-1 border-b border-[#E5E7EB]">
-                <span className="text-[#6B7280]">Trigger Koil</span>
-                <span className="font-bold text-[#111827]">Active-LOW (0V)</span>
-              </div>
-              <div className="flex items-center justify-between py-1 border-b border-[#E5E7EB]">
-                <span className="text-[#6B7280]">Isolasi</span>
-                <span className="font-bold text-[#111827]">PC817 Optocoupler</span>
-              </div>
-              <div className="flex items-center justify-between py-1 border-b border-[#E5E7EB]">
-                <span className="text-[#6B7280]">Watchdog WDT</span>
-                <span className="font-bold text-[#165B39]">8.000 ms</span>
-              </div>
-              <div className="flex items-center justify-between py-1">
-                <span className="text-[#6B7280]">Backup Baterai</span>
-                <span className="font-bold text-[#0284C7]">SLA 12V 7Ah (0ms)</span>
-              </div>
+            <div className="pt-3 border-t border-[#F3F4F6] flex justify-end">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-[#165B39] hover:underline"
+              >
+                <span>Kelola jadwal di Dashboard</span>
+                <ArrowUpRight className="h-3.5 w-3.5" />
+              </Link>
             </div>
           </div>
         </div>

@@ -327,44 +327,95 @@ export const app = new Elysia()
   // 1. Current real-time sensor snapshot (strict live IoT / offline status)
   .get("/api/sensors/current", () => simulator.getSnapshot())
 
-  // 2. Historical sensor data for telemetry trend charts (backed by SQLite + live ring buffer)
-  .get("/api/sensors/history", () => {
-    const dbRows = getPersistedSensorReadings(60);
-    const liveHistory = simulator.getHistory();
-    if (dbRows.length > 0) {
+  // 2. Historical sensor data for live telemetry trend charts (strictly empty when no device is hitting API)
+  .get(
+    "/api/sensors/history",
+    ({ query }) => {
       const snap = simulator.getSnapshot();
-      const actuatorMap = Object.fromEntries(
-        Object.entries(snap.actuators).map(([k, v]) => [k, Boolean(v.isOn)])
-      );
-      const merged = dbRows.map((r) => ({
-        timestamp: r.recordedAt,
-        sensors: {
-          ph: r.ph,
-          tds: r.tds,
-          waterTemperature: r.waterTemperature,
-          airTemperature: r.airTemperature,
-          humidity: r.humidity,
-          lightIntensity: r.lightIntensity,
-          dissolvedOxygen: r.dissolvedOxygen,
-          waterLevel: r.waterLevel,
-        },
-        actuators: actuatorMap,
-      }));
+      const isLiveNow = snap.system.edgeOnline || snap.system.liveSensorCount > 0;
+      const includeArchive = query.archive === "true" || query.archive === "1";
+
+      if (!isLiveNow && !includeArchive) {
+        return {
+          success: true,
+          source: "offline",
+          count: 0,
+          data: [],
+        };
+      }
+
+      const liveHistory = simulator.getHistory();
+      if (!includeArchive && liveHistory.length > 0) {
+        return {
+          success: true,
+          source: "live_buffer",
+          count: liveHistory.length,
+          data: liveHistory,
+        };
+      }
+
+      const dbRows = getPersistedSensorReadings(60);
+      if (dbRows.length > 0) {
+        const actuatorMap = Object.fromEntries(
+          Object.entries(snap.actuators).map(([k, v]) => [k, Boolean(v.isOn)])
+        );
+        const mapped = dbRows.map((r) => ({
+          timestamp: r.recordedAt,
+          sensors: {
+            ph: r.ph,
+            tds: r.tds,
+            waterTemperature: r.waterTemperature,
+            airTemperature: r.airTemperature,
+            humidity: r.humidity,
+            lightIntensity: r.lightIntensity,
+            dissolvedOxygen: r.dissolvedOxygen,
+            waterLevel: r.waterLevel,
+          },
+          actuators: actuatorMap,
+        }));
+
+        const data = includeArchive
+          ? mapped
+          : (() => {
+              const nowMs = Date.now();
+              const tail: typeof mapped = [];
+              for (let i = mapped.length - 1; i >= 0; i--) {
+                const item = mapped[i];
+                const itemMs = Date.parse(item.timestamp);
+                if (!Number.isFinite(itemMs)) continue;
+                if (tail.length === 0) {
+                  if (nowMs - itemMs > 120_000) break;
+                  tail.unshift(item);
+                } else {
+                  const nextMs = Date.parse(tail[0].timestamp);
+                  if (nextMs - itemMs > 120_000) break;
+                  tail.unshift(item);
+                }
+              }
+              return tail;
+            })();
+
+        return {
+          success: true,
+          source: data.length > 0 ? "sqlite_database" : "live_buffer",
+          count: data.length,
+          data,
+        };
+      }
+
       return {
         success: true,
-        source: "sqlite_database",
-        count: merged.length,
-        data: merged,
+        source: "live_buffer",
+        count: liveHistory.length,
+        data: liveHistory,
       };
+    },
+    {
+      query: t.Object({
+        archive: t.Optional(t.String()),
+      }),
     }
-
-    return {
-      success: true,
-      source: "live_buffer",
-      count: liveHistory.length,
-      data: liveHistory,
-    };
-  })
+  )
 
   // 3. Active system alerts
   .get("/api/alerts", () => ({

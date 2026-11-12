@@ -1,490 +1,611 @@
 "use client";
 
-import React from "react";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import React, { useEffect, useSyncExternalStore } from "react";
+import { ArrowDown, ArrowUp, Droplets } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
+import {
+  fetchAgriBotDiagnostics,
+  getDefaultPredictionCohort,
+  readStoredPredictionCohort,
+} from "@/lib/aiApi";
+import { PredictionCohortConfig } from "@/lib/types";
+
+const DEFAULT_COHORT_SNAPSHOT = getDefaultPredictionCohort();
+let cachedCohortRaw: string | null = null;
+let cachedCohortSnapshot: PredictionCohortConfig = DEFAULT_COHORT_SNAPSHOT;
+const cohortListeners = new Set<() => void>();
+
+function subscribeCohortStorage(callback: () => void) {
+  cohortListeners.add(callback);
+  const handleStorage = (e: StorageEvent) => {
+    if (e.key === "urbangrow_prediction_cohort_v1") {
+      cachedCohortRaw = null;
+      callback();
+    }
+  };
+  window.addEventListener("storage", handleStorage);
+  return () => {
+    cohortListeners.delete(callback);
+    window.removeEventListener("storage", handleStorage);
+  };
+}
+
+function getCohortSnapshot(): PredictionCohortConfig {
+  if (typeof window === "undefined") return DEFAULT_COHORT_SNAPSHOT;
+  const raw = window.localStorage.getItem("urbangrow_prediction_cohort_v1");
+  if (raw === cachedCohortRaw) {
+    return cachedCohortSnapshot;
+  }
+  cachedCohortRaw = raw;
+  cachedCohortSnapshot = readStoredPredictionCohort() ?? DEFAULT_COHORT_SNAPSHOT;
+  return cachedCohortSnapshot;
+}
+
+function getServerCohortSnapshot(): PredictionCohortConfig {
+  return DEFAULT_COHORT_SNAPSHOT;
+}
+
+function notifyCohortUpdated() {
+  cachedCohortRaw = null;
+  cohortListeners.forEach((fn) => fn());
+}
 
 export function PhysicalSystemOverview() {
   const { sensors, actuators, systemMeta, toggleActuator } = useTelemetry();
+  const cohort = useSyncExternalStore(
+    subscribeCohortStorage,
+    getCohortSnapshot,
+    getServerCohortSnapshot
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchAgriBotDiagnostics().then((diag) => {
+      if (!cancelled && diag?.cohort) {
+        notifyCohortUpdated();
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const isPumpOn = actuators.waterPump?.isOn ?? true;
   const isAeratorOn = actuators.aerator?.isOn ?? true;
+  const edgeOnline = systemMeta.edgeOnline;
 
-  const formattedPH =
-    typeof sensors.ph === "number" ? sensors.ph.toFixed(2) : "--";
-  const formattedTDS =
-    typeof sensors.tds === "number" ? String(Math.round(sensors.tds)) : "--";
-  const formattedTemp =
-    typeof sensors.waterTemperature === "number"
-      ? sensors.waterTemperature.toFixed(1)
-      : "--";
-  const formattedLux =
-    typeof sensors.lightIntensity === "number"
-      ? String(Math.round(sensors.lightIntensity))
-      : "--";
-  const isPhOptimal =
-    typeof sensors.ph === "number" && sensors.ph >= 6.5 && sensors.ph <= 7.5;
-  const isTdsOptimal =
-    typeof sensors.tds === "number" && sensors.tds >= 400 && sensors.tds <= 800;
+  const hasPh = typeof sensors.ph === "number";
+  const hasTemp = typeof sensors.waterTemperature === "number";
+  const hasAirTemp = typeof sensors.airTemperature === "number";
+  const hasLux = typeof sensors.lightIntensity === "number";
+
+  const formattedPH = hasPh ? (sensors.ph as number).toFixed(2) : "--";
+  const formattedTemp = hasTemp ? (sensors.waterTemperature as number).toFixed(1) : "--";
+  const formattedAirTemp = hasAirTemp ? (sensors.airTemperature as number).toFixed(1) : "--";
+  const formattedLux = hasLux ? String(Math.round(sensors.lightIntensity as number)) : "--";
+
+  const isPhOptimal = hasPh && (sensors.ph as number) >= 6.5 && (sensors.ph as number) <= 7.5;
+
+  const showNila = cohort.fishMode === "both" || cohort.fishMode === "nila";
+  const showLele = cohort.fishMode === "both" || cohort.fishMode === "lele";
+  const totalFishCount =
+    (showNila ? cohort.nila.count : 0) + (showLele ? cohort.lele.count : 0);
 
   return (
     <div className="space-y-6">
       {/* ===================================================================
-          1. CLEAN HYDRODYNAMIC STREAM STRIP (Typography-First, Zero Fluff)
+          1. UNIFIED 3-CARD KPI STRIP (Matches Dashboard MetricCardsRow)
           =================================================================== */}
-      <div className="rounded-[20px] bg-[#165B39] text-white p-5 sm:p-6 shadow-sm border border-[#145233]">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${isPumpOn ? "bg-[#68C194]" : "bg-rose-400"}`} />
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#68C194]">
-                ECAD-STD-2026 &bull; 4-LEVEL GRAVITY HYDRAULIC LOOP
-              </span>
-            </div>
-            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white">
-              Menara Kaskade Bertingkat &amp; Ekologi Sirkulasi Tertutup
-            </h2>
-            <p className="text-xs text-white/80 max-w-2xl leading-relaxed">
-              Air diangkat pompa 12V DC ke puncak rak (Level 4), lalu mengalir pasif memanfaatkan gravitasi melintasi kanopi sayuran, biofilter perakaran, dan dua kompartemen kolam ikan.
-            </p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Card 1: Pine Hero Anchor */}
+        <div
+          style={{ "--ug-delay": "50ms" } as React.CSSProperties}
+          className="ug-enter rounded-[24px] bg-[#165B39] text-white p-5 shadow-xs flex flex-col justify-between h-[152px]"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-white/90">
+              Sirkulasi Kaskade
+            </span>
+            <span className="h-8 w-8 rounded-full bg-white/15 flex items-center justify-center text-white">
+              <Droplets className="h-4 w-4 text-[#68C194]" />
+            </span>
           </div>
 
-          {/* Precision Metric Pills (Clean typography, no redundant icons) */}
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-            <div className="px-3 py-2 rounded-xl bg-white/10 border border-white/15 font-mono text-xs">
-              <div className="text-[9.5px] uppercase tracking-wider text-white/60">Debit Lift</div>
-              <div className="font-bold text-white text-sm num-tabular mt-0.5">
-                {isPumpOn ? "1.8 L/min" : "0.0 L/min"}
-              </div>
+          <div>
+            <div className="text-3xl sm:text-4xl font-bold tracking-tight num-tabular text-white">
+              {!edgeOnline ? "Offline" : isPumpOn ? "Aktif" : "Standby"}
+              {edgeOnline && (
+                <span className="text-base font-normal text-white/75 ml-1.5">
+                  {isPumpOn ? "45W" : "0W"}
+                </span>
+              )}
             </div>
-
-            <div className="px-3 py-2 rounded-xl bg-white/10 border border-white/15 font-mono text-xs">
-              <div className="text-[9.5px] uppercase tracking-wider text-white/60">Status Sensor</div>
-              <div className="font-bold text-[#68C194] text-sm num-tabular mt-0.5">
-                {systemMeta.edgeOnline ? `${systemMeta.liveSensorCount}/6 Live` : "Offline"}
-              </div>
+            <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 text-[11px] font-medium text-white/90">
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  edgeOnline ? "bg-[#68C194]" : "bg-white/60"
+                }`}
+              />
+              <span>
+                {edgeOnline
+                  ? `${systemMeta.liveSensorCount}/4 Sensor Fisik Live (${systemMeta.edgeNode})`
+                  : "Maaf, alat sedang offline"}
+              </span>
             </div>
+          </div>
+        </div>
 
-            <div className="px-3 py-2 rounded-xl bg-white/10 border border-white/15 font-mono text-xs">
-              <div className="text-[9.5px] uppercase tracking-wider text-white/60">Cahaya LDR (L4)</div>
-              <div className="font-bold text-[#38BDF8] text-sm num-tabular mt-0.5">
-                {formattedLux === "--" ? "-- lux" : `${formattedLux} lux`}
-              </div>
+        {/* Card 2: Sensor Dalam Air (pH & Suhu Air DS18B20) */}
+        <div
+          style={{ "--ug-delay": "100ms" } as React.CSSProperties}
+          className="ug-enter rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs flex flex-col justify-between h-[152px]"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-xs font-semibold text-[#111827] block">
+                Sensor Dalam Air
+              </span>
+              <span className="text-[10px] text-[#6B7280]">Probe pH &amp; DS18B20</span>
+            </div>
+            <span className="text-[11px] text-[#6B7280] font-medium">
+              Ideal 6.5–7.5 pH
+            </span>
+          </div>
+
+          <div>
+            <div className="text-3xl sm:text-4xl font-bold tracking-tight num-tabular text-[#111827]">
+              {formattedPH}
+              <span className="text-base font-normal text-[#9CA3AF] ml-1">pH</span>
+            </div>
+            <div className="mt-2 flex items-center gap-2 text-[11px] text-[#4B5563]">
+              <span className="num-tabular font-medium text-[#111827]">
+                Suhu Air: {formattedTemp === "--" ? "--" : `${formattedTemp}°C`}
+              </span>
+              <span className="text-[#D1D5DB]">&bull;</span>
+              <span
+                className={
+                  !hasPh && !hasTemp
+                    ? "text-[#6B7280]"
+                    : isPhOptimal
+                    ? "text-[#166534] font-medium"
+                    : "text-[#B45309] font-medium"
+                }
+              >
+                {!hasPh && !hasTemp
+                  ? "Maaf, alat sedang offline"
+                  : isPhOptimal
+                  ? "Air Optimal"
+                  : "Perlu Penyesuaian"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 3: Sensor Luar Air (Suhu Udara DHT22 & Cahaya LDR) */}
+        <div
+          style={{ "--ug-delay": "150ms" } as React.CSSProperties}
+          className="ug-enter rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs flex flex-col justify-between h-[152px]"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-xs font-semibold text-[#111827] block">
+                Sensor Luar Air
+              </span>
+              <span className="text-[10px] text-[#6B7280]">Suhu Udara &amp; Cahaya LDR</span>
+            </div>
+            <span className="text-[11px] text-[#6B7280] font-medium">
+              Target ≥ 300 lux
+            </span>
+          </div>
+
+          <div>
+            <div className="text-3xl sm:text-4xl font-bold tracking-tight num-tabular text-[#111827]">
+              {formattedLux}
+              <span className="text-lg font-normal text-[#9CA3AF] ml-1">lux</span>
+            </div>
+            <div className="mt-2 flex items-center gap-2 text-[11px] text-[#4B5563]">
+              <span className="num-tabular font-medium text-[#111827]">
+                Suhu Udara: {formattedAirTemp === "--" ? "--" : `${formattedAirTemp}°C`}
+              </span>
+              <span className="text-[#D1D5DB]">&bull;</span>
+              <span className="text-[#6B7280]">
+                {hasAirTemp || hasLux ? "Telemetri Aktif" : "Maaf, alat sedang offline"}
+              </span>
             </div>
           </div>
         </div>
       </div>
 
       {/* ===================================================================
-          2. ASYMMETRIC MAIN GRID:
-             LEFT (65%): ARCHITECTURAL 4-TIER ELEVATION SPINE
-             RIGHT (35%): BIOGEOCHEMICAL & NITROGEN HUB
+          2. CLOSED-LOOP CASCADE FLOW: KOLAM -> PAKCOY -> KANGKUNG -> KOLAM
           =================================================================== */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* LEFT COLUMN: ARCHITECTURAL 4-TIER VERTICAL SPINE */}
-        <div className="lg:col-span-8 space-y-3.5">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="text-xs font-mono font-bold text-[#111827] uppercase tracking-wider">
-              Cross-Section Elevasi Menara Fisik (H = 160 cm &rarr; 0 cm)
-            </h3>
-            <span className="text-[10px] font-mono text-[#6B7280]">
-              Slope Kemiringan: 3% Pasif
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        {/* LEFT COLUMN: HYDRAULIC CASCADE FLOW */}
+        <div className="lg:col-span-8 space-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-1 pb-1">
+            <h2 className="text-sm font-bold text-[#111827]">
+              Alur Hidrolik Menara Kaskade
+            </h2>
+            <span className="text-xs text-[#6B7280]">
+              Kolam Ikan &rarr; Pakcoy &rarr; Kangkung &rarr; Kolam Ikan
             </span>
           </div>
 
-          {/* ─────────────────────────────────────────────────────────────
-              LEVEL 4 (PUNCAK • ELEVASI 160 CM): PAKCOY CANOPY DECK
-              ───────────────────────────────────────────────────────────── */}
-          <div className="rounded-[20px] bg-white border border-[#E5E7EB] hover:border-[#D1D5DB] p-5 shadow-xs transition-colors">
+          {/* INLET BAR: DARI KOLAM NAIK KE PAKCOY */}
+          <div className="rounded-[18px] border border-[#E5E7EB] bg-white px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2 text-[#4B5563]">
+              <ArrowUp className="h-3.5 w-3.5 text-[#165B39] shrink-0" />
+              <span>
+                Pompa 12V (<span className="font-semibold text-[#111827]">RELAY-01</span>) menyedot air dari Kolam Ikan naik ke barisan Pakcoy.
+              </span>
+            </div>
+            <span
+              className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold shrink-0 ${
+                !edgeOnline
+                  ? "bg-[#F3F4F6] text-[#6B7280]"
+                  : isPumpOn
+                  ? "bg-[#DCFCE7] text-[#166534]"
+                  : "bg-[#FEF3C7] text-[#B45309]"
+              }`}
+            >
+              {!edgeOnline
+                ? "ESP32 Offline"
+                : isPumpOn
+                ? "Pompa Aktif"
+                : "Pompa Standby"}
+            </span>
+          </div>
+
+          {/* TAHAP 1: SAYURAN PAKCOY */}
+          <div className="rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-[#165B39] text-white font-mono text-[10px] font-bold">
-                    L4 &bull; 160 CM
+                  <span className="px-2.5 py-0.5 rounded-full bg-[#165B39] text-white text-[11px] font-semibold">
+                    Tahap 1 &bull; Atas
                   </span>
-                  <span className="text-xs font-mono text-[#165B39] font-bold">
-                    PUNCAK SIRKULASI
+                  <span className="text-xs font-semibold text-[#165B39]">
+                    Talang Hidroponik Hulu
                   </span>
                   <span className="text-xs text-[#9CA3AF]">&bull;</span>
-                  <span className="text-xs text-[#6B7280]">NFT Thin-Film Aerasi</span>
+                  <span className="text-xs text-[#6B7280]">Brassica rapa</span>
                 </div>
-                <h4 className="text-sm sm:text-base font-bold text-[#111827]">
-                  Sayuran Pakcoy Super Green (Brassica rapa subsp. chinensis)
-                </h4>
-                <p className="text-xs text-[#4B5563] leading-relaxed pt-0.5">
-                  Menerima semburan primer air kaya nutrisi dari pompa lift. Karakteristik perakaran renggang memaksimalkan kelolosan oksigen terlarut (DO) ke tingkat bawah.
+                <h3 className="text-sm sm:text-base font-bold text-[#111827] pt-0.5">
+                  Sayuran Pakcoy (Zonasi Pertama Air Pompa)
+                </h3>
+                <p className="text-xs text-[#6B7280] leading-relaxed">
+                  Menerima suplai pertama air kaya nutrisi langsung dari pompa kolam ikan. Air melewati akar pakcoy secara merata lalu mengalir turun lewat kemiringan talang ke zona Kangkung.
                 </p>
               </div>
 
-              <span className="px-2.5 py-1 rounded-lg bg-[#DCFCE7] text-[#166534] font-mono text-[11px] font-bold shrink-0">
-                120 Netpot
+              <span className="px-2.5 py-1 rounded-full bg-[#DCFCE7] text-[#166534] text-[11px] font-semibold shrink-0">
+                {cohort.pakcoy.plantCount} Netpot
               </span>
             </div>
 
-            {/* Metrics Row */}
-            <div className="mt-3.5 pt-3 border-t border-[#F3F4F6] grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-              <div className="bg-[#F8F9FA] p-2.5 rounded-lg border border-[#E5E7EB]">
-                <div className="text-[9.5px] text-[#6B7280]">Target DO</div>
-                <div className="font-bold text-[#0284C7] mt-0.5">&gt; 6.0 mg/L</div>
-              </div>
-              <div className="bg-[#F8F9FA] p-2.5 rounded-lg border border-[#E5E7EB]">
-                <div className="text-[9.5px] text-[#6B7280]">pH Masuk</div>
-                <div className="font-bold text-[#166534] mt-0.5">
+            <div className="mt-4 pt-3.5 border-t border-[#F3F4F6] grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div>
+                <div className="text-[11px] text-[#6B7280]">pH Air (Probe)</div>
+                <div className="font-semibold text-[#111827] num-tabular mt-0.5">
                   {formattedPH === "--" ? "--" : `${formattedPH} pH`}
                 </div>
               </div>
-              <div className="bg-[#F8F9FA] p-2.5 rounded-lg border border-[#E5E7EB]">
-                <div className="text-[9.5px] text-[#6B7280]">Kemiringan</div>
-                <div className="font-bold text-[#111827] mt-0.5">3% NFT</div>
+              <div>
+                <div className="text-[11px] text-[#6B7280]">Cahaya (LDR)</div>
+                <div className="font-semibold text-[#111827] num-tabular mt-0.5">
+                  {formattedLux === "--" ? "--" : `${formattedLux} lux`}
+                </div>
               </div>
-              <div className="bg-[#F8F9FA] p-2.5 rounded-lg border border-[#E5E7EB]">
-                <div className="text-[9.5px] text-[#6B7280]">Fase Tumbuh</div>
-                <div className="font-bold text-[#165B39] mt-0.5">Vegetatif</div>
+              <div>
+                <div className="text-[11px] text-[#6B7280]">Kemiringan</div>
+                <div className="font-semibold text-[#111827] mt-0.5">3% Gravitasi</div>
+              </div>
+              <div>
+                <div className="text-[11px] text-[#6B7280]">Aliran Berikutnya</div>
+                <div className="font-semibold text-[#165B39] mt-0.5">&darr; Ke Kangkung</div>
               </div>
             </div>
           </div>
 
-          {/* GRAVITY FLOW CONNECTOR 4 -> 3 */}
-          <div className="flex items-center justify-between px-4 py-0.5 text-xs font-mono text-[#0284C7]">
+          {/* FLOW PAKCOY -> KANGKUNG */}
+          <div className="flex items-center justify-between px-4 py-1 text-[11px] text-[#6B7280]">
             <div className="flex items-center gap-1.5">
-              <ArrowDown className="h-3.5 w-3.5 text-[#0284C7]" />
-              <span className="font-bold text-[11px]">Terjun Bebas Gravitasi 50 cm &rarr; Limpahan Kaya DO</span>
+              <ArrowDown className="h-3.5 w-3.5 text-[#165B39]" />
+              <span>Air mengalir turun secara gravitasi dari Pakcoy &rarr; masuk ke Zona Kangkung</span>
             </div>
-            <span className="text-[10px] text-[#9CA3AF]">0 Watt</span>
+            <span className="font-medium text-[#9CA3AF]">0 Watt</span>
           </div>
 
-          {/* ─────────────────────────────────────────────────────────────
-              LEVEL 3 (TINGKAT 3 • ELEVASI 110 CM): KOLAM IKAN NILA
-              ───────────────────────────────────────────────────────────── */}
-          <div className="rounded-[20px] bg-white border border-[#BAE6FD] hover:border-[#7DD3FC] p-5 shadow-xs transition-colors">
+          {/* TAHAP 2: SAYURAN KANGKUNG */}
+          <div className="rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-[#0284C7] text-white font-mono text-[10px] font-bold">
-                    L3 &bull; 110 CM
+                  <span className="px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#166534] text-[11px] font-semibold">
+                    Tahap 2 &bull; Tengah
                   </span>
-                  <span className="text-xs font-mono text-[#0284C7] font-bold">
-                    KOMPARTEMEN NILA
-                  </span>
-                  <span className="text-xs text-[#9CA3AF]">&bull;</span>
-                  <span className="text-xs text-[#6B7280]">Oreochromis niloticus</span>
-                </div>
-                <h4 className="text-sm sm:text-base font-bold text-[#0C4A6E]">
-                  Sanctuari Ikan Nila Merah (Kebutuhan DO Tinggi)
-                </h4>
-                <p className="text-xs text-[#334155] leading-relaxed pt-0.5">
-                  Menerima air kaya oksigen dari Level 4. Nila membutuhkan DO &gt; 5.0 mg/L untuk respirasi optimal. Menghasilkan ekskresi organik amonia alami sebagai sumber nutrisi biofilter.
-                </p>
-              </div>
-
-              <div className="flex flex-col items-end gap-2 shrink-0">
-                <span className="px-2.5 py-1 rounded-lg bg-[#E0F2FE] text-[#0369A1] font-mono text-[11px] font-bold">
-                  85 Ekor
-                </span>
-                <button
-                  type="button"
-                  onClick={() => toggleActuator("aerator")}
-                  className={`px-2.5 py-1 rounded-md text-[10px] font-mono font-bold transition-colors border cursor-pointer ${
-                    isAeratorOn
-                      ? "bg-[#0284C7] text-white border-[#0284C7]"
-                      : "bg-[#F8FAFC] text-[#64748B] border-[#CBD5E1] hover:bg-[#F1F5F9]"
-                  }`}
-                >
-                  {isAeratorOn ? "AERATOR ON" : "AERATOR OFF"}
-                </button>
-              </div>
-            </div>
-
-            {/* Metrics Row */}
-            <div className="mt-3.5 pt-3 border-t border-[#E0F2FE] grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-              <div className="bg-[#F0F9FF] p-2.5 rounded-lg border border-[#BAE6FD]">
-                <div className="text-[9.5px] text-[#0369A1]">Biomassa Est.</div>
-                <div className="font-bold text-[#0C4A6E] mt-0.5">~14.2 kg</div>
-              </div>
-              <div className="bg-[#F0F9FF] p-2.5 rounded-lg border border-[#BAE6FD]">
-                <div className="text-[9.5px] text-[#0369A1]">Suhu Kolam</div>
-                <div className="font-bold text-[#0C4A6E] mt-0.5">
-                  {formattedTemp === "--" ? "--" : `${formattedTemp} °C`}
-                </div>
-              </div>
-              <div className="bg-[#F0F9FF] p-2.5 rounded-lg border border-[#BAE6FD]">
-                <div className="text-[9.5px] text-[#0369A1]">Batas Kritis DO</div>
-                <div className="font-bold text-[#0284C7] mt-0.5">&gt; 5.0 mg/L</div>
-              </div>
-              <div className="bg-[#F0F9FF] p-2.5 rounded-lg border border-[#BAE6FD]">
-                <div className="text-[9.5px] text-[#0369A1]">Jadwal Pakan</div>
-                <div className="font-bold text-[#166534] mt-0.5">07:00 &bull; 16:30</div>
-              </div>
-            </div>
-          </div>
-
-          {/* GRAVITY FLOW CONNECTOR 3 -> 2 */}
-          <div className="flex items-center justify-between px-4 py-0.5 text-xs font-mono text-[#D97706]">
-            <div className="flex items-center gap-1.5">
-              <ArrowDown className="h-3.5 w-3.5 text-[#D97706]" />
-              <span className="font-bold text-[11px]">Siphon Aliran Amonia &rarr; Menuju Biofilter (Terjun 50 cm)</span>
-            </div>
-            <span className="text-[10px] text-[#9CA3AF]">Konversi Nitrifikasi</span>
-          </div>
-
-          {/* ─────────────────────────────────────────────────────────────
-              LEVEL 2 (TINGKAT 2 • ELEVASI 60 CM): KANGKUNG BIOFILTER
-              ───────────────────────────────────────────────────────────── */}
-          <div className="rounded-[20px] bg-white border border-[#E5E7EB] hover:border-[#D1D5DB] p-5 shadow-xs transition-colors">
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-[#D97706] text-white font-mono text-[10px] font-bold">
-                    L2 &bull; 60 CM
-                  </span>
-                  <span className="text-xs font-mono text-[#D97706] font-bold">
-                    ZONA BIOFILTER
+                  <span className="text-xs font-semibold text-[#111827]">
+                    Talang Hilir &amp; Biofilter
                   </span>
                   <span className="text-xs text-[#9CA3AF]">&bull;</span>
                   <span className="text-xs text-[#6B7280]">Ipomoea aquatica</span>
                 </div>
-                <h4 className="text-sm sm:text-base font-bold text-[#111827]">
-                  Sayuran Kangkung Air &amp; Substrat Hydroton Nitrifikasi
-                </h4>
-                <p className="text-xs text-[#4B5563] leading-relaxed pt-0.5">
-                  Perakaran kangkung yang masif bertindak sebagai biofilter alami penyerap amonia, namun secara alami menyerap oksigen dalam air sebelum dialirkan ke dasar.
+                <h3 className="text-sm sm:text-base font-bold text-[#111827] pt-0.5">
+                  Sayuran Kangkung Air &amp; Media Hydroton
+                </h3>
+                <p className="text-xs text-[#6B7280] leading-relaxed">
+                  Menampung limpahan air dari barisan Pakcoy. Perakaran rapat Kangkung dan substrat clay hydroton menyaring padatan serta mengikat bakteri pengurai amonia sebelum air jatuh kembali ke kolam ikan.
                 </p>
               </div>
 
-              <span className="px-2.5 py-1 rounded-lg bg-[#FEF3C7] text-[#92400E] font-mono text-[11px] font-bold shrink-0">
-                100 Netpot
+              <span className="px-2.5 py-1 rounded-full bg-[#DCFCE7] text-[#166534] text-[11px] font-semibold shrink-0">
+                {cohort.kangkung.plantCount} Netpot
               </span>
             </div>
 
-            {/* Metrics Row */}
-            <div className="mt-3.5 pt-3 border-t border-[#F3F4F6] grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-              <div className="bg-[#F8F9FA] p-2.5 rounded-lg border border-[#E5E7EB]">
-                <div className="text-[9.5px] text-[#6B7280]">Bakteri Aktif</div>
-                <div className="font-bold text-[#D97706] mt-0.5">Nitrosomonas</div>
-              </div>
-              <div className="bg-[#F8F9FA] p-2.5 rounded-lg border border-[#E5E7EB]">
-                <div className="text-[9.5px] text-[#6B7280]">Konversi Amonia</div>
-                <div className="font-bold text-[#166534] mt-0.5">94.2% Efektif</div>
-              </div>
-              <div className="bg-[#F8F9FA] p-2.5 rounded-lg border border-[#E5E7EB]">
-                <div className="text-[9.5px] text-[#6B7280]">TDS Terukur</div>
-                <div className="font-bold text-[#111827] mt-0.5">
-                  {formattedTDS === "--" ? "--" : `${formattedTDS} ppm`}
+            <div className="mt-4 pt-3.5 border-t border-[#F3F4F6] grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div>
+                <div className="text-[11px] text-[#6B7280]">pH Biofilter (Probe)</div>
+                <div className="font-semibold text-[#111827] num-tabular mt-0.5">
+                  {formattedPH === "--" ? "--" : `${formattedPH} pH`}
                 </div>
               </div>
-              <div className="bg-[#F8F9FA] p-2.5 rounded-lg border border-[#E5E7EB]">
-                <div className="text-[9.5px] text-[#6B7280]">Media Akar</div>
-                <div className="font-bold text-[#165B39] mt-0.5">Clay Hydroton</div>
+              <div>
+                <div className="text-[11px] text-[#6B7280]">Suhu Udara (DHT22)</div>
+                <div className="font-semibold text-[#111827] num-tabular mt-0.5">
+                  {formattedAirTemp === "--" ? "--" : `${formattedAirTemp}°C`}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] text-[#6B7280]">Media Biofilter</div>
+                <div className="font-semibold text-[#111827] mt-0.5">Clay Hydroton</div>
+              </div>
+              <div>
+                <div className="text-[11px] text-[#6B7280]">Aliran Berikutnya</div>
+                <div className="font-semibold text-[#165B39] mt-0.5">&darr; Ke Kolam Ikan</div>
               </div>
             </div>
           </div>
 
-          {/* GRAVITY FLOW CONNECTOR 2 -> 1 */}
-          <div className="flex items-center justify-between px-4 py-0.5 text-xs font-mono text-[#64748B]">
+          {/* FLOW KANGKUNG -> KOLAM IKAN */}
+          <div className="flex items-center justify-between px-4 py-1 text-[11px] text-[#6B7280]">
             <div className="flex items-center gap-1.5">
-              <ArrowDown className="h-3.5 w-3.5 text-[#64748B]" />
-              <span className="font-bold text-[11px]">Effluent Rendah DO &rarr; Mengalir ke Dasar Bak Kolam (Terjun 50 cm)</span>
+              <ArrowDown className="h-3.5 w-3.5 text-[#165B39]" />
+              <span>Air tersaring turun kembali ke kolam ikan &rarr; menghasilkan percikan aerasi alami</span>
             </div>
-            <span className="text-[10px] text-[#9CA3AF]">Air Jernih</span>
+            <span className="font-medium text-[#9CA3AF]">Kembali ke Kolam</span>
           </div>
 
-          {/* ─────────────────────────────────────────────────────────────
-              LEVEL 1 (DASAR • ELEVASI 10 CM): KOLAM LELE & SUMP PUMP
-              ───────────────────────────────────────────────────────────── */}
-          <div className="rounded-[20px] bg-[#1E293B] text-white p-5 shadow-xs transition-colors border border-[#334155]">
+          {/* TAHAP 3: KOLAM IKAN BERSEKAT (NILA & LELE + POMPA LIFT) */}
+          <div className="rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs space-y-4">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-[#475569] text-white font-mono text-[10px] font-bold">
-                    L1 &bull; 10 CM
+                  <span className="px-2.5 py-0.5 rounded-full bg-[#F3F4F6] border border-[#E5E7EB] text-[#374151] text-[11px] font-semibold">
+                    Tahap 3 &bull; Kolam Dasar
                   </span>
-                  <span className="text-xs font-mono text-[#94A3B8] font-bold">
-                    DASAR MENARA &amp; SUMP LIFT
+                  <span className="text-xs font-semibold text-[#111827]">
+                    Bak Budidaya Bersekat &amp; Sump Pompa
                   </span>
-                  <span className="text-xs text-white/40">&bull;</span>
-                  <span className="text-xs text-white/70">Clarias sp.</span>
                 </div>
-                <h4 className="text-sm sm:text-base font-bold text-white">
-                  Kolam Ikan Lele &amp; Muara Suction Pompa Lift 12V
-                </h4>
-                <p className="text-xs text-white/80 leading-relaxed pt-0.5">
-                  Ikan Lele memiliki organ arboresen tambahan sehingga sangat toleran terhadap air minim oksigen. Berfungsi sebagai penampung dasar sebelum nutrisi diangkat kembali ke puncak.
+                <h3 className="text-sm sm:text-base font-bold text-[#111827] pt-0.5">
+                  Kolam Ikan Bersekat (Nila Merah &amp; Lele)
+                </h3>
+                <p className="text-xs text-[#6B7280] leading-relaxed">
+                  Air jernih hasil filtrasi akar Kangkung jatuh kembali ke kolam ikan. Kolam bersekat menampung budidaya ikan sekaligus menyediakan ruang hisap bagi Pompa 12V untuk mengangkat nutrisi balik ke Pakcoy.
                 </p>
               </div>
 
-              <div className="flex flex-col items-end gap-2 shrink-0">
-                <span className="px-2.5 py-1 rounded-lg bg-white/10 text-white font-mono text-[11px] font-bold">
-                  120 Ekor
-                </span>
-                <button
-                  type="button"
-                  onClick={() => toggleActuator("waterPump")}
-                  className={`px-2.5 py-1 rounded-md text-[10px] font-mono font-bold transition-colors border cursor-pointer ${
-                    isPumpOn
-                      ? "bg-[#165B39] text-[#68C194] border-[#165B39]"
-                      : "bg-white/10 text-white/60 border-white/20 hover:bg-white/15"
-                  }`}
-                >
-                  {isPumpOn ? "POMPA ON (45W)" : "POMPA OFF"}
-                </button>
+              <span className="px-2.5 py-1 rounded-full bg-[#DCFCE7] text-[#166534] text-[11px] font-semibold shrink-0">
+                {totalFishCount} Ekor
+              </span>
+            </div>
+
+            {/* Measured Pond Telemetry Strip (4 Physical Sensors: 2 Water, 2 Ambient) */}
+            <div className="pt-3.5 border-t border-[#F3F4F6] grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div>
+                <div className="text-[11px] text-[#6B7280]">Suhu Air (DS18B20)</div>
+                <div className="font-semibold text-[#111827] num-tabular mt-0.5">
+                  {formattedTemp === "--" ? "--" : `${formattedTemp} °C`}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] text-[#6B7280]">pH Kolam (Probe)</div>
+                <div className="font-semibold text-[#111827] num-tabular mt-0.5">
+                  {formattedPH === "--" ? "--" : `${formattedPH} pH`}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] text-[#6B7280]">Cahaya (LDR)</div>
+                <div className="font-semibold text-[#111827] num-tabular mt-0.5">
+                  {formattedLux === "--" ? "--" : `${formattedLux} lux`}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] text-[#6B7280]">Node Kontrol</div>
+                <div className="font-semibold text-[#111827] mt-0.5">
+                  {edgeOnline ? systemMeta.edgeNode : "Maaf, alat offline"}
+                </div>
               </div>
             </div>
 
-            {/* Metrics Row */}
-            <div className="mt-3.5 pt-3 border-t border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-              <div className="bg-black/30 p-2.5 rounded-lg border border-white/10">
-                <div className="text-[9.5px] text-white/50">Toleransi DO</div>
-                <div className="font-bold text-[#68C194] mt-0.5">&lt; 3.0 mg/L</div>
-              </div>
-              <div className="bg-black/30 p-2.5 rounded-lg border border-white/10">
-                <div className="text-[9.5px] text-white/50">Biomassa Est.</div>
-                <div className="font-bold text-white mt-0.5">~18.5 kg</div>
-              </div>
-              <div className="bg-black/30 p-2.5 rounded-lg border border-white/10">
-                <div className="text-[9.5px] text-white/50">Node Hardware</div>
-                <div className={`font-bold mt-0.5 ${systemMeta.edgeOnline ? "text-[#68C194]" : "text-white/70"}`}>
-                  {systemMeta.edgeOnline ? systemMeta.edgeNode : "ESP32 Offline"}
+            {/* Two Pond Partitions Separated Cleanly via Hairline Divider */}
+            <div className="rounded-2xl border border-[#E5E7EB] bg-[#F9FAFB] grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[#E5E7EB]">
+              {/* Sekat 1: Ikan Nila */}
+              <div className="p-4 flex flex-col justify-between gap-3">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-[#111827]">
+                      Sekat 1 &bull; Ikan Nila Merah
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-white border border-[#E5E7EB] text-[10.5px] font-semibold text-[#166534]">
+                      {showNila ? `${cohort.nila.count} Ekor` : "Nonaktif"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#6B7280] leading-relaxed">
+                    Berada tepat di area jatuhan air bersih dari Kangkung dengan dukungan Aerator (<span className="font-medium text-[#111827]">RELAY-02</span>).
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 pt-1">
+                  <span className="text-[11px] text-[#6B7280]">
+                    Pakan: <strong className="text-[#111827]">07:00 &bull; 16:30</strong>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => toggleActuator("aerator")}
+                    className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-colors border cursor-pointer ${
+                      !edgeOnline
+                        ? "bg-white text-[#6B7280] border-[#E5E7EB] hover:bg-[#F3F4F6]"
+                        : isAeratorOn
+                        ? "bg-[#165B39] text-white border-[#165B39]"
+                        : "bg-white text-[#6B7280] border-[#D1D5DB] hover:bg-[#F3F4F6]"
+                    }`}
+                  >
+                    {!edgeOnline
+                      ? `Aerator: Antrean ${isAeratorOn ? "ON" : "OFF"}`
+                      : isAeratorOn
+                      ? "Aerator: ON"
+                      : "Aerator: OFF"}
+                  </button>
                 </div>
               </div>
-              <div className="bg-black/30 p-2.5 rounded-lg border border-white/10">
-                <div className="text-[9.5px] text-white/50">Sirkulasi Lift</div>
-                <div className="font-bold text-[#38BDF8] mt-0.5">&uarr; Ke Level 4</div>
+
+              {/* Sekat 2: Ikan Lele & Sump Pump */}
+              <div className="p-4 flex flex-col justify-between gap-3">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-[#111827]">
+                      Sekat 2 &bull; Ikan Lele &amp; Pompa Lift
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-white border border-[#E5E7EB] text-[10.5px] font-semibold text-[#374151]">
+                      {showLele ? `${cohort.lele.count} Ekor` : "Sump"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#6B7280] leading-relaxed">
+                    Menampung aliran antar-sekat menuju suction Pompa Lift 12V (<span className="font-medium text-[#111827]">RELAY-01</span>) untuk dipompa ulang ke Pakcoy.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 pt-1">
+                  <span className="text-[11px] text-[#165B39] font-semibold">
+                    &uarr; Lift Ke Pakcoy
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => toggleActuator("waterPump")}
+                    className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-colors border cursor-pointer ${
+                      !edgeOnline
+                        ? "bg-white text-[#6B7280] border-[#E5E7EB] hover:bg-[#F3F4F6]"
+                        : isPumpOn
+                        ? "bg-[#165B39] text-white border-[#165B39]"
+                        : "bg-white text-[#6B7280] border-[#D1D5DB] hover:bg-[#F3F4F6]"
+                    }`}
+                  >
+                    {!edgeOnline
+                      ? `Pompa: Antrean ${isPumpOn ? "ON" : "OFF"}`
+                      : isPumpOn
+                      ? "Pompa: ON (45W)"
+                      : "Pompa: OFF"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* CLOSED LOOP RETURN PIPE */}
-          <div className="rounded-xl border border-dashed border-[#165B39] bg-[#DCFCE7]/30 p-3 flex items-center justify-between text-xs font-mono text-[#166534]">
-            <div className="flex items-center gap-2">
-              <ArrowUp className="h-3.5 w-3.5 text-[#165B39]" />
-              <span className="font-bold text-[11px]">
-                Pipa PVC 1/2&quot; mengangkat nutrisi 150 cm dari Sump L1 kembali ke Puncak L4
+          {/* RETURN PIPE BAR */}
+          <div className="rounded-[18px] border border-[#E5E7EB] bg-white px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2 text-[#4B5563]">
+              <ArrowUp className="h-3.5 w-3.5 text-[#165B39] shrink-0" />
+              <span>
+                Pipa riser PVC menaikkan air dari Kolam Ikan kembali ke Pakcoy &rarr; Kangkung &rarr; Kolam Ikan.
               </span>
             </div>
-            <span className="px-2 py-0.5 rounded bg-[#165B39] text-white text-[10px] font-bold">
-              100% RECIRCULATION
+            <span className="px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#166534] text-[11px] font-semibold">
+              Siklus Tertutup
             </span>
           </div>
         </div>
 
-        {/* RIGHT COLUMN: BIOGEOCHEMICAL & SCIENTIFIC INTELLIGENCE */}
+        {/* RIGHT COLUMN: BIOGEOCHEMICAL & LOOP RATIONALE */}
         <div className="lg:col-span-4 space-y-4">
-          {/* 1. Nitrogen Transformation Cycle */}
-          <div className="rounded-[20px] bg-white border border-[#E5E7EB] p-5 shadow-xs space-y-3.5">
-            <div className="pb-2.5 border-b border-[#E5E7EB]">
-              <span className="text-[10px] font-mono font-bold text-[#165B39] uppercase tracking-wider block">
-                Siklus Transformasi
-              </span>
-              <h4 className="text-xs font-bold text-[#111827] uppercase tracking-wide mt-0.5">
-                Dinamika Biogeokimia Nitrogen
-              </h4>
-            </div>
+          {/* 1. Nitrogen Cycle */}
+          <div className="rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs">
+            <h3 className="text-sm font-bold text-[#111827] pb-3 border-b border-[#F3F4F6]">
+              Siklus Nitrifikasi Biofilter
+            </h3>
 
-            <div className="space-y-2.5 text-xs">
-              <div className="p-3 rounded-xl bg-[#F8F9FA] border border-[#E5E7EB] space-y-1">
-                <div className="flex items-center justify-between text-[11px] font-mono">
-                  <span className="font-bold text-[#111827]">1. Amonia Terlarut (NH3)</span>
-                  <span className="text-[#0284C7] font-bold">Feses Nila L3</span>
+            <div className="divide-y divide-[#F3F4F6] text-xs">
+              <div className="py-3 space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold text-[#111827]">1. Amonia Terlarut (NH3)</span>
+                  <span className="px-2 py-0.5 rounded-full bg-[#F3F4F6] text-[#4B5563] text-[10px] font-semibold shrink-0">
+                    Dari Kolam Ikan
+                  </span>
                 </div>
-                <p className="text-[11px] text-[#6B7280]">
-                  Limbah organik ekskresi insang dan feses ikan nila mengandung kadar amonia terlarut.
+                <p className="text-[11px] text-[#6B7280] leading-relaxed">
+                  Limbah metabolisme insang dan sisa pakan ikan Nila &amp; Lele di kolam menghasilkan amonia sebelum dipompa naik.
                 </p>
               </div>
 
-              <div className="p-3 rounded-xl bg-[#FEF3C7]/50 border border-[#FDE68A] space-y-1">
-                <div className="flex items-center justify-between text-[11px] font-mono">
-                  <span className="font-bold text-[#92400E]">2. Oksidasi Nitrit (NO2-)</span>
-                  <span className="text-[#B45309] font-bold">Nitrosomonas</span>
+              <div className="py-3 space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold text-[#111827]">2. Oksidasi Nitrit &amp; Nitrat</span>
+                  <span className="px-2 py-0.5 rounded-full bg-[#FEF3C7] text-[#B45309] text-[10px] font-semibold shrink-0">
+                    Bakteri Biofilter
+                  </span>
                 </div>
-                <p className="text-[11px] text-[#78350F]">
-                  Bakteri aerobik pada pori hydroton kangkung mengubah amonia menjadi nitrit beracun sedang.
+                <p className="text-[11px] text-[#6B7280] leading-relaxed">
+                  Bakteri Nitrosomonas dan Nitrobacter pada zona akar serta media hydroton Kangkung mengubah amonia menjadi nitrat (NO3-).
                 </p>
               </div>
 
-              <div className="p-3 rounded-xl bg-[#DCFCE7]/50 border border-[#BBF7D0] space-y-1">
-                <div className="flex items-center justify-between text-[11px] font-mono">
-                  <span className="font-bold text-[#166534]">3. Asimilasi Nitrat (NO3-)</span>
-                  <span className="text-[#165B39] font-bold">Nitrobacter &amp; Daun</span>
+              <div className="pt-3 space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold text-[#111827]">3. Penyerapan &amp; Air Balik</span>
+                  <span className="px-2 py-0.5 rounded-full bg-[#DCFCE7] text-[#166534] text-[10px] font-semibold shrink-0">
+                    Air Jernih
+                  </span>
                 </div>
-                <p className="text-[11px] text-[#14532D]">
-                  Nitrat diserap sebagai pupuk utama daun Pakcoy &amp; Kangkung, mengembalikan air jernih ke kolam.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* 2. Biological Pairing Rationale (ECAD Principle) */}
-          <div className="rounded-[20px] bg-white border border-[#E5E7EB] p-5 shadow-xs space-y-3">
-            <div className="pb-2.5 border-b border-[#E5E7EB]">
-              <span className="text-[10px] font-mono font-bold text-[#165B39] uppercase tracking-wider block">
-                Prinsip Adaptasi Iklim
-              </span>
-              <h4 className="text-xs font-bold text-[#111827] uppercase tracking-wide mt-0.5">
-                Rasionalitas Pasangan Hayati ECAD
-              </h4>
-            </div>
-
-            <div className="space-y-2.5 text-xs text-[#4B5563] leading-relaxed">
-              <div className="p-2.5 rounded-lg bg-[#F8F9FA] border border-[#E5E7EB]">
-                <strong className="text-[#111827] block text-[11px]">Nila Merah + Sayur Pakcoy:</strong>
-                <p className="text-[11px] text-[#6B7280] mt-0.5">
-                  Nila rentan DO drop (&lt;3 mg/L). Menempatkan Nila tepat di bawah talang aerasi NFT menjamin limpahan turbulensi oksigen tinggi.
-                </p>
-              </div>
-
-              <div className="p-2.5 rounded-lg bg-[#F8F9FA] border border-[#E5E7EB]">
-                <strong className="text-[#111827] block text-[11px]">Ikan Lele + Sayur Kangkung:</strong>
-                <p className="text-[11px] text-[#6B7280] mt-0.5">
-                  Lele memproduksi limbah padat tinggi namun memiliki organ pernapasan arboresen. Kangkung dengan akar masif menyerap amonia sebelum air masuk ke pompa.
+                <p className="text-[11px] text-[#6B7280] leading-relaxed">
+                  Nitrat diserap langsung oleh daun Pakcoy dan Kangkung sehingga air yang turun kembali ke kolam lebih aman untuk ikan.
                 </p>
               </div>
             </div>
           </div>
 
-          {/* 3. Water Quality Index */}
-          <div className="rounded-[20px] bg-[#F8F9FA] border border-[#E5E7EB] p-4 space-y-2">
-            <span className="text-[10px] font-mono font-bold text-[#6B7280] uppercase tracking-wider block">
-              Parameter Kualitas Air Menara
-            </span>
-            <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-              <div className="bg-white p-2.5 rounded-lg border border-[#E5E7EB]">
-                <div className="text-[9.5px] text-[#6B7280]">Kadar pH</div>
-                <div className="text-base font-bold text-[#111827] num-tabular mt-0.5">{formattedPH}</div>
-                <div
-                  className={`text-[9px] mt-0.5 font-sans ${
-                    typeof sensors.ph !== "number"
-                      ? "text-[#6B7280]"
-                      : isPhOptimal
-                        ? "text-[#166534]"
-                        : "text-[#B45309]"
-                  }`}
-                >
-                  {typeof sensors.ph !== "number"
-                    ? "Sensor Offline"
-                    : isPhOptimal
-                      ? "Optimal"
-                      : "Buffer Check"}
-                </div>
+          {/* 2. Cascade Sequence Summary */}
+          <div className="rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs">
+            <h3 className="text-sm font-bold text-[#111827] pb-3 border-b border-[#F3F4F6]">
+              Urutan Simbiosis Menara
+            </h3>
+
+            <div className="divide-y divide-[#F3F4F6] text-xs">
+              <div className="py-3 space-y-1">
+                <span className="font-semibold text-[#165B39] block">
+                  1. Kolam &rarr; Pakcoy (Pompa Lift 12V)
+                </span>
+                <p className="text-[11px] text-[#6B7280] leading-relaxed">
+                  Air bernutrisi dari kolam dinaikkan ke baris Pakcoy. Perakaran Pakcoy yang renggang menjaga aliran air tetap lancar ke hilir.
+                </p>
               </div>
-              <div className="bg-white p-2.5 rounded-lg border border-[#E5E7EB]">
-                <div className="text-[9.5px] text-[#6B7280]">TDS Nutrisi</div>
-                <div className="text-base font-bold text-[#111827] num-tabular mt-0.5">
-                  {formattedTDS === "--" ? "--" : `${formattedTDS} ppm`}
-                </div>
-                <div
-                  className={`text-[9px] mt-0.5 font-sans ${
-                    typeof sensors.tds !== "number"
-                      ? "text-[#6B7280]"
-                      : isTdsOptimal
-                        ? "text-[#166534]"
-                        : "text-[#B45309]"
-                  }`}
-                >
-                  {typeof sensors.tds !== "number"
-                    ? "Sensor Offline"
-                    : isTdsOptimal
-                      ? "Optimal"
-                      : "Check Nutrisi"}
-                </div>
+
+              <div className="py-3 space-y-1">
+                <span className="font-semibold text-[#165B39] block">
+                  2. Pakcoy &rarr; Kangkung (Gravitasi 0W)
+                </span>
+                <p className="text-[11px] text-[#6B7280] leading-relaxed">
+                  Akar Kangkung yang lebih rapat bersama media hydroton menangkap sisa padatan dan nitrat sebelum air dibuang ke bawah.
+                </p>
+              </div>
+
+              <div className="pt-3 space-y-1">
+                <span className="font-semibold text-[#165B39] block">
+                  3. Kangkung &rarr; Kolam Ikan (Turun Ulang)
+                </span>
+                <p className="text-[11px] text-[#6B7280] leading-relaxed">
+                  Air tersaring terjun kembali mengisi kolam Nila Merah dan Lele, sekaligus memicu percikan oksigen alami di permukaan air.
+                </p>
               </div>
             </div>
           </div>

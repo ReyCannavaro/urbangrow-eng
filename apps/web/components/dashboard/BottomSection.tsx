@@ -134,7 +134,7 @@ export function BottomSection() {
             </span>
             <div className="flex-1 rounded-2xl bg-[var(--bg-charcoal)] text-white p-3.5 shadow-sm flex items-center justify-between">
               <div>
-                <div className="font-semibold text-xs">Pembersihan Biofilter & Sump L1</div>
+                <div className="font-semibold text-xs">Pembersihan Biofilter &amp; Kolam</div>
                 <div className="text-[10px] text-white/60 mt-0.5">Pembersihan sedimen kotoran padat ikan</div>
               </div>
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 text-[10px] font-mono text-[var(--accent-yellow)]">

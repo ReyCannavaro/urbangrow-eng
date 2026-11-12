@@ -12,7 +12,6 @@ import {
   BarChart3,
   Bot,
   Bell,
-  Cpu,
   Smartphone,
   Download,
   Sparkles,
@@ -101,7 +100,6 @@ export function MobileSidebarDrawer({
       icon: Bell,
       badge: alerts.length > 0 ? alerts.length : null,
     },
-    { label: "Hardware ESP32", href: "/controls#hardware-esp32", icon: Cpu },
   ];
 
   if (!isOpen) return null;
@@ -123,14 +121,14 @@ export function MobileSidebarDrawer({
         <div>
           {/* Header with Logo & Close Button */}
           <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#E5E7EB]">
-            <Link href="/" onClick={onClose} className="inline-flex items-center">
+            <Link href="/" onClick={onClose} className="inline-flex items-center min-w-0">
               <Image
                 src="/urbangrow-logo.png"
                 alt="UrbanGrow"
-                width={140}
-                height={38}
+                width={185}
+                height={48}
                 priority
-                className="h-7 w-auto object-contain"
+                className="h-9 sm:h-10 w-auto max-w-[205px] object-contain object-left"
               />
             </Link>
 
@@ -184,7 +182,7 @@ export function MobileSidebarDrawer({
             {/* System Menu */}
             <div>
               <div className="px-2.5 mb-1.5 text-[10px] font-bold tracking-wider text-[#9CA3AF] uppercase">
-                Sistem &amp; Hardware
+                Sistem
               </div>
               <nav className="flex flex-col gap-1">
                 {systemNav.map((item) => {
