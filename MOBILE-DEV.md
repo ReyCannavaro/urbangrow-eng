@@ -275,3 +275,4 @@ flowchart TD
 - [ ] Obrolan AgriBot tidak membocorkan format tanda pagar markdown `###`.
 - [ ] Perintah relay pada Pompa Sirkulasi (GPIO 14) tersinkronisasi sukses ke ESP32 fisik.
 - [ ] File APK berhasil di-compile tanpa error (`flutter build apk --release`) dan siap di-install di smartphone Android juri pameran.
+
