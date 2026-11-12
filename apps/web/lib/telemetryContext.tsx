@@ -26,6 +26,12 @@ interface ActuatorActionResult {
   error?: string;
 }
 
+export interface ActuatorToast {
+  message: string;
+  type: "warning" | "error" | "success" | "info";
+  timestamp: number;
+}
+
 interface TelemetryContextType {
   sensors: SensorData;
   sensorSources: SensorSourcesMap;
@@ -42,6 +48,9 @@ interface TelemetryContextType {
   anomalyMode: string;
   lastActuatorError: string | null;
   clearActuatorError: () => void;
+  actuatorToast: ActuatorToast | null;
+  clearActuatorToast: () => void;
+  showActuatorToast: (message: string, type?: "warning" | "error" | "success" | "info") => void;
 }
 
 const ALL_NULL_SENSORS: SensorData = {
@@ -93,9 +102,12 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
       code: "RELAY-01",
       type: "pump",
       isOn: false,
-      mode: "auto",
+      mode: "manual",
       powerWatts: 45,
       voltage: "12V DC",
+      installed: true,
+      hardwareStatus: "ready",
+      hardwareReason: "Modul Relay 12V Aktif (GPIO 14 Active-LOW)",
     },
     aerator: {
       id: "aerator",
@@ -103,9 +115,12 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
       code: "RELAY-02",
       type: "aerator",
       isOn: false,
-      mode: "auto",
+      mode: "manual",
       powerWatts: 18,
       voltage: "12V DC",
+      installed: false,
+      hardwareStatus: "development",
+      hardwareReason: "Hardware modul relay aerator belum terpasang (tahap pengembangan)",
     },
     growLight: {
       id: "growLight",
@@ -113,9 +128,12 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
       code: "RELAY-03",
       type: "light",
       isOn: false,
-      mode: "auto",
+      mode: "manual",
       powerWatts: 85,
       voltage: "12V DC",
+      installed: false,
+      hardwareStatus: "development",
+      hardwareReason: "Hardware modul driver LED belum terpasang (tahap pengembangan)",
     },
     feeder: {
       id: "feeder",
@@ -123,9 +141,12 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
       code: "RELAY-04",
       type: "feeder",
       isOn: false,
-      mode: "auto",
+      mode: "manual",
       powerWatts: 12,
       voltage: "12V DC",
+      installed: false,
+      hardwareStatus: "development",
+      hardwareReason: "Hardware modul servo dispenser belum terpasang (tahap pengembangan)",
     },
     dosingPump: {
       id: "dosingPump",
@@ -133,9 +154,12 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
       code: "RELAY-05",
       type: "dosing",
       isOn: false,
-      mode: "auto",
+      mode: "manual",
       powerWatts: 12,
       voltage: "12V DC",
+      installed: false,
+      hardwareStatus: "development",
+      hardwareReason: "Hardware modul pompa peristaltik belum terpasang (tahap pengembangan)",
     },
   });
 
@@ -145,7 +169,25 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
   const [anomalyMode, setAnomalyMode] = useState<string>("none");
   const [feedActive, setFeedActive] = useState<boolean>(false);
   const [lastActuatorError, setLastActuatorError] = useState<string | null>(null);
+  const [actuatorToast, setActuatorToast] = useState<ActuatorToast | null>(null);
+  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
   const wsConnectedRef = useRef<boolean>(false);
+
+  const clearActuatorToast = useCallback(() => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setActuatorToast(null);
+  }, []);
+
+  const showActuatorToast = useCallback(
+    (message: string, type: "warning" | "error" | "success" | "info" = "warning") => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      setActuatorToast({ message, type, timestamp: Date.now() });
+      toastTimerRef.current = setTimeout(() => {
+        setActuatorToast(null);
+      }, 5000);
+    },
+    []
+  );
 
   const clearActuatorError = useCallback(() => {
     setLastActuatorError(null);
@@ -205,13 +247,14 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
       setActuators((prev) => {
         const updated = { ...prev };
         Object.entries(json.actuators || {}).forEach(([id, act]) => {
+          const isPump = id === "waterPump" || act.id === "waterPump";
           updated[id] = {
             id,
             name: act.name || updated[id]?.name || id,
             code:
               act.code ||
               updated[id]?.code ||
-              (id === "waterPump"
+              (isPump
                 ? "RELAY-01"
                 : id === "aerator"
                 ? "RELAY-02"
@@ -220,12 +263,17 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
                 : id === "feeder"
                 ? "RELAY-04"
                 : "RELAY-05"),
-            type: act.type || updated[id]?.type || "pump",
-            // Actuator can only remain ON if hardware node is actively online!
-            isOn: isEdgeOnline ? Boolean(act.isOn) : false,
-            mode: act.mode || updated[id]?.mode || "auto",
+            type: act.type || updated[id]?.type || (isPump ? "pump" : "aerator"),
+            // Actuator can only remain ON if hardware node is actively online and it's waterPump!
+            isOn: isEdgeOnline && isPump ? Boolean(act.isOn) : false,
+            mode: act.mode || updated[id]?.mode || "manual",
             powerWatts: act.powerWatts || updated[id]?.powerWatts || 20,
             voltage: act.voltage || updated[id]?.voltage || "12V DC",
+            installed: isPump,
+            hardwareStatus: isPump ? "ready" : "development",
+            hardwareReason: isPump
+              ? "Modul Relay 12V Aktif (GPIO 14 Active-LOW)"
+              : "Hardware belum terpasang fisik pada ESP32 (dalam tahap pengembangan)",
           };
         });
         return updated;
@@ -413,16 +461,62 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
         };
       });
 
-      // 2. Dispatch request to backend
-      const res = await fetchFromBackend<{ success?: boolean; message?: string; actuator?: ActuatorState }>(
-        path,
-        init,
-        3000
-      );
+      // 2. Dispatch request to backend dynamically
+      const res = await fetchFromBackend<{
+        success?: boolean;
+        message?: string;
+        actuator?: ActuatorState;
+        installed?: boolean;
+      }>(path, init, 3500);
 
-      if (res.reached && !res.ok) {
-        const errMsg = res.data?.message || `Perintah aktuator '${actName}' ditolak sistem keamanan (${res.status}).`;
-        // Roll back optimistic toggle when safety interlock rejects command
+      // 3. Dynamic Reversion & Response Evaluation:
+      // A. If actuator is NOT waterPump (in development stage / uninstalled hardware)
+      if (!isWaterPump) {
+        // Allow user to see the switch animate ON for ~700ms (verifying dynamic transmission to tool)
+        setTimeout(() => {
+          setActuators((prev) => {
+            if (!prev[id]) return prev;
+            return {
+              ...prev,
+              [id]: { ...prev[id], isOn: false, installed: false, hardwareStatus: "development" },
+            };
+          });
+          const devMsg = `Aktuator '${actName}' masih dalam tahap pengembangan (perangkat keras belum terpasang pada modul ESP32). Saklar otomatis kembali ke posisi OFF.`;
+          setLastActuatorError(devMsg);
+          showActuatorToast(devMsg, "warning");
+        }, 700);
+
+        return {
+          ok: false,
+          error: `Aktuator '${actName}' masih dalam tahap pengembangan (hardware belum terpasang).`,
+        };
+      }
+
+      // B. If actuator IS waterPump:
+      // If hardware node is offline
+      if (!isHardwareOnline) {
+        setTimeout(() => {
+          setActuators((prev) => {
+            if (!prev[id]) return prev;
+            return {
+              ...prev,
+              [id]: { ...prev[id], isOn: false },
+            };
+          });
+          const offlineMsg =
+            "Pompa Sirkulasi 12V tidak dapat menyala: Modul ESP32 sedang offline / tidak terhubung ke jaringan Wi-Fi. Saklar otomatis kembali OFF.";
+          setLastActuatorError(offlineMsg);
+          showActuatorToast(offlineMsg, "error");
+        }, 700);
+
+        return { ok: false, error: "Modul ESP32 sedang offline." };
+      }
+
+      // If backend rejected due to safety interlock or server validation
+      if (!res.ok) {
+        const errMsg =
+          res.data?.message ||
+          `Perintah aktuator '${actName}' ditolak sistem (${res.status || "Error"}).`;
         if (typeof prevState === "boolean") {
           setActuators((prev) => {
             if (!prev[id]) return prev;
@@ -433,47 +527,11 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
           });
         }
         setLastActuatorError(errMsg);
+        showActuatorToast(errMsg, "error");
         return { ok: false, error: errMsg };
       }
 
-      // 3. Dynamic Hardware Auto-Off Reversion Rules:
-      // - Only Pompa Sirkulasi (RELAY-01) is physically attached to the prototype.
-      // - If hardware is offline, attempting to turn ON will auto-revert to OFF after ~700ms.
-      // - If actuator is not waterPump, attempting to turn ON will auto-revert to OFF after ~700ms.
-      if (optimisticNext) {
-        if (!isHardwareOnline) {
-          setTimeout(() => {
-            setActuators((prev) => {
-              if (!prev[id]) return prev;
-              return {
-                ...prev,
-                [id]: { ...prev[id], isOn: false },
-              };
-            });
-            const offlineMsg = isWaterPump
-              ? "Maaf, alat sedang offline — tidak ada respons dari perangkat fisik. Pompa Sirkulasi 12V otomatis kembali OFF."
-              : `Maaf, alat sedang offline (hanya Pompa Sirkulasi 12V yang terhubung fisik) — saklar ${actName} otomatis kembali OFF.`;
-            setLastActuatorError(offlineMsg);
-          }, 700);
-
-          return { ok: false, error: "Maaf, alat sedang offline — saklar otomatis kembali OFF." };
-        } else if (!isWaterPump) {
-          setTimeout(() => {
-            setActuators((prev) => {
-              if (!prev[id]) return prev;
-              return {
-                ...prev,
-                [id]: { ...prev[id], isOn: false },
-              };
-            });
-            const absentMsg = `Modul relay fisik tidak terpasang pada alat (hanya Pompa Sirkulasi 12V yang memiliki modul relay fisik) — ${actName} otomatis kembali OFF.`;
-            setLastActuatorError(absentMsg);
-          }, 700);
-
-          return { ok: false, error: "Aktuator fisik tidak terpasang — otomatis kembali OFF." };
-        }
-      }
-
+      // If waterPump succeeded
       if (res.ok && res.data?.actuator) {
         const serverAct = res.data.actuator;
         setActuators((prev) => ({
@@ -481,13 +539,20 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
           [serverAct.id]: {
             ...(prev[serverAct.id] || serverAct),
             ...serverAct,
+            installed: true,
+            hardwareStatus: "ready",
           },
         }));
       }
 
+      clearActuatorError();
+      showActuatorToast(
+        `Pompa Sirkulasi 12V berhasil ${optimisticNext ? "dinyalakan" : "dimatikan"} via ESP32 (GPIO 14 Active-LOW).`,
+        "success"
+      );
       return { ok: true };
     },
-    [actuators, systemMeta.edgeOnline]
+    [actuators, systemMeta.edgeOnline, showActuatorToast, clearActuatorError]
   );
 
   const toggleActuator = useCallback(
@@ -525,21 +590,13 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
 
   const dispenseFeed = useCallback(async () => {
     setFeedActive(true);
-    setAlerts((prev) => [
-      {
-        id: `feed-${Date.now()}`,
-        title: "Pemberian Pakan Manual",
-        message: "35g pelet bernutrisi tinggi didistribusikan ke kolam Nila & Lele.",
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        severity: "info",
-        isResolved: true,
-      },
-      ...prev.filter((a) => a.id !== "alt-3"),
-    ]);
-
+    showActuatorToast(
+      "Modul servo Auto-Feeder masih dalam tahap pengembangan (perangkat keras belum terpasang pada ESP32).",
+      "warning"
+    );
     await fetchFromBackend("/api/feed/dispense", { method: "POST" }, 3000);
-    setTimeout(() => setFeedActive(false), 2500);
-  }, []);
+    setTimeout(() => setFeedActive(false), 2200);
+  }, [showActuatorToast]);
 
   const setAnomaly = useCallback(async (type: string) => {
     setAnomalyMode(type);
@@ -573,6 +630,9 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
         anomalyMode,
         lastActuatorError,
         clearActuatorError,
+        actuatorToast,
+        clearActuatorToast,
+        showActuatorToast,
       }}
     >
       {children}

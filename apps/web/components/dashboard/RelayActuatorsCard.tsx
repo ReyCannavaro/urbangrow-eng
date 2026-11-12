@@ -73,14 +73,20 @@ export function RelayActuatorsCard() {
       <div className="space-y-2 py-1">
         {actuatorMeta.map((item) => {
           const act = actuators[item.id];
+          const isWaterPump = item.id === "waterPump" || item.id === "pump";
+          const isInstalled = isWaterPump;
           const isOn = act?.isOn ?? false;
           const Icon = item.icon;
-          const subLabel = !edgeOnline
+          const subLabel = !isInstalled
+            ? isOn
+              ? "Menguji Alat... (Auto-OFF)"
+              : "Tahap Pengembangan (Hardware belum ada)"
+            : !edgeOnline
             ? isOn
               ? "Mencoba Sinyal... (Auto-OFF)"
               : "Maaf, alat sedang offline"
             : isOn
-            ? `${act?.powerWatts ?? item.watt}W Aktif • ${item.role}`
+            ? `${act?.powerWatts ?? item.watt}W Aktif • GPIO 14 (Mengalir)`
             : `Standby (OFF) • ${item.role}`;
 
           return (
@@ -88,7 +94,9 @@ export function RelayActuatorsCard() {
               key={item.id}
               onClick={() => toggleActuator(item.id)}
               title={
-                edgeOnline
+                !isInstalled
+                  ? `Kanal ${item.name} masih dalam tahap pengembangan — mengklik akan mengirim sinyal uji dinamis ke ESP32 lalu otomatis kembali OFF.`
+                  : edgeOnline
                   ? `Ubah status ${item.name}`
                   : `Maaf, alat sedang offline — saklar otomatis kembali OFF (${item.name})`
               }
@@ -101,8 +109,17 @@ export function RelayActuatorsCard() {
                   <Icon className="h-3.5 w-3.5" />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-xs font-semibold text-[#111827] truncate">
-                    {item.name}
+                  <div className="text-xs font-semibold text-[#111827] flex items-center gap-1.5 truncate">
+                    <span>{item.name}</span>
+                    {isInstalled ? (
+                      <span className="px-1.5 py-0.2 rounded text-[8.5px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        Terpasang
+                      </span>
+                    ) : (
+                      <span className="px-1.5 py-0.2 rounded text-[8.5px] font-medium bg-amber-50 text-amber-700 border border-amber-200/70">
+                        Dev
+                      </span>
+                    )}
                   </div>
                   <div className="text-[10px] text-[#9CA3AF] font-mono truncate">
                     {subLabel}
@@ -110,10 +127,14 @@ export function RelayActuatorsCard() {
                 </div>
               </div>
 
-              {/* Tactile Toggle Switch (Neutral Pulse when Offline, Pine when Online) */}
+              {/* Tactile Toggle Switch */}
               <div
                 className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${
-                  !edgeOnline
+                  !isInstalled
+                    ? isOn
+                      ? "bg-amber-500 animate-pulse"
+                      : "bg-[#E5E7EB] border border-[#D1D5DB]"
+                    : !edgeOnline
                     ? isOn
                       ? "bg-[#6B7280] animate-pulse"
                       : "bg-[#E5E7EB] border border-[#D1D5DB]"

@@ -1,15 +1,11 @@
 import type { NextConfig } from "next";
 
 const defaultBackendOrigin =
-  process.env.NODE_ENV === "production"
-    ? "https://urbangrow-api.reycannavaro.dev"
-    : "http://localhost:3000";
-
-const backendOrigin = (
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.BACKEND_INTERNAL_URL ||
-  defaultBackendOrigin
-).replace(/\/+$/, "");
+  "https://urbangrow-api.reycannavaro.dev";
+
+const backendOrigin = defaultBackendOrigin.replace(/\/+$/, "");
 
 const nextConfig: NextConfig = {
   async rewrites() {

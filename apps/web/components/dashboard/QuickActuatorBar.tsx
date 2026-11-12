@@ -21,16 +21,17 @@ export function QuickActuatorBar() {
       <div className="flex flex-wrap items-center gap-2">
         {/* Pump Switch */}
         <button
-          onClick={() => toggleActuator("pump")}
-          className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 font-medium transition ${
+          onClick={() => toggleActuator("waterPump")}
+          className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 font-medium transition cursor-pointer ${
             pump?.isOn
               ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
               : "border-slate-800 bg-slate-950/60 text-slate-400"
           }`}
+          title="Pompa Sirkulasi 12V (RELAY-01 / GPIO 14)"
         >
           <span
             className={`h-2 w-2 rounded-full ${
-              pump?.isOn ? "bg-emerald-400" : "bg-slate-600"
+              pump?.isOn ? "bg-emerald-400 animate-pulse" : "bg-slate-600"
             }`}
           />
           <span>Pompa Sirkulasi</span>
@@ -39,27 +40,35 @@ export function QuickActuatorBar() {
         {/* Aerator Switch */}
         <button
           onClick={() => toggleActuator("aerator")}
-          className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 font-medium transition ${
+          className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 font-medium transition cursor-pointer ${
             aerator?.isOn
-              ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-300"
+              ? "border-amber-500/40 bg-amber-500/10 text-amber-300 animate-pulse"
               : "border-slate-800 bg-slate-950/60 text-slate-400"
           }`}
+          title="Aerator O2 (Tahap Pengembangan — Otomatis kembali OFF)"
         >
-          <Wind className="h-3.5 w-3.5 text-cyan-400" />
+          <Wind className="h-3.5 w-3.5 text-slate-400" />
           <span>Aerator O2</span>
+          <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+            Dev
+          </span>
         </button>
 
         {/* Grow Light Switch */}
         <button
-          onClick={() => toggleActuator("light")}
-          className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 font-medium transition ${
+          onClick={() => toggleActuator("growLight")}
+          className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 font-medium transition cursor-pointer ${
             light?.isOn
-              ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
+              ? "border-amber-500/40 bg-amber-500/10 text-amber-300 animate-pulse"
               : "border-slate-800 bg-slate-950/60 text-slate-400"
           }`}
+          title="Grow Light LED (Tahap Pengembangan — Otomatis kembali OFF)"
         >
-          <Sun className="h-3.5 w-3.5 text-amber-400" />
+          <Sun className="h-3.5 w-3.5 text-slate-400" />
           <span>LED Spektrum</span>
+          <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+            Dev
+          </span>
         </button>
       </div>
     </div>

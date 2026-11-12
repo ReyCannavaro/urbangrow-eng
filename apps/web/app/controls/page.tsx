@@ -8,6 +8,7 @@ import { ControlsHeader } from "@/components/controls/ControlsHeader";
 import { RelaySwitchCard } from "@/components/controls/RelaySwitchCard";
 import { QuickFeedBanner } from "@/components/controls/QuickFeedBanner";
 import { SafetyInterlockPanel } from "@/components/controls/SafetyInterlockPanel";
+import { PumpDiagnosticsCard } from "@/components/controls/PumpDiagnosticsCard";
 import {
   fetchAutomationSchedules,
   toggleAutomationScheduleItem,
@@ -134,6 +135,14 @@ export default function ControlsPage() {
 
         {/* RIGHT COLUMN: INTERLOCKS & SCHEDULES */}
         <div className="lg:col-span-5 space-y-4">
+          <PumpDiagnosticsCard
+            sensors={sensors}
+            pump={actuators.waterPump}
+            edgeOnline={systemMeta.edgeOnline}
+            edgeNode={systemMeta.edgeNode}
+            onTogglePump={() => void toggleActuator("waterPump")}
+          />
+
           <SafetyInterlockPanel
             sensors={sensors}
             actuators={actuators}
