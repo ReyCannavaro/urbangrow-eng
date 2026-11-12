@@ -433,19 +433,6 @@ export const app = new Elysia()
         return { success: false, message: `Actuator '${id}' not found` };
       }
 
-      const resolvedId = simulator.resolveActuatorId(id);
-      if (resolvedId !== "waterPump") {
-        set.status = 422;
-        return {
-          success: false,
-          code: "HARDWARE_NOT_INSTALLED",
-          installed: false,
-          actuatorId: resolvedId,
-          message: `Aktuator '${existing.name}' masih dalam tahap pengembangan (perangkat keras belum terpasang pada modul ESP32). Saklar otomatis kembali ke posisi OFF.`,
-          actuator: { ...existing, isOn: false, installed: false, hardwareStatus: "development" },
-        };
-      }
-
       const nextState = !existing.isOn;
       const safety = checkPumpSafetyIfEnabling(id, nextState);
       if (!safety.allowed) {
@@ -481,19 +468,6 @@ export const app = new Elysia()
       if (!existing) {
         set.status = 404;
         return { success: false, message: `Actuator '${id}' not found` };
-      }
-
-      const resolvedId = simulator.resolveActuatorId(id);
-      if (resolvedId !== "waterPump") {
-        set.status = 422;
-        return {
-          success: false,
-          code: "HARDWARE_NOT_INSTALLED",
-          installed: false,
-          actuatorId: resolvedId,
-          message: `Aktuator '${existing.name}' masih dalam tahap pengembangan (perangkat keras belum terpasang pada modul ESP32). Saklar otomatis kembali ke posisi OFF.`,
-          actuator: { ...existing, isOn: false, installed: false, hardwareStatus: "development" },
-        };
       }
 
       const safety = checkPumpSafetyIfEnabling(id, body.state);

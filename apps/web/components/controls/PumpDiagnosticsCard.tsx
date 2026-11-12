@@ -4,7 +4,6 @@ import React from "react";
 import {
   Waves,
   CheckCircle2,
-  AlertTriangle,
   XCircle,
   Cpu,
   ShieldAlert,
