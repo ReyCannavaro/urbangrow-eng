@@ -34,6 +34,9 @@ export interface ActuatorState {
   mode?: "auto" | "manual";
   powerWatts: number;
   voltage: string;
+  installed?: boolean;
+  hardwareStatus?: "ready" | "development" | "offline";
+  hardwareReason?: string;
 }
 
 export interface HistorySample {

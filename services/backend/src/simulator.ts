@@ -18,6 +18,9 @@ export interface ActuatorState {
   mode: "auto" | "manual";
   powerWatts: number;
   voltage?: string;
+  installed?: boolean;
+  hardwareStatus?: "ready" | "development" | "offline";
+  hardwareReason?: string;
 }
 
 export interface SystemAlert {
@@ -109,9 +112,12 @@ class AquaponicsSimulator {
       code: "RELAY-01",
       type: "pump",
       isOn: false,
-      mode: "auto",
+      mode: "manual",
       powerWatts: 45,
       voltage: "12V DC",
+      installed: true,
+      hardwareStatus: "ready",
+      hardwareReason: "Modul Relay 12V Aktif (GPIO 14 Active-LOW)",
     },
     aerator: {
       id: "aerator",
@@ -119,9 +125,12 @@ class AquaponicsSimulator {
       code: "RELAY-02",
       type: "aerator",
       isOn: false,
-      mode: "auto",
+      mode: "manual",
       powerWatts: 18,
       voltage: "12V DC",
+      installed: false,
+      hardwareStatus: "development",
+      hardwareReason: "Hardware modul relay aerator belum terpasang (tahap pengembangan)",
     },
     growLight: {
       id: "growLight",
@@ -129,9 +138,12 @@ class AquaponicsSimulator {
       code: "RELAY-03",
       type: "light",
       isOn: false,
-      mode: "auto",
+      mode: "manual",
       powerWatts: 85,
       voltage: "12V DC",
+      installed: false,
+      hardwareStatus: "development",
+      hardwareReason: "Hardware modul driver LED belum terpasang (tahap pengembangan)",
     },
     feeder: {
       id: "feeder",
@@ -139,9 +151,12 @@ class AquaponicsSimulator {
       code: "RELAY-04",
       type: "feeder",
       isOn: false,
-      mode: "auto",
+      mode: "manual",
       powerWatts: 12,
       voltage: "12V DC",
+      installed: false,
+      hardwareStatus: "development",
+      hardwareReason: "Hardware modul servo dispenser belum terpasang (tahap pengembangan)",
     },
     dosingPump: {
       id: "dosingPump",
@@ -149,9 +164,12 @@ class AquaponicsSimulator {
       code: "RELAY-05",
       type: "dosing",
       isOn: false,
-      mode: "auto",
+      mode: "manual",
       powerWatts: 12,
       voltage: "12V DC",
+      installed: false,
+      hardwareStatus: "development",
+      hardwareReason: "Hardware modul pompa peristaltik belum terpasang (tahap pengembangan)",
     },
   };
 
