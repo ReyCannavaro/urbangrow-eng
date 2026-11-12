@@ -99,7 +99,7 @@ export function RelaySwitchCard({
           title={
             edgeOnline
               ? `Ubah status ${displayName}`
-              : `ESP32 offline — saklar otomatis kembali OFF jika dinyalakan (${displayName})`
+              : `Maaf, alat sedang offline — saklar otomatis kembali OFF jika dinyalakan (${displayName})`
           }
           aria-pressed={actuator.isOn}
         >
@@ -151,7 +151,7 @@ export function RelaySwitchCard({
               : "Standby"
             : actuator.isOn
             ? "Mencoba Sinyal..."
-            : "Offline • OFF"}
+            : "Maaf, alat offline"}
         </span>
       </div>
     </div>

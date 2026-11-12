@@ -451,12 +451,12 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
               };
             });
             const offlineMsg = isWaterPump
-              ? "Node hardware ESP32-GROW-01 offline — tidak ada respons dari perangkat fisik. Pompa Sirkulasi 12V otomatis kembali OFF."
-              : `Node hardware offline & modul relay fisik tidak terpasang (hanya Pompa Sirkulasi 12V yang terhubung fisik) — ${actName} otomatis kembali OFF.`;
+              ? "Maaf, alat sedang offline — tidak ada respons dari perangkat fisik. Pompa Sirkulasi 12V otomatis kembali OFF."
+              : `Maaf, alat sedang offline (hanya Pompa Sirkulasi 12V yang terhubung fisik) — saklar ${actName} otomatis kembali OFF.`;
             setLastActuatorError(offlineMsg);
           }, 700);
 
-          return { ok: false, error: "Hardware offline — saklar otomatis kembali OFF." };
+          return { ok: false, error: "Maaf, alat sedang offline — saklar otomatis kembali OFF." };
         } else if (!isWaterPump) {
           setTimeout(() => {
             setActuators((prev) => {

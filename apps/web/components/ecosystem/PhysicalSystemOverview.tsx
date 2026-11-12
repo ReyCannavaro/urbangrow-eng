@@ -75,21 +75,16 @@ export function PhysicalSystemOverview() {
   const edgeOnline = systemMeta.edgeOnline;
 
   const hasPh = typeof sensors.ph === "number";
-  const hasTds = typeof sensors.tds === "number";
   const hasTemp = typeof sensors.waterTemperature === "number";
   const hasAirTemp = typeof sensors.airTemperature === "number";
-  const hasHumidity = typeof sensors.humidity === "number";
   const hasLux = typeof sensors.lightIntensity === "number";
 
   const formattedPH = hasPh ? (sensors.ph as number).toFixed(2) : "--";
-  const formattedTDS = hasTds ? String(Math.round(sensors.tds as number)) : "--";
   const formattedTemp = hasTemp ? (sensors.waterTemperature as number).toFixed(1) : "--";
   const formattedAirTemp = hasAirTemp ? (sensors.airTemperature as number).toFixed(1) : "--";
-  const formattedHumidity = hasHumidity ? String(Math.round(sensors.humidity as number)) : "--";
   const formattedLux = hasLux ? String(Math.round(sensors.lightIntensity as number)) : "--";
 
   const isPhOptimal = hasPh && (sensors.ph as number) >= 6.5 && (sensors.ph as number) <= 7.5;
-  const isTdsOptimal = hasTds && (sensors.tds as number) >= 400 && (sensors.tds as number) <= 800;
 
   const showNila = cohort.fishMode === "both" || cohort.fishMode === "nila";
   const showLele = cohort.fishMode === "both" || cohort.fishMode === "lele";
@@ -133,24 +128,27 @@ export function PhysicalSystemOverview() {
               />
               <span>
                 {edgeOnline
-                  ? `${systemMeta.liveSensorCount}/6 Sensor Live (${systemMeta.edgeNode})`
-                  : "Menunggu Koneksi ESP32"}
+                  ? `${systemMeta.liveSensorCount}/4 Sensor Fisik Live (${systemMeta.edgeNode})`
+                  : "Maaf, alat sedang offline"}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Card 2: pH & TDS */}
+        {/* Card 2: Sensor Dalam Air (pH & Suhu Air DS18B20) */}
         <div
           style={{ "--ug-delay": "100ms" } as React.CSSProperties}
           className="ug-enter rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs flex flex-col justify-between h-[152px]"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#111827]">
-              Kadar pH &amp; Nutrisi
-            </span>
+            <div>
+              <span className="text-xs font-semibold text-[#111827] block">
+                Sensor Dalam Air
+              </span>
+              <span className="text-[10px] text-[#6B7280]">Probe pH &amp; DS18B20</span>
+            </div>
             <span className="text-[11px] text-[#6B7280] font-medium">
-              Ideal 6.5–7.5
+              Ideal 6.5–7.5 pH
             </span>
           </div>
 
@@ -161,54 +159,57 @@ export function PhysicalSystemOverview() {
             </div>
             <div className="mt-2 flex items-center gap-2 text-[11px] text-[#4B5563]">
               <span className="num-tabular font-medium text-[#111827]">
-                TDS {formattedTDS} ppm
+                Suhu Air: {formattedTemp === "--" ? "--" : `${formattedTemp}°C`}
               </span>
               <span className="text-[#D1D5DB]">&bull;</span>
               <span
                 className={
-                  !hasPh && !hasTds
+                  !hasPh && !hasTemp
                     ? "text-[#6B7280]"
-                    : (hasPh ? isPhOptimal : true) && (hasTds ? isTdsOptimal : true)
+                    : isPhOptimal
                     ? "text-[#166534] font-medium"
                     : "text-[#B45309] font-medium"
                 }
               >
-                {!hasPh && !hasTds
-                  ? "Sensor Offline"
-                  : (hasPh ? isPhOptimal : true) && (hasTds ? isTdsOptimal : true)
-                  ? "Optimal"
+                {!hasPh && !hasTemp
+                  ? "Maaf, alat sedang offline"
+                  : isPhOptimal
+                  ? "Air Optimal"
                   : "Perlu Penyesuaian"}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Card 3: Water Temp & LDR */}
+        {/* Card 3: Sensor Luar Air (Suhu Udara DHT22 & Cahaya LDR) */}
         <div
           style={{ "--ug-delay": "150ms" } as React.CSSProperties}
           className="ug-enter rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs flex flex-col justify-between h-[152px]"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#111827]">
-              Suhu Air &amp; Cahaya
-            </span>
+            <div>
+              <span className="text-xs font-semibold text-[#111827] block">
+                Sensor Luar Air
+              </span>
+              <span className="text-[10px] text-[#6B7280]">Suhu Udara &amp; Cahaya LDR</span>
+            </div>
             <span className="text-[11px] text-[#6B7280] font-medium">
-              Ideal 22–27°C
+              Target ≥ 300 lux
             </span>
           </div>
 
           <div>
             <div className="text-3xl sm:text-4xl font-bold tracking-tight num-tabular text-[#111827]">
-              {formattedTemp}
-              <span className="text-xl font-normal text-[#9CA3AF]">°C</span>
+              {formattedLux}
+              <span className="text-lg font-normal text-[#9CA3AF] ml-1">lux</span>
             </div>
             <div className="mt-2 flex items-center gap-2 text-[11px] text-[#4B5563]">
               <span className="num-tabular font-medium text-[#111827]">
-                LDR {formattedLux} lux
+                Suhu Udara: {formattedAirTemp === "--" ? "--" : `${formattedAirTemp}°C`}
               </span>
               <span className="text-[#D1D5DB]">&bull;</span>
               <span className="text-[#6B7280]">
-                {hasTemp || hasLux ? "Telemetri Aktif" : "Menunggu Sensor"}
+                {hasAirTemp || hasLux ? "Telemetri Aktif" : "Maaf, alat sedang offline"}
               </span>
             </div>
           </div>
@@ -344,17 +345,15 @@ export function PhysicalSystemOverview() {
 
             <div className="mt-4 pt-3.5 border-t border-[#F3F4F6] grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               <div>
-                <div className="text-[11px] text-[#6B7280]">TDS Nutrisi</div>
+                <div className="text-[11px] text-[#6B7280]">pH Biofilter (Probe)</div>
                 <div className="font-semibold text-[#111827] num-tabular mt-0.5">
-                  {formattedTDS === "--" ? "--" : `${formattedTDS} ppm`}
+                  {formattedPH === "--" ? "--" : `${formattedPH} pH`}
                 </div>
               </div>
               <div>
-                <div className="text-[11px] text-[#6B7280]">Iklim Mikro (DHT22)</div>
+                <div className="text-[11px] text-[#6B7280]">Suhu Udara (DHT22)</div>
                 <div className="font-semibold text-[#111827] num-tabular mt-0.5">
-                  {formattedAirTemp === "--" && formattedHumidity === "--"
-                    ? "--"
-                    : `${formattedAirTemp}°C • ${formattedHumidity}%`}
+                  {formattedAirTemp === "--" ? "--" : `${formattedAirTemp}°C`}
                 </div>
               </div>
               <div>
@@ -402,7 +401,7 @@ export function PhysicalSystemOverview() {
               </span>
             </div>
 
-            {/* Measured Pond Telemetry Strip */}
+            {/* Measured Pond Telemetry Strip (4 Physical Sensors: 2 Water, 2 Ambient) */}
             <div className="pt-3.5 border-t border-[#F3F4F6] grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               <div>
                 <div className="text-[11px] text-[#6B7280]">Suhu Air (DS18B20)</div>
@@ -411,21 +410,21 @@ export function PhysicalSystemOverview() {
                 </div>
               </div>
               <div>
-                <div className="text-[11px] text-[#6B7280]">pH Kolam</div>
+                <div className="text-[11px] text-[#6B7280]">pH Kolam (Probe)</div>
                 <div className="font-semibold text-[#111827] num-tabular mt-0.5">
                   {formattedPH === "--" ? "--" : `${formattedPH} pH`}
                 </div>
               </div>
               <div>
-                <div className="text-[11px] text-[#6B7280]">TDS Kolam</div>
+                <div className="text-[11px] text-[#6B7280]">Cahaya (LDR)</div>
                 <div className="font-semibold text-[#111827] num-tabular mt-0.5">
-                  {formattedTDS === "--" ? "--" : `${formattedTDS} ppm`}
+                  {formattedLux === "--" ? "--" : `${formattedLux} lux`}
                 </div>
               </div>
               <div>
                 <div className="text-[11px] text-[#6B7280]">Node Kontrol</div>
                 <div className="font-semibold text-[#111827] mt-0.5">
-                  {edgeOnline ? systemMeta.edgeNode : "ESP32 Offline"}
+                  {edgeOnline ? systemMeta.edgeNode : "Maaf, alat offline"}
                 </div>
               </div>
             </div>

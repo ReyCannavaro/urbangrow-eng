@@ -22,7 +22,7 @@ export function AnalyticsHeader() {
           Analitik &amp; Deret Waktu IoT
         </h1>
         <p className="text-xs text-[#6B7280] mt-1 max-w-2xl">
-          Pemantauan deret waktu dan statistik aktual dari 6 sensor fisik ESP32 (pH, TDS, DS18B20, DHT22, dan LDR).
+          Pemantauan deret waktu aktual dari 4 sensor fisik ESP32: Sensor dalam air (pH &amp; Suhu Air DS18B20) dan sensor luar air (Suhu Udara &amp; Cahaya LDR).
         </p>
       </div>
 

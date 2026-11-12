@@ -76,12 +76,13 @@ const ALL_SENSOR_KEYS: Array<keyof SensorReading> = [
   "waterLevel",
 ];
 
+// Real physical hardware sensors on prototype:
+// 1. Dalam air: ph (Probe Analog pH), waterTemperature (DS18B20 Waterproof)
+// 2. Luar air: airTemperature (DHT22), lightIntensity (Sensor Cahaya LDR)
 const PHYSICAL_SENSOR_KEYS: Array<keyof SensorReading> = [
   "ph",
-  "tds",
   "waterTemperature",
   "airTemperature",
-  "humidity",
   "lightIntensity",
 ];
 
@@ -290,7 +291,7 @@ class AquaponicsSimulator {
         uptimeSeconds: Math.floor(process.uptime()),
         edgeNode: activeOnlineDevice?.deviceId || devices[0]?.deviceId || "ESP32-GROW-01",
         edgeOnline,
-        liveSensorCount,
+        liveSensorCount: physicalLiveCount,
         lastTelemetryAt: this.lastTelemetryAt,
         wifiSignalDbm:
           activeOnlineDevice && typeof activeOnlineDevice.wifiRssiDbm === "number"

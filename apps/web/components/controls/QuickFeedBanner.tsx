@@ -24,7 +24,7 @@ export function QuickFeedBanner({
         <p className="text-xs text-[#6B7280] max-w-xl leading-relaxed">
           {edgeOnline
             ? `Mengirim pulse 3 detik ke dispenser ${edgeNode} untuk menjatuhkan 35g pelet di luar jadwal.`
-            : "ESP32 offline. Menekan tombol menaruh pulse 35g di antrean perintah server (berlaku 3 detik)."}
+            : "Maaf, alat sedang offline — perintah pulse dispenser pakan dalam mode siaga."}
         </p>
       </div>
 
@@ -45,10 +45,10 @@ export function QuickFeedBanner({
         {feedActive
           ? edgeOnline
             ? "Mengirim Pulse 35g..."
-            : "Pulse Masuk Antrean (3s)"
+            : "Mencoba Sinyal..."
           : edgeOnline
           ? "Beri Pakan Sekarang (35g)"
-          : "Antrekan Pulse Pakan"}
+          : "Beri Pakan (Standby)"}
       </button>
     </div>
   );

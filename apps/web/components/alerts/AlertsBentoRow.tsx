@@ -141,12 +141,12 @@ export function AlertsBentoRow({
 
         <div>
           <div className="text-4xl font-bold tracking-tight num-tabular text-[#111827]">
-            {edgeOnline ? liveSensorCount : 0} / 6
-            <span className="text-xl font-normal text-[#9CA3AF] ml-1">Sensor</span>
+            {edgeOnline ? liveSensorCount : 0} / 4
+            <span className="text-xl font-normal text-[#9CA3AF] ml-1">Fisik</span>
           </div>
           <div
             className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium ${
-              edgeOnline && liveSensorCount === 6
+              edgeOnline && liveSensorCount === 4
                 ? "bg-[#DCFCE7] text-[#166534]"
                 : edgeOnline
                   ? "bg-[#FEF3C7] text-[#B45309]"
@@ -155,7 +155,7 @@ export function AlertsBentoRow({
           >
             <CheckCircle2 className="h-3 w-3" />
             <span>
-              {edgeOnline ? `${edgeNode} (${liveSensorCount}/6 Live)` : "Menunggu Telemetri ESP32"}
+              {edgeOnline ? `${edgeNode} (${liveSensorCount}/4 Live)` : "Maaf, alat sedang offline"}
             </span>
           </div>
         </div>

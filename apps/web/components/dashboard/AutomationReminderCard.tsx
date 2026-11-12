@@ -85,14 +85,14 @@ export function AutomationReminderCard({
             <span>
               {edgeOnline
                 ? "Pulse Pakan 35g Terkirim!"
-                : "Masuk Antrean Server (ESP32 Offline)"}
+                : "Maaf, alat sedang offline"}
             </span>
           </>
         ) : (
           <>
             <Send className="h-3.5 w-3.5" />
             <span>
-              {edgeOnline ? "+ Beri Pakan Sekarang" : "+ Antrekan Pakan (Offline)"}
+              {edgeOnline ? "+ Beri Pakan Sekarang" : "+ Beri Pakan (Offline)"}
             </span>
           </>
         )}

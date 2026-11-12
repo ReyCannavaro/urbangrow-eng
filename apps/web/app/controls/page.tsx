@@ -95,8 +95,8 @@ export default function ControlsPage() {
         )}
         <span>
           {systemMeta.edgeOnline
-            ? `${systemMeta.edgeNode} terhubung — perintah relay aktif via HTTPS (${systemMeta.liveSensorCount}/6 sensor live).`
-            : `Node ${systemMeta.edgeNode} sedang offline — saklar otomatis kembali OFF karena perangkat fisik belum terhubung.`}
+            ? `${systemMeta.edgeNode} terhubung — perintah relay aktif via HTTPS (${systemMeta.liveSensorCount}/4 sensor fisik live).`
+            : `Maaf, alat sedang offline — saklar otomatis kembali OFF karena node ${systemMeta.edgeNode} belum terhubung.`}
         </span>
       </div>
 
@@ -109,7 +109,7 @@ export default function ControlsPage() {
               Kanal Relay ({systemMeta.edgeNode})
             </h2>
             <span className="text-xs text-[#6B7280]">
-              {systemMeta.edgeOnline ? "Active-LOW GPIO" : "Hardware ESP32 Offline"}
+              {systemMeta.edgeOnline ? "Active-LOW GPIO" : "Maaf, alat sedang offline"}
             </span>
           </div>
 

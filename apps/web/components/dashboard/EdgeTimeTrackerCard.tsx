@@ -48,10 +48,10 @@ export function EdgeTimeTrackerCard() {
         <p className="text-[10px] text-white/60 mt-0.5">
           {edgeOnline
             ? systemMeta.liveSensorCount > 0
-              ? `Sinkronisasi ESP32 Live (${systemMeta.liveSensorCount} Sensor)`
+              ? `Sinkronisasi ESP32 Live (${systemMeta.liveSensorCount}/4 Sensor Fisik)`
               : "ESP32 Terhubung (Heartbeat Saja)"
             : backendConnected
-            ? "Menunggu Koneksi ESP32 (Offline)"
+            ? "Maaf, alat sedang offline"
             : "Menghubungkan ke Backend VPS..."}
         </p>
       </div>
@@ -82,7 +82,7 @@ export function EdgeTimeTrackerCard() {
                     ? `WiFi ${systemMeta.wifiSignalDbm} dBm`
                     : "HTTPS Sync Aktif"
                 }`
-              : "Daya: -- • ESP32 Offline"}
+              : "Daya: -- • Maaf, alat sedang offline"}
           </span>
         </div>
       </div>

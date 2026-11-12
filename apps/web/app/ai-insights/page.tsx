@@ -239,8 +239,8 @@ export default function AiInsightsPage() {
         )}
         <span>
           {systemMeta.edgeOnline && systemMeta.liveSensorCount > 0
-            ? `Model GDD dan ADG ikan terkalibrasi oleh ${systemMeta.liveSensorCount}/6 sensor live (${systemMeta.edgeNode}).`
-            : `ESP32 offline — proyeksi panen menggunakan baseline kalibrasi dari data tebar & semai benih Anda.`}
+            ? `Model GDD dan ADG ikan terkalibrasi oleh ${systemMeta.liveSensorCount}/4 sensor fisik live (${systemMeta.edgeNode}).`
+            : `Maaf, alat sedang offline — proyeksi panen mengacu pada baseline kalibrasi data tebar & semai benih Anda.`}
         </span>
       </div>
 

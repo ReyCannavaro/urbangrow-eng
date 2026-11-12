@@ -58,7 +58,7 @@ export function RelayActuatorsCard() {
                 : "bg-[#F3F4F6] text-[#6B7280]"
             }`}
           >
-            {edgeOnline ? "Live" : "ESP32 Offline"}
+            {edgeOnline ? "Live" : "Maaf, alat offline"}
           </span>
         </div>
         <Link
@@ -78,7 +78,7 @@ export function RelayActuatorsCard() {
           const subLabel = !edgeOnline
             ? isOn
               ? "Mencoba Sinyal... (Auto-OFF)"
-              : "ESP32 offline • OFF"
+              : "Maaf, alat sedang offline"
             : isOn
             ? `${act?.powerWatts ?? item.watt}W Aktif • ${item.role}`
             : `Standby (OFF) • ${item.role}`;
@@ -90,7 +90,7 @@ export function RelayActuatorsCard() {
               title={
                 edgeOnline
                   ? `Ubah status ${item.name}`
-                  : `ESP32 offline — saklar otomatis kembali OFF jika dinyalakan (${item.name})`
+                  : `Maaf, alat sedang offline — saklar otomatis kembali OFF (${item.name})`
               }
               className="flex items-center justify-between py-1 px-2 rounded-xl hover:bg-[#F9FAFB] cursor-pointer transition-colors"
             >

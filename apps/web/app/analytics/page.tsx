@@ -14,15 +14,14 @@ export default function AnalyticsPage() {
   const { history, sensors, backendConnected, systemMeta } = useTelemetry();
 
   const hasPh = typeof sensors.ph === "number";
-  const hasTds = typeof sensors.tds === "number";
   const hasWaterTemp = typeof sensors.waterTemperature === "number";
   const hasAirTemp = typeof sensors.airTemperature === "number";
-  const hasHumidity = typeof sensors.humidity === "number";
   const hasLux = typeof sensors.lightIntensity === "number";
 
   const sensorRows = [
     {
-      label: "pH Air (Probe pH)",
+      group: "Sensor Didalam Air",
+      label: "pH Air (Probe Analog pH)",
       measured: hasPh ? `${(sensors.ph as number).toFixed(2)} pH` : "-- pH",
       ideal: "Ideal: 6.5–7.5 pH",
       live: hasPh,
@@ -30,14 +29,7 @@ export default function AnalyticsPage() {
       warnLabel: "Di Luar Rentang",
     },
     {
-      label: "TDS Nutrisi (Sensor TDS)",
-      measured: hasTds ? `${Math.round(sensors.tds as number)} ppm` : "-- ppm",
-      ideal: "Ideal: 400–800 ppm",
-      live: hasTds,
-      ok: hasTds && (sensors.tds as number) >= 400 && (sensors.tds as number) <= 800,
-      warnLabel: "Di Luar Rentang",
-    },
-    {
+      group: "Sensor Didalam Air",
       label: "Suhu Air Kolam (DS18B20)",
       measured: hasWaterTemp
         ? `${(sensors.waterTemperature as number).toFixed(1)} °C`
@@ -51,33 +43,22 @@ export default function AnalyticsPage() {
       warnLabel: "Di Luar Rentang",
     },
     {
-      label: "Suhu Udara (DHT22)",
+      group: "Sensor Diluar Air",
+      label: "Suhu Udara (Sensor Suhu DHT22)",
       measured: hasAirTemp
         ? `${(sensors.airTemperature as number).toFixed(1)} °C`
         : "-- °C",
-      ideal: "Ideal: 23–32 °C",
+      ideal: "Ideal: 24–32 °C",
       live: hasAirTemp,
       ok:
         hasAirTemp &&
-        (sensors.airTemperature as number) >= 23 &&
+        (sensors.airTemperature as number) >= 24 &&
         (sensors.airTemperature as number) <= 32,
       warnLabel: "Di Luar Rentang",
     },
     {
-      label: "Kelembaban Udara (DHT22)",
-      measured: hasHumidity
-        ? `${Math.round(sensors.humidity as number)} %`
-        : "-- %",
-      ideal: "Ideal: 55–80 %",
-      live: hasHumidity,
-      ok:
-        hasHumidity &&
-        (sensors.humidity as number) >= 55 &&
-        (sensors.humidity as number) <= 80,
-      warnLabel: "Di Luar Rentang",
-    },
-    {
-      label: "Intensitas Cahaya (LDR)",
+      group: "Sensor Diluar Air",
+      label: "Intensitas Cahaya (Sensor Cahaya LDR)",
       measured: hasLux ? `${Math.round(sensors.lightIntensity as number)} lux` : "-- lux",
       ideal: "Target: ≥ 300 lux",
       live: hasLux,
@@ -112,12 +93,17 @@ export default function AnalyticsPage() {
         </div>
 
         <div className="lg:col-span-5 space-y-4">
-          {/* 6 Physical ESP32 Sensors Checklist Card */}
+          {/* 4 Physical ESP32 Sensors Checklist Card */}
           <div className="rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs">
             <div className="flex items-center justify-between pb-3 border-b border-[#F3F4F6]">
-              <h3 className="text-sm font-bold text-[#111827]">
-                Status 6 Sensor Fisik ESP32
-              </h3>
+              <div>
+                <h3 className="text-sm font-bold text-[#111827]">
+                  Status 4 Sensor Fisik ESP32
+                </h3>
+                <span className="text-[10.5px] text-[#6B7280]">
+                  2 sensor dalam air &bull; 2 sensor luar air
+                </span>
+              </div>
               <span
                 className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
                   liveSensorCount === 0
@@ -125,7 +111,7 @@ export default function AnalyticsPage() {
                     : "bg-[#DCFCE7] text-[#166534]"
                 }`}
               >
-                {liveSensorCount === 0 ? "Offline" : `${liveSensorCount}/6 Live`}
+                {liveSensorCount === 0 ? "Offline" : `${liveSensorCount}/4 Live`}
               </span>
             </div>
 
@@ -136,9 +122,14 @@ export default function AnalyticsPage() {
                   className="py-2.5 first:pt-3 last:pb-0 flex items-center justify-between gap-2"
                 >
                   <div className="min-w-0">
-                    <span className="font-semibold text-[#111827] block truncate">
-                      {row.label}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-[#111827] truncate">
+                        {row.label}
+                      </span>
+                      <span className="text-[9.5px] font-mono text-[#9CA3AF] shrink-0">
+                        [{row.group.includes("Didalam") ? "Air" : "Luar"}]
+                      </span>
+                    </div>
                     <span className="text-[11px] text-[#6B7280] num-tabular">
                       {row.measured} &bull; {row.ideal}
                     </span>
@@ -152,7 +143,7 @@ export default function AnalyticsPage() {
                         : "text-[#B45309]"
                     }`}
                   >
-                    {!row.live ? "Offline" : row.ok ? "Normal" : row.warnLabel}
+                    {!row.live ? "Maaf, alat offline" : row.ok ? "Normal" : row.warnLabel}
                   </span>
                 </div>
               ))}
@@ -182,7 +173,7 @@ export default function AnalyticsPage() {
               </div>
 
               <p className="text-xs text-white/80 leading-relaxed">
-                Telemetri 6 sensor dikirim dari {systemMeta.edgeNode} via HTTPS ke backend ElysiaJS dan disimpan pada buffer SQLite ({history.length} sampel aktif).
+                Telemetri 4 sensor fisik (2 dalam air, 2 luar air) disinkronkan dari {systemMeta.edgeNode} via HTTPS ke backend ElysiaJS dan disimpan pada buffer deret waktu ({history.length} sampel aktif).
               </p>
 
               <div className="pt-1 flex items-center justify-between text-xs">

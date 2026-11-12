@@ -6,7 +6,7 @@ import {
   CheckCircle2,
   Droplets,
   Thermometer,
-  Gauge,
+  Sun,
 } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
 
@@ -15,16 +15,10 @@ export function AnalyticsBentoRow() {
 
   const hasPh = typeof sensors.ph === "number";
   const hasWaterTemp = typeof sensors.waterTemperature === "number";
-  const hasTds = typeof sensors.tds === "number";
-  const hasAnyWaterSensor = hasPh || hasWaterTemp || hasTds;
+  const hasAirTemp = typeof sensors.airTemperature === "number";
+  const hasLux = typeof sensors.lightIntensity === "number";
+  const hasAnyWaterSensor = hasPh || hasWaterTemp;
 
-  const tdsPenalty = hasTds
-    ? (sensors.tds as number) < 400
-      ? (400 - (sensors.tds as number)) * 0.03
-      : (sensors.tds as number) > 800
-      ? ((sensors.tds as number) - 800) * 0.03
-      : 0
-    : 0;
   const wqiScore = hasAnyWaterSensor
     ? Math.max(
         50,
@@ -32,29 +26,27 @@ export function AnalyticsBentoRow() {
           98,
           Math.round(
             100 -
-              (hasPh ? Math.abs((sensors.ph as number) - 7.0) * 16 : 0) -
-              (hasWaterTemp ? Math.abs((sensors.waterTemperature as number) - 24.5) * 2.5 : 0) -
-              tdsPenalty
+              (hasPh ? Math.abs((sensors.ph as number) - 7.0) * 20 : 0) -
+              (hasWaterTemp ? Math.abs((sensors.waterTemperature as number) - 24.5) * 3.5 : 0)
           )
         )
       )
     : null;
 
   const formattedTemp = hasWaterTemp ? (sensors.waterTemperature as number).toFixed(1) : "--";
-  const formattedTDS = hasTds ? Math.round(sensors.tds as number) : "--";
+  const formattedAirTemp = hasAirTemp ? (sensors.airTemperature as number).toFixed(1) : "--";
   const formattedPH = hasPh ? (sensors.ph as number).toFixed(2) : "--";
+  const formattedLux = hasLux ? String(Math.round(sensors.lightIntensity as number)) : "--";
 
   const isPhOptimal = hasPh && (sensors.ph as number) >= 6.5 && (sensors.ph as number) <= 7.5;
   const isTempOptimal =
     hasWaterTemp &&
     (sensors.waterTemperature as number) >= 22 &&
     (sensors.waterTemperature as number) <= 27;
-  const isTdsOptimal =
-    hasTds && (sensors.tds as number) >= 400 && (sensors.tds as number) <= 800;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {/* 1. PINE HERO ANCHOR CARD (Matches Dashboard MetricCardsRow) */}
+      {/* 1. PINE HERO ANCHOR CARD */}
       <div
         style={{ "--ug-delay": "60ms" } as React.CSSProperties}
         className="ug-enter rounded-[24px] bg-[#165B39] hover:bg-[#145233] text-white p-5 shadow-xs flex flex-col justify-between h-[156px] transition-colors"
@@ -76,27 +68,30 @@ export function AnalyticsBentoRow() {
           <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 text-[11px] font-medium text-white/90">
             <span
               className={`h-1.5 w-1.5 rounded-full ${
-                systemMeta.liveSensorCount > 0 ? "bg-[#68C194]" : "bg-white/60"
+                systemMeta.edgeOnline ? "bg-[#68C194]" : "bg-white/60"
               }`}
             />
             <span>
-              {systemMeta.liveSensorCount > 0
-                ? `${systemMeta.edgeNode} • ${systemMeta.liveSensorCount} Live`
-                : "Menunggu Data ESP32"}
+              {systemMeta.edgeOnline
+                ? `${systemMeta.edgeNode} • ${systemMeta.liveSensorCount}/4 Sensor Live`
+                : "Maaf, alat sedang offline"}
             </span>
           </div>
         </div>
       </div>
 
-      {/* 2. KESTABILAN pH AIR */}
+      {/* 2. KESTABILAN pH AIR (DALAM AIR) */}
       <div
         style={{ "--ug-delay": "115ms" } as React.CSSProperties}
         className="ug-enter rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs flex flex-col justify-between h-[156px]"
       >
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-[#111827]">
-            Kestabilan pH Air
-          </span>
+          <div>
+            <span className="text-xs font-semibold text-[#111827] block">
+              Kestabilan pH Air
+            </span>
+            <span className="text-[10px] text-[#6B7280]">Sensor Dalam Air</span>
+          </div>
           <div className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#165B39]">
             <Droplets className="h-4 w-4" />
           </div>
@@ -121,20 +116,23 @@ export function AnalyticsBentoRow() {
             ) : (
               <span className="h-1.5 w-1.5 rounded-full bg-[#9CA3AF]" />
             )}
-            <span>{!hasPh ? "Sensor pH offline" : "Ideal: 6.5 – 7.5 pH"}</span>
+            <span>{!hasPh ? "Maaf, alat sedang offline" : "Ideal: 6.5 – 7.5 pH"}</span>
           </div>
         </div>
       </div>
 
-      {/* 3. SUHU AIR KOLAM */}
+      {/* 3. SUHU AIR KOLAM (DALAM AIR - DS18B20) */}
       <div
         style={{ "--ug-delay": "170ms" } as React.CSSProperties}
         className="ug-enter rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs flex flex-col justify-between h-[156px]"
       >
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-[#111827]">
-            Suhu Air Kolam
-          </span>
+          <div>
+            <span className="text-xs font-semibold text-[#111827] block">
+              Suhu Air Kolam
+            </span>
+            <span className="text-[10px] text-[#6B7280]">Sensor Dalam Air (DS18B20)</span>
+          </div>
           <div className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#165B39]">
             <Thermometer className="h-4 w-4" />
           </div>
@@ -160,47 +158,52 @@ export function AnalyticsBentoRow() {
               <span className="h-1.5 w-1.5 rounded-full bg-[#9CA3AF]" />
             )}
             <span>
-              {!hasWaterTemp ? "Sensor DS18B20 offline" : "Ideal: 22 – 27°C"}
+              {!hasWaterTemp ? "Maaf, alat sedang offline" : "Ideal: 22 – 27°C"}
             </span>
           </div>
         </div>
       </div>
 
-      {/* 4. NUTRISI TDS TERLARUT */}
+      {/* 4. SENSOR LUAR AIR: CAHAYA & SUHU UDARA */}
       <div
         style={{ "--ug-delay": "225ms" } as React.CSSProperties}
         className="ug-enter rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs flex flex-col justify-between h-[156px]"
       >
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-[#111827]">
-            Nutrisi TDS Terlarut
-          </span>
-          <div className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#165B39]">
-            <Gauge className="h-4 w-4" />
+          <div>
+            <span className="text-xs font-semibold text-[#111827] block">
+              Cahaya &amp; Lingkungan
+            </span>
+            <span className="text-[10px] text-[#6B7280]">Sensor Luar Air (LDR &amp; DHT22)</span>
+          </div>
+          <div className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#D97706]">
+            <Sun className="h-4 w-4" />
           </div>
         </div>
 
         <div>
           <div className="text-3xl sm:text-4xl font-bold tracking-tight num-tabular text-[#111827]">
-            {formattedTDS}
-            <span className="text-lg font-normal text-[#9CA3AF] ml-1">ppm</span>
+            {formattedLux}
+            <span className="text-lg font-normal text-[#9CA3AF] ml-1">lux</span>
           </div>
           <div
             className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10.5px] font-medium ${
-              !hasTds
+              !hasLux && !hasAirTemp
                 ? "bg-[#F3F4F6] text-[#6B7280]"
-                : isTdsOptimal
-                ? "bg-[#DCFCE7] text-[#166534]"
-                : "bg-[#FEF3C7] text-[#B45309]"
+                : "bg-[#DCFCE7] text-[#166534]"
             }`}
           >
-            {hasTds ? (
+            {hasLux || hasAirTemp ? (
               <CheckCircle2 className="h-3 w-3" />
             ) : (
               <span className="h-1.5 w-1.5 rounded-full bg-[#9CA3AF]" />
             )}
             <span>
-              {!hasTds ? "Sensor TDS offline" : "Target: 400 – 800 ppm"}
+              {!hasLux && !hasAirTemp
+                ? "Maaf, alat sedang offline"
+                : hasAirTemp
+                ? `Suhu Luar: ${formattedAirTemp}°C`
+                : "Cahaya Normal"}
             </span>
           </div>
         </div>
