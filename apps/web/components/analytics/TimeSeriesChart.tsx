@@ -33,7 +33,7 @@ const METRICS: Record<"ph" | "temp" | "tds" | "lux", MetricConfig> = {
     key: "waterTemperature",
     label: "Suhu Air",
     unit: "°C",
-    color: "#0284C7", // Bio Cyan
+    color: "#0D9488", // Emerald Teal
     fillId: "gradient-temp",
     min: 20.0,
     max: 30.0,
@@ -66,7 +66,7 @@ const METRICS: Record<"ph" | "temp" | "tds" | "lux", MetricConfig> = {
     key: "lightIntensity",
     label: "Cahaya LDR",
     unit: "lux",
-    color: "#7C3AED", // Photosynthetic Violet
+    color: "#4B5563", // Charcoal Ink
     fillId: "gradient-lux",
     min: 0,
     max: 3000,
@@ -318,7 +318,7 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
             onClick={() => setSelectedMetric("lux")}
             className={`px-3.5 py-1.5 rounded-full font-medium transition-colors cursor-pointer shrink-0 ${
               selectedMetric === "lux"
-                ? "bg-[#7C3AED] text-white font-semibold"
+                ? "bg-[#4B5563] text-white font-semibold"
                 : "text-[#4B5563] hover:text-[#111827] hover:bg-white"
             }`}
           >
@@ -360,13 +360,13 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
           onClick={() => setSelectedMetric(selectedMetric === "temp" ? "all" : "temp")}
           className={`p-3.5 rounded-[18px] border text-left transition-colors cursor-pointer ${
             selectedMetric === "temp"
-              ? "border-[#0284C7] bg-[#E0F2FE]/35"
+              ? "border-[#0D9488] bg-[#CCFBF1]/35"
               : "border-[#E5E7EB] bg-[#F8F9FA] hover:bg-white hover:border-[#D1D5DB]"
           }`}
         >
           <div className="flex items-center justify-between text-xs text-[#6B7280]">
             <span className="flex items-center gap-1.5 font-medium">
-              <span className="h-2 w-2 rounded-full bg-[#0284C7]" />
+              <span className="h-2 w-2 rounded-full bg-[#0D9488]" />
               Suhu Air
             </span>
             <span className="font-mono text-[10px] text-[#9CA3AF]">
@@ -412,13 +412,13 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
           onClick={() => setSelectedMetric(selectedMetric === "lux" ? "all" : "lux")}
           className={`p-3.5 rounded-[18px] border text-left transition-colors cursor-pointer ${
             selectedMetric === "lux"
-              ? "border-[#7C3AED] bg-[#F3E8FF]/45"
+              ? "border-[#4B5563] bg-[#F3F4F6]"
               : "border-[#E5E7EB] bg-[#F8F9FA] hover:bg-white hover:border-[#D1D5DB]"
           }`}
         >
           <div className="flex items-center justify-between text-xs text-[#6B7280]">
             <span className="flex items-center gap-1.5 font-medium">
-              <span className="h-2 w-2 rounded-full bg-[#7C3AED]" />
+              <span className="h-2 w-2 rounded-full bg-[#4B5563]" />
               Cahaya LDR
             </span>
             <span className="font-mono text-[10px] text-[#9CA3AF]">
@@ -452,16 +452,16 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
               <stop offset="100%" stopColor="#165B39" stopOpacity="0.0" />
             </linearGradient>
             <linearGradient id="gradient-temp" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#0284C7" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="#0284C7" stopOpacity="0.0" />
+              <stop offset="0%" stopColor="#0D9488" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#0D9488" stopOpacity="0.0" />
             </linearGradient>
             <linearGradient id="gradient-tds" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#D97706" stopOpacity="0.4" />
               <stop offset="100%" stopColor="#D97706" stopOpacity="0.0" />
             </linearGradient>
             <linearGradient id="gradient-lux" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#7C3AED" stopOpacity="0.35" />
-              <stop offset="100%" stopColor="#7C3AED" stopOpacity="0.0" />
+              <stop offset="0%" stopColor="#4B5563" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="#4B5563" stopOpacity="0.0" />
             </linearGradient>
           </defs>
 
@@ -559,7 +559,7 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
             </div>
             <div className="flex items-center justify-between text-[#111827]">
               <span className="flex items-center gap-1.5 text-[11px]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#0284C7]" /> Suhu:
+                <span className="h-1.5 w-1.5 rounded-full bg-[#0D9488]" /> Suhu:
               </span>
               <span className="font-bold">
                 {typeof activeSample.sensors.waterTemperature === "number"
@@ -579,7 +579,7 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
             </div>
             <div className="flex items-center justify-between text-[#111827]">
               <span className="flex items-center gap-1.5 text-[11px]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#7C3AED]" /> LDR:
+                <span className="h-1.5 w-1.5 rounded-full bg-[#4B5563]" /> LDR:
               </span>
               <span className="font-bold">
                 {typeof activeSample.sensors.lightIntensity === "number"

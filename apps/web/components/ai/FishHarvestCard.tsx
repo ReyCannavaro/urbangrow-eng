@@ -21,7 +21,7 @@ export function FishHarvestCard({ forecast }: FishHarvestCardProps) {
             className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${
               isNila
                 ? "bg-[#165B39]/10 text-[#165B39]"
-                : "bg-sky-50 text-sky-700"
+                : "bg-[#F3F4F6] text-[#374151]"
             }`}
           >
             <Fish className="h-5 w-5" />
@@ -35,7 +35,7 @@ export function FishHarvestCard({ forecast }: FishHarvestCardProps) {
                 className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
                   isNila
                     ? "bg-[#165B39]/10 text-[#165B39]"
-                    : "bg-sky-50 text-sky-700"
+                    : "bg-[#F3F4F6] text-[#374151]"
                 }`}
               >
                 {isNila ? "Kolam Level 3" : "Kolam Level 1"}
@@ -52,7 +52,7 @@ export function FishHarvestCard({ forecast }: FishHarvestCardProps) {
           <div className="inline-flex items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-[#F9FAFB] px-3 py-1 text-xs font-semibold text-[#111827]">
             <Calendar
               className={`h-3.5 w-3.5 ${
-                isNila ? "text-[#165B39]" : "text-sky-600"
+                isNila ? "text-[#165B39]" : "text-[#374151]"
               }`}
             />
             <span>
@@ -76,7 +76,7 @@ export function FishHarvestCard({ forecast }: FishHarvestCardProps) {
           </span>
           <span className="font-mono font-semibold text-[#111827] tabular-nums">
             {forecast.initialLengthCm} cm →{" "}
-            <span className={isNila ? "text-[#165B39]" : "text-sky-700"}>
+            <span className={isNila ? "text-[#165B39]" : "text-[#111827]"}>
               {forecast.estimatedCurrentLengthCm} cm
             </span>{" "}
             / {forecast.targetHarvestLengthCm} cm ({forecast.progressPct}%)
@@ -86,7 +86,7 @@ export function FishHarvestCard({ forecast }: FishHarvestCardProps) {
         <div className="h-2.5 w-full overflow-hidden rounded-full bg-[#F3F4F6]">
           <div
             className={`h-full rounded-full transition-all duration-500 ${
-              isNila ? "bg-[#165B39]" : "bg-sky-600"
+              isNila ? "bg-[#165B39]" : "bg-[#374151]"
             }`}
             style={{ width: `${forecast.progressPct}%` }}
           />
@@ -112,7 +112,7 @@ export function FishHarvestCard({ forecast }: FishHarvestCardProps) {
           </span>
           <span
             className={`mt-0.5 block font-mono text-sm font-bold tabular-nums ${
-              isNila ? "text-[#165B39]" : "text-sky-700"
+              isNila ? "text-[#165B39]" : "text-[#111827]"
             }`}
           >
             ~{forecast.projectedTotalYieldKg} kg

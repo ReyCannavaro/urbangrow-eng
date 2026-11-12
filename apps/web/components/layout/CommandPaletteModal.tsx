@@ -42,7 +42,7 @@ interface CommandPaletteModalProps {
 
 export function CommandPaletteModal({ isOpen, onClose }: CommandPaletteModalProps) {
   const router = useRouter();
-  const { sensors, actuators, history, toggleActuator, dispenseFeed } = useTelemetry();
+  const { sensors, actuators, systemMeta, history, toggleActuator, dispenseFeed } = useTelemetry();
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
@@ -57,6 +57,7 @@ export function CommandPaletteModal({ isOpen, onClose }: CommandPaletteModalProp
   }, [isOpen]);
 
   const items: CommandItem[] = useMemo(() => {
+    const edgeOnline = systemMeta.edgeOnline;
     const go = (path: string) => {
       onClose();
       router.push(path);
@@ -65,7 +66,11 @@ export function CommandPaletteModal({ isOpen, onClose }: CommandPaletteModalProp
     const runActuator = async (id: string, label: string) => {
       const res = await toggleActuator(id);
       if (res.ok) {
-        setActionFeedback(`${label} berhasil diperbarui.`);
+        setActionFeedback(
+          edgeOnline
+            ? `${label} berhasil diperbarui.`
+            : `${label} masuk antrean target server (ESP32 offline).`
+        );
       } else {
         setActionFeedback(res.error || `Gagal mengubah ${label}.`);
       }
@@ -150,13 +155,19 @@ export function CommandPaletteModal({ isOpen, onClose }: CommandPaletteModalProp
         id: "act-feed",
         section: "Aksi Cepat Aktuator",
         title: "Beri Pakan Ikan Sekarang (35g Pelet)",
-        subtitle: "Menjalankan pulse auto-feeder 3000ms untuk kolam Nila & Lele",
-        badge: "Pulse 3s",
+        subtitle: edgeOnline
+          ? "Menjalankan pulse auto-feeder 3000ms untuk kolam Nila & Lele"
+          : "ESP32 offline — simpan pulse pakan 35g ke antrean perintah server",
+        badge: edgeOnline ? "Pulse 3s" : "Antrean",
         icon: Send,
         keywords: "pakan feeder beri makan ikan nila lele",
         onSelect: async () => {
           await dispenseFeed();
-          setActionFeedback("35g pakan berhasil didistribusikan.");
+          setActionFeedback(
+            edgeOnline
+              ? "35g pakan berhasil didistribusikan."
+              : "Antrean pulse pakan 35g disimpan di server (ESP32 offline)."
+          );
         },
       },
       {
@@ -164,7 +175,11 @@ export function CommandPaletteModal({ isOpen, onClose }: CommandPaletteModalProp
         section: "Aksi Cepat Aktuator",
         title: `${actuators.aerator?.isOn ? "Matikan" : "Nyalakan"} Aerator Oksigen (RELAY-02)`,
         subtitle: "Sirkulasi aerasi udara untuk kolam Ikan Nila Level 3",
-        badge: actuators.aerator?.isOn ? "ON" : "OFF",
+        badge: !edgeOnline
+          ? `Antrean: ${actuators.aerator?.isOn ? "ON" : "OFF"}`
+          : actuators.aerator?.isOn
+          ? "ON"
+          : "OFF",
         icon: Power,
         keywords: "aerator oksigen relay 02 nyalakan matikan",
         onSelect: () => runActuator("aerator", "Aerator Oksigen"),
@@ -174,7 +189,11 @@ export function CommandPaletteModal({ isOpen, onClose }: CommandPaletteModalProp
         section: "Aksi Cepat Aktuator",
         title: `${actuators.growLight?.isOn ? "Matikan" : "Nyalakan"} LED Grow Light (RELAY-03)`,
         subtitle: "Pencahayaan fotosintesis vertikal Pakcoy L4 & Kangkung L2",
-        badge: actuators.growLight?.isOn ? "ON" : "OFF",
+        badge: !edgeOnline
+          ? `Antrean: ${actuators.growLight?.isOn ? "ON" : "OFF"}`
+          : actuators.growLight?.isOn
+          ? "ON"
+          : "OFF",
         icon: Power,
         keywords: "lampu grow light led relay 03 nyalakan matikan",
         onSelect: () => runActuator("growLight", "LED Grow Light"),
@@ -184,7 +203,11 @@ export function CommandPaletteModal({ isOpen, onClose }: CommandPaletteModalProp
         section: "Aksi Cepat Aktuator",
         title: `${actuators.waterPump?.isOn ? "Matikan" : "Nyalakan"} Pompa Sirkulasi 12V (RELAY-01)`,
         subtitle: "Resirkulasi tertutup biofilter 4-level (RELAY-01)",
-        badge: actuators.waterPump?.isOn ? "ON" : "OFF",
+        badge: !edgeOnline
+          ? `Antrean: ${actuators.waterPump?.isOn ? "ON" : "OFF"}`
+          : actuators.waterPump?.isOn
+          ? "ON"
+          : "OFF",
         icon: Power,
         keywords: "pompa air sirkulasi relay 01 nyalakan matikan",
         onSelect: () => runActuator("waterPump", "Pompa Sirkulasi"),
@@ -258,7 +281,7 @@ export function CommandPaletteModal({ isOpen, onClose }: CommandPaletteModalProp
         },
       },
     ];
-  }, [sensors, actuators, history, toggleActuator, dispenseFeed, onClose, router]);
+  }, [sensors, actuators, systemMeta.edgeOnline, history, toggleActuator, dispenseFeed, onClose, router]);
 
   const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase();

@@ -122,7 +122,7 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
       name: "Feeder Otomatis Terjadwal",
       code: "RELAY-04",
       type: "feeder",
-      isOn: true,
+      isOn: false,
       mode: "auto",
       powerWatts: 12,
       voltage: "12V DC",

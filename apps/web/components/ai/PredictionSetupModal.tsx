@@ -357,7 +357,7 @@ export function PredictionSetupModal({
                           Kolam Level 1 • Dasar Sistem Biofilter
                         </p>
                       </div>
-                      <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-[11px] font-semibold text-sky-700">
+                      <span className="rounded-full bg-[#F3F4F6] px-2.5 py-0.5 text-[11px] font-semibold text-[#374151]">
                         Level 1
                       </span>
                     </div>
@@ -426,7 +426,7 @@ export function PredictionSetupModal({
 
                       <label className="space-y-1 text-xs">
                         <span className="flex items-center gap-1 font-medium text-[#374151]">
-                          <Ruler className="h-3 w-3 text-sky-700" />
+                          <Ruler className="h-3 w-3 text-[#374151]" />
                           Target Panen (cm)
                         </span>
                         <input
@@ -459,7 +459,7 @@ export function PredictionSetupModal({
                           }
                           className={`rounded-full border px-2 py-0.5 transition-colors cursor-pointer ${
                             draft.lele.targetHarvestLengthCm === cm
-                              ? "border-sky-600 bg-sky-50 font-semibold text-sky-700"
+                              ? "border-[#111827] bg-[#F3F4F6] font-semibold text-[#111827]"
                               : "border-[#E5E7EB] bg-white hover:bg-[#F3F4F6]"
                           }`}
                         >
@@ -470,7 +470,7 @@ export function PredictionSetupModal({
 
                     <div className="rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 text-[11px] text-[#374151]">
                       Estimasi siap panen:{" "}
-                      <strong className="text-sky-700">
+                      <strong className="text-[#165B39]">
                         {formatIndonesianDate(lelePreview.estimatedHarvestDate)}
                       </strong>{" "}
                       ({lelePreview.estimatedDaysRemaining} hari lagi) • Proyeksi{" "}

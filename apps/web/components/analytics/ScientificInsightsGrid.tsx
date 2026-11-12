@@ -9,7 +9,8 @@ import {
 import { useTelemetry } from "@/lib/telemetryContext";
 
 export function ScientificInsightsGrid() {
-  const { sensors, actuators } = useTelemetry();
+  const { sensors, actuators, systemMeta } = useTelemetry();
+  const edgeOnline = systemMeta.edgeOnline;
 
   const hasPh = typeof sensors.ph === "number";
   const hasWaterTemp = typeof sensors.waterTemperature === "number";
@@ -107,8 +108,18 @@ export function ScientificInsightsGrid() {
                   Konversi Nitrifikasi
                 </span>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[10px] font-mono font-bold text-[#166534] whitespace-nowrap shrink-0">
-                {actuators.waterPump?.isOn ? "Biofilter Aktif" : "Sirkulasi Terjeda"}
+              <span
+                className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold whitespace-nowrap shrink-0 ${
+                  edgeOnline
+                    ? "bg-[#DCFCE7] text-[#166534]"
+                    : "bg-[#F3F4F6] text-[#4B5563]"
+                }`}
+              >
+                {!edgeOnline
+                  ? "ESP32 Offline"
+                  : actuators.waterPump?.isOn
+                  ? "Biofilter Aktif"
+                  : "Sirkulasi Terjeda"}
               </span>
             </div>
 
@@ -175,14 +186,26 @@ export function ScientificInsightsGrid() {
           <div>
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <div className="h-7 w-7 rounded-full bg-[#E0F2FE] flex items-center justify-center text-[#0284C7]">
+                <div
+                  className={`h-7 w-7 rounded-full flex items-center justify-center ${
+                    airDelta !== null
+                      ? "bg-[#DCFCE7] text-[#165B39]"
+                      : "bg-[#F3F4F6] text-[#4B5563]"
+                  }`}
+                >
                   <Thermometer className="h-4 w-4" />
                 </div>
                 <span className="text-xs font-bold text-[#111827]">
                   Stabilitas Termal &amp; Iklim
                 </span>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-[#E0F2FE] text-[10px] font-mono font-bold text-[#0284C7] whitespace-nowrap shrink-0">
+              <span
+                className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold whitespace-nowrap shrink-0 ${
+                  airDelta !== null
+                    ? "bg-[#DCFCE7] text-[#166534]"
+                    : "bg-[#F3F4F6] text-[#4B5563]"
+                }`}
+              >
                 {airDelta !== null
                   ? `Δ ${airDelta >= 0 ? `+${airDelta}` : airDelta}°C Udara-Air`
                   : "Sensor Offline"}
@@ -206,13 +229,13 @@ export function ScientificInsightsGrid() {
             <div className="mt-4 space-y-2">
               <div className="flex items-center justify-between text-[11px] font-mono">
                 <span className="text-[#6B7280]">Buffer Termal Ikan &amp; Tanaman:</span>
-                <span className="text-[#0284C7] font-bold">
+                <span className={thermalStabilityPct !== null ? "text-[#165B39] font-bold" : "text-[#9CA3AF] font-bold"}>
                   {thermalStabilityPct !== null ? `${thermalStabilityPct}% Optimal` : "--"}
                 </span>
               </div>
               <div className="h-2.5 w-full rounded-full bg-[#F3F4F6] overflow-hidden">
                 <div
-                  className="h-full bg-[#0284C7] rounded-full transition-all duration-300"
+                  className="h-full bg-[#165B39] rounded-full transition-all duration-300"
                   style={{ width: `${thermalStabilityPct ?? 0}%` }}
                 />
               </div>
@@ -223,7 +246,7 @@ export function ScientificInsightsGrid() {
                 </div>
                 <div className="p-2 rounded-xl bg-[#F8F9FA] border border-[#E5E7EB]">
                   <div className="text-[10px] text-[#9CA3AF]">Kelembaban RH</div>
-                  <div className="font-bold text-[#0284C7]">{formattedHumidity}%</div>
+                  <div className="font-bold text-[#111827]">{formattedHumidity}%</div>
                 </div>
               </div>
             </div>
@@ -291,8 +314,20 @@ export function ScientificInsightsGrid() {
                 </div>
                 <div className="p-2 rounded-xl bg-[#F8F9FA] border border-[#E5E7EB]">
                   <div className="text-[10px] text-[#9CA3AF]">LED Array Status</div>
-                  <div className="font-bold text-[#166534]">
-                    {actuators.growLight?.isOn ? "85W Aktif" : "Mati (Standby)"}
+                  <div
+                    className={`font-bold ${
+                      !edgeOnline
+                        ? "text-[#6B7280]"
+                        : actuators.growLight?.isOn
+                        ? "text-[#166534]"
+                        : "text-[#4B5563]"
+                    }`}
+                  >
+                    {!edgeOnline
+                      ? "ESP32 Offline"
+                      : actuators.growLight?.isOn
+                      ? "85W Aktif"
+                      : "Mati (Standby)"}
                   </div>
                 </div>
               </div>

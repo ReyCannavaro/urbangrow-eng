@@ -135,7 +135,7 @@ export function AlertsBentoRow({
             Node Hardware ESP32
           </span>
           <div className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563]">
-            <Cpu className="h-4 w-4 text-[#0284C7]" />
+            <Cpu className={`h-4 w-4 ${edgeOnline ? "text-[#165B39]" : "text-[#6B7280]"}`} />
           </div>
         </div>
 

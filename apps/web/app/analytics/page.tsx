@@ -197,7 +197,15 @@ export default function AnalyticsPage() {
                   <span className="text-[10px] text-[#6B7280]">Temperatur: {formattedTemp} °C</span>
                 </div>
                 <div className="text-right">
-                  <span className={`font-bold block ${!hasWaterTemp ? "text-[#6B7280]" : "text-[#0284C7]"}`}>
+                  <span
+                    className={`font-bold block ${
+                      !hasWaterTemp
+                        ? "text-[#6B7280]"
+                        : isTempOptimal
+                        ? "text-[#166534]"
+                        : "text-[#D97706]"
+                    }`}
+                  >
                     {!hasWaterTemp ? "Sensor Offline" : isTempOptimal ? "Optimal (22 - 27°C)" : "Pantau Suhu"}
                   </span>
                 </div>
@@ -206,12 +214,18 @@ export default function AnalyticsPage() {
           </div>
 
           {/* 2. Ingestion Pipeline & Connection Monitor */}
-          <div className="rounded-[20px] bg-[#1E293B] text-white p-5 shadow-xs space-y-2.5 border border-[#334155]">
+          <div className="rounded-[20px] bg-[#0B2C1B] text-white p-5 shadow-xs space-y-2.5 border border-[#165B39]/50">
             <div className="flex items-center justify-between pb-2 border-b border-white/10 font-mono text-xs">
               <span className="font-bold text-[#68C194] uppercase tracking-wider text-[10px]">
                 Pipeline Status
               </span>
-              <span className="text-[#38BDF8] text-[10.5px]">
+              <span
+                className={`text-[10.5px] font-semibold ${
+                  backendConnected && systemMeta.edgeOnline
+                    ? "text-[#68C194]"
+                    : "text-white/75"
+                }`}
+              >
                 {backendConnected
                   ? systemMeta.edgeOnline
                     ? `ESP32 Live (${systemMeta.edgeNode})`

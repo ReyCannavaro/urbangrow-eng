@@ -406,28 +406,37 @@ export default function AiInsightsPage() {
                     </span>
                     <div className="flex flex-wrap gap-2">
                       {diagnostics.suggestedActions.map((act) => {
-                        const alreadyActive =
+                        const alreadyTargeted =
                           actuators[act.actuatorId]?.isOn === act.targetState;
+                        const edgeOnline = systemMeta.edgeOnline;
                         return (
                           <button
                             key={`${act.actuatorId}-${act.targetState}`}
                             type="button"
-                            disabled={alreadyActive}
+                            disabled={alreadyTargeted}
                             onClick={() => void setActuatorState(act.actuatorId, act.targetState)}
-                            className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
-                              alreadyActive
-                                ? "border border-[#165B39]/25 bg-[#DCFCE7] text-[#166534] cursor-default"
-                                : "bg-[#165B39] text-white hover:bg-[#124B2E]"
+                            className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                              alreadyTargeted
+                                ? edgeOnline
+                                  ? "border border-[#165B39]/25 bg-[#DCFCE7] text-[#166534] cursor-default"
+                                  : "border border-[#E5E7EB] bg-[#F3F4F6] text-[#4B5563] cursor-default"
+                                : edgeOnline
+                                ? "bg-[#165B39] text-white hover:bg-[#124B2E] cursor-pointer"
+                                : "border border-[#D1D5DB] bg-white text-[#374151] hover:bg-[#F9FAFB] cursor-pointer"
                             }`}
                             title={act.reason}
                           >
-                            {alreadyActive ? (
+                            {alreadyTargeted ? (
                               <Check className="h-3.5 w-3.5" />
                             ) : (
                               <Power className="h-3.5 w-3.5" />
                             )}
                             <span>
-                              {alreadyActive ? `${act.label} (Aktif)` : act.label}
+                              {alreadyTargeted
+                                ? `${act.label} (${edgeOnline ? "Aktif" : "Di Antrean"})`
+                                : edgeOnline
+                                ? act.label
+                                : `${act.label} (Antrekan)`}
                             </span>
                           </button>
                         );

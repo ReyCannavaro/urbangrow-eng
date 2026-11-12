@@ -14,27 +14,25 @@ export function AnalyticsHeader() {
   };
 
   return (
-    <div
+    <section
       style={{ "--ug-delay": "0ms" } as React.CSSProperties}
-      className="ug-enter bg-white rounded-[20px] border border-[#E5E7EB] p-5 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4"
+      className="ug-enter flex flex-col md:flex-row md:items-center justify-between gap-4 pb-1"
     >
-      <div>
-        <div className="flex items-center gap-3">
-          <Link
-            href="/"
-            className="h-9 w-9 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563] hover:text-[#111827] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] transition-colors shrink-0"
-            title="Kembali ke Dashboard"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#111827]">
-              Historical Analytics &amp; Deret Waktu
-            </h1>
-            <p className="text-xs text-[#6B7280] mt-1 max-w-2xl leading-relaxed">
-              Analisis korelasi multi-metrik deret waktu untuk evaluasi stabilitas ekosistem pangan dan efisiensi biofilter.
-            </p>
-          </div>
+      <div className="flex items-center gap-3">
+        <Link
+          href="/"
+          className="h-9 w-9 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563] hover:text-[#111827] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] transition-colors shrink-0 shadow-2xs"
+          title="Kembali ke Dashboard"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Link>
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#111827]">
+            Historical Analytics &amp; Deret Waktu
+          </h1>
+          <p className="text-xs text-[#6B7280] mt-1 max-w-2xl">
+            Analisis korelasi multi-metrik untuk evaluasi stabilitas air dan efisiensi biofilter.
+          </p>
         </div>
       </div>
 
@@ -54,6 +52,6 @@ export function AnalyticsHeader() {
           <span>Export CSV</span>
         </button>
       </div>
-    </div>
+    </section>
   );
 }

@@ -97,8 +97,8 @@ export function SafetyInterlockPanel({
         </span>
       </div>
 
-      {/* 4 Live Hardware Interlock Rule Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-0.5">
+      {/* 4 Live Hardware Interlock Rule Cards (2x2 readable grid inside lg:col-span-5) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-0.5">
         {rules.map((rule) => {
           return (
             <div

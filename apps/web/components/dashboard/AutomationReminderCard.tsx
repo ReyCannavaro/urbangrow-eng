@@ -14,7 +14,8 @@ export function AutomationReminderCard({
   schedules = [],
   onManageSchedules,
 }: AutomationReminderCardProps) {
-  const { dispenseFeed, feedActive } = useTelemetry();
+  const { dispenseFeed, feedActive, systemMeta } = useTelemetry();
+  const edgeOnline = systemMeta.edgeOnline;
 
   const activeSchedules = schedules.filter((s) => s.enabled);
   const primarySchedule = activeSchedules[0];
@@ -81,12 +82,18 @@ export function AutomationReminderCard({
         {feedActive ? (
           <>
             <Check className="h-4 w-4 stroke-[3]" />
-            <span>35g Pakan Telah Didistribusikan!</span>
+            <span>
+              {edgeOnline
+                ? "Pulse Pakan 35g Terkirim!"
+                : "Masuk Antrean Server (ESP32 Offline)"}
+            </span>
           </>
         ) : (
           <>
             <Send className="h-3.5 w-3.5" />
-            <span>+ Beri Pakan Sekarang</span>
+            <span>
+              {edgeOnline ? "+ Beri Pakan Sekarang" : "+ Antrekan Pakan (Offline)"}
+            </span>
           </>
         )}
       </button>

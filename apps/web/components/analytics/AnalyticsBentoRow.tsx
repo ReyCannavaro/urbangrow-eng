@@ -132,7 +132,7 @@ export function AnalyticsBentoRow() {
           <span className="text-xs font-semibold text-[#111827]">
             Suhu Air Kolam
           </span>
-          <div className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#0284C7]">
+          <div className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#165B39]">
             <Thermometer className="h-4 w-4" />
           </div>
         </div>

@@ -31,7 +31,7 @@ export function BiologicalPairingCard() {
       status: "Aktif",
       statusType: "progress",
       icon: Fish,
-      iconColor: "text-sky-700 bg-sky-50",
+      iconColor: "text-[#165B39] bg-[#DCFCE7]",
     },
     {
       level: "Sekat 2",
@@ -40,7 +40,7 @@ export function BiologicalPairingCard() {
       status: "Sirkulasi",
       statusType: "completed",
       icon: Droplet,
-      iconColor: "text-slate-700 bg-slate-100",
+      iconColor: "text-[#374151] bg-[#F3F4F6]",
     },
   ];
 

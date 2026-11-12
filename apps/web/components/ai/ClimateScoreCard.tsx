@@ -76,13 +76,13 @@ export function ClimateScoreCard({ data }: Props) {
         </div>
         <div className="rounded-2xl border border-[#F3F4F6] bg-[#F9FAFB] p-3.5">
           <span className="text-[#6B7280]">Kualitas pH &amp; TDS</span>
-          <p className="mt-1 font-mono text-base font-bold text-sky-700 tabular-nums">
+          <p className="mt-1 font-mono text-base font-bold text-[#111827] tabular-nums">
             {formatSubScore(data.sub_scores.water_quality)}
           </p>
         </div>
         <div className="rounded-2xl border border-[#F3F4F6] bg-[#F9FAFB] p-3.5">
           <span className="text-[#6B7280]">Iklim Mikro (DHT22)</span>
-          <p className="mt-1 font-mono text-base font-bold text-[#0284C7] tabular-nums">
+          <p className="mt-1 font-mono text-base font-bold text-[#165B39] tabular-nums">
             {formatSubScore(microClimatePct)}
           </p>
         </div>

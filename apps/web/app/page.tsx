@@ -18,7 +18,7 @@ import { AutomationSchedule } from "@/lib/types";
 import { RevealOnView } from "@/components/motion/RevealOnView";
 
 export default function DashboardPage() {
-  const { dispenseFeed, feedActive } = useTelemetry();
+  const { dispenseFeed, feedActive, systemMeta } = useTelemetry();
   const [anomaly, setAnomaly] = useState<AnomalyPrediction | null>(null);
   const [schedules, setSchedules] = useState<AutomationSchedule[]>([]);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
@@ -76,7 +76,15 @@ export default function DashboardPage() {
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] hover:border-[#D1D5DB] text-[#111827] text-xs font-semibold transition-colors cursor-pointer"
           >
             <Send className="h-3.5 w-3.5 text-[#165B39]" />
-            <span>{feedActive ? "Pakan Terkirim!" : "Beri Pakan (35g)"}</span>
+            <span>
+              {feedActive
+                ? systemMeta.edgeOnline
+                  ? "Pakan Terkirim!"
+                  : "Masuk Antrean!"
+                : systemMeta.edgeOnline
+                ? "Beri Pakan (35g)"
+                : "Antrekan Pakan (35g)"}
+            </span>
           </button>
         </div>
       </section>

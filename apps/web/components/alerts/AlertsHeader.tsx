@@ -11,27 +11,25 @@ interface AlertsHeaderProps {
 
 export function AlertsHeader({ onClearAll, activeCount }: AlertsHeaderProps) {
   return (
-    <div
+    <section
       style={{ "--ug-delay": "0ms" } as React.CSSProperties}
-      className="ug-enter bg-white rounded-[24px] border border-[#E5E7EB] p-5 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4"
+      className="ug-enter flex flex-col md:flex-row md:items-center justify-between gap-4 pb-1"
     >
-      <div>
-        <div className="flex items-center gap-3">
-          <Link
-            href="/"
-            className="h-9 w-9 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563] hover:text-[#111827] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] transition-colors shrink-0"
-            title="Kembali ke Dashboard"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#111827]">
-              Pusat Notifikasi &amp; Early Warning
-            </h1>
-            <p className="text-xs text-[#6B7280] mt-1 max-w-2xl leading-relaxed">
-              Log peringatan anomali lingkungan, riwayat otomasi aktuator relay, dan catatan stabilitas bioproses ekosistem akuaponik.
-            </p>
-          </div>
+      <div className="flex items-center gap-3">
+        <Link
+          href="/"
+          className="h-9 w-9 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#4B5563] hover:text-[#111827] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] transition-colors shrink-0 shadow-2xs"
+          title="Kembali ke Dashboard"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Link>
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#111827]">
+            Pusat Notifikasi &amp; Early Warning
+          </h1>
+          <p className="text-xs text-[#6B7280] mt-1 max-w-2xl">
+            Log peringatan anomali lingkungan dan riwayat audit aktuator relay dari database.
+          </p>
         </div>
       </div>
 
@@ -52,6 +50,6 @@ export function AlertsHeader({ onClearAll, activeCount }: AlertsHeaderProps) {
           <span>Hapus Semua Log</span>
         </button>
       </div>
-    </div>
+    </section>
   );
 }

@@ -213,7 +213,7 @@ export function MetricCardsRow() {
           className="ug-enter rounded-[20px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] px-4 py-3 flex items-center justify-between gap-3 transition-colors"
         >
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-[#E0F2FE] text-[#0284C7] flex items-center justify-center shrink-0">
+            <div className="h-9 w-9 rounded-xl bg-[#DCFCE7] text-[#165B39] flex items-center justify-center shrink-0">
               <ThermometerSun className="h-4 w-4" />
             </div>
             <div>
