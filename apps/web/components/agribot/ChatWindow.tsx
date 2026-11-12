@@ -246,7 +246,7 @@ const STARTER_PROMPTS: StarterPrompt[] = [
   },
   {
     title: "Prediksi Air & Panen GDD",
-    description: "Estimasi panen Pakcoy L4 & Kangkung L2 aktual",
+    description: "Estimasi panen Pakcoy & Kangkung aktual",
     prompt:
       "Analisis kondisi tumbuhan, air, dan ikan saat ini, prediksi gejala dini yang perlu diwaspadai, dan hitung estimasi hari panen Pakcoy serta Kangkung.",
     icon: TrendingUp,

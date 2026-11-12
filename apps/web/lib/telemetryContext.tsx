@@ -89,27 +89,27 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
   const [actuators, setActuators] = useState<Record<string, ActuatorState>>({
     waterPump: {
       id: "waterPump",
-      name: "Sirkulasi Pompa Air 12V",
+      name: "Pompa Sirkulasi 12V",
       code: "RELAY-01",
       type: "pump",
-      isOn: true,
+      isOn: false,
       mode: "auto",
       powerWatts: 45,
       voltage: "12V DC",
     },
     aerator: {
       id: "aerator",
-      name: "Aerator Oksigen Nila (DO Booster)",
+      name: "Aerator Oksigen Nila",
       code: "RELAY-02",
       type: "aerator",
-      isOn: true,
+      isOn: false,
       mode: "auto",
       powerWatts: 18,
       voltage: "12V DC",
     },
     growLight: {
       id: "growLight",
-      name: "LED Grow Light Fotosintesis",
+      name: "Grow Light Fotosintesis",
       code: "RELAY-03",
       type: "light",
       isOn: false,
@@ -119,7 +119,7 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
     },
     feeder: {
       id: "feeder",
-      name: "Feeder Otomatis Terjadwal",
+      name: "Auto-Feeder Dispenser",
       code: "RELAY-04",
       type: "feeder",
       isOn: false,
@@ -129,7 +129,7 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
     },
     dosingPump: {
       id: "dosingPump",
-      name: "pH Buffer Dosing Pump",
+      name: "Pompa Dosing Buffer pH",
       code: "RELAY-05",
       type: "dosing",
       isOn: false,
@@ -201,6 +201,7 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (json.actuators) {
+      const isEdgeOnline = Boolean(json.system?.edgeOnline);
       setActuators((prev) => {
         const updated = { ...prev };
         Object.entries(json.actuators || {}).forEach(([id, act]) => {
@@ -220,7 +221,8 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
                 ? "RELAY-04"
                 : "RELAY-05"),
             type: act.type || updated[id]?.type || "pump",
-            isOn: Boolean(act.isOn),
+            // Actuator can only remain ON if hardware node is actively online!
+            isOn: isEdgeOnline ? Boolean(act.isOn) : false,
             mode: act.mode || updated[id]?.mode || "auto",
             powerWatts: act.powerWatts || updated[id]?.powerWatts || 20,
             voltage: act.voltage || updated[id]?.voltage || "12V DC",
@@ -254,6 +256,13 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
     setSensors(ALL_NULL_SENSORS);
     setSensorSources(DEFAULT_SENSOR_SOURCES);
     setHistory((prevH) => (prevH.length === 0 ? prevH : []));
+    setActuators((prev) => {
+      const allOff = { ...prev };
+      Object.keys(allOff).forEach((k) => {
+        allOff[k] = { ...allOff[k], isOn: false };
+      });
+      return allOff;
+    });
     setSystemMeta((prev) => ({
       ...prev,
       status: "offline",
@@ -391,8 +400,11 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
     ): Promise<ActuatorActionResult> => {
       setLastActuatorError(null);
       const prevState = actuators[id]?.isOn;
+      const isWaterPump = id === "waterPump" || id === "pump";
+      const isHardwareOnline = systemMeta.edgeOnline;
+      const actName = actuators[id]?.name || (isWaterPump ? "Pompa Sirkulasi 12V" : id);
 
-      // 1. Optimistic UI update
+      // 1. Optimistic UI update (tactile feedback immediately flips switch)
       setActuators((prev) => {
         if (!prev[id]) return prev;
         return {
@@ -409,7 +421,7 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
       );
 
       if (res.reached && !res.ok) {
-        const errMsg = res.data?.message || `Perintah aktuator '${id}' ditolak sistem keamanan (${res.status}).`;
+        const errMsg = res.data?.message || `Perintah aktuator '${actName}' ditolak sistem keamanan (${res.status}).`;
         // Roll back optimistic toggle when safety interlock rejects command
         if (typeof prevState === "boolean") {
           setActuators((prev) => {
@@ -422,6 +434,44 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
         }
         setLastActuatorError(errMsg);
         return { ok: false, error: errMsg };
+      }
+
+      // 3. Dynamic Hardware Auto-Off Reversion Rules:
+      // - Only Pompa Sirkulasi (RELAY-01) is physically attached to the prototype.
+      // - If hardware is offline, attempting to turn ON will auto-revert to OFF after ~700ms.
+      // - If actuator is not waterPump, attempting to turn ON will auto-revert to OFF after ~700ms.
+      if (optimisticNext) {
+        if (!isHardwareOnline) {
+          setTimeout(() => {
+            setActuators((prev) => {
+              if (!prev[id]) return prev;
+              return {
+                ...prev,
+                [id]: { ...prev[id], isOn: false },
+              };
+            });
+            const offlineMsg = isWaterPump
+              ? "Node hardware ESP32-GROW-01 offline — tidak ada respons dari perangkat fisik. Pompa Sirkulasi 12V otomatis kembali OFF."
+              : `Node hardware offline & modul relay fisik tidak terpasang (hanya Pompa Sirkulasi 12V yang terhubung fisik) — ${actName} otomatis kembali OFF.`;
+            setLastActuatorError(offlineMsg);
+          }, 700);
+
+          return { ok: false, error: "Hardware offline — saklar otomatis kembali OFF." };
+        } else if (!isWaterPump) {
+          setTimeout(() => {
+            setActuators((prev) => {
+              if (!prev[id]) return prev;
+              return {
+                ...prev,
+                [id]: { ...prev[id], isOn: false },
+              };
+            });
+            const absentMsg = `Modul relay fisik tidak terpasang pada alat (hanya Pompa Sirkulasi 12V yang memiliki modul relay fisik) — ${actName} otomatis kembali OFF.`;
+            setLastActuatorError(absentMsg);
+          }, 700);
+
+          return { ok: false, error: "Aktuator fisik tidak terpasang — otomatis kembali OFF." };
+        }
       }
 
       if (res.ok && res.data?.actuator) {
@@ -437,7 +487,7 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
 
       return { ok: true };
     },
-    [actuators]
+    [actuators, systemMeta.edgeOnline]
   );
 
   const toggleActuator = useCallback(

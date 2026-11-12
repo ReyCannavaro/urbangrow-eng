@@ -65,7 +65,7 @@ export function AutomationReminderCard({
           </div>
           <p className="text-[10.5px] text-[#6B7280] mt-2 leading-relaxed line-clamp-2">
             {primarySchedule?.notes ||
-              "Pakan pelet apung protein 32% untuk kolam Ikan Nila L3 & Lele L1."}
+              "Pakan pelet apung protein 32% untuk kolam Ikan Nila & Lele."}
           </p>
         </div>
       </div>

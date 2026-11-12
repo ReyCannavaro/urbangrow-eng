@@ -13,23 +13,23 @@ export function RelayActuatorsCard() {
     {
       id: "waterPump",
       name: "Pompa Sirkulasi 12V",
-      role: "Kaskade 24/7",
+      role: "Kolam → Pakcoy",
       watt: 45,
       icon: Waves,
-      iconBg: "bg-[#DCFCE7] text-[#165B39]",
+      iconBg: "bg-[#DCFCE7] text-[#166534]",
     },
     {
       id: "aerator",
       name: "Aerator Oksigen Nila",
-      role: "Sirkulasi Udara L3",
+      role: "Aerasi Kolam Nila",
       watt: 18,
       icon: Wind,
-      iconBg: "bg-[#F1F5F9] text-[#374151]",
+      iconBg: "bg-[#DCFCE7] text-[#166534]",
     },
     {
       id: "growLight",
       name: "Grow Light Fotosintesis",
-      role: "Spektrum L4",
+      role: "Fotoperiode Fotosintesis",
       watt: 85,
       icon: Sun,
       iconBg: "bg-[#FEF3C7] text-[#B45309]",
@@ -37,7 +37,7 @@ export function RelayActuatorsCard() {
     {
       id: "feeder",
       name: "Auto-Feeder Dispenser",
-      role: "Solenoid Pakan",
+      role: "Dispenser Pelet (3s)",
       watt: 12,
       icon: Utensils,
       iconBg: "bg-[#F3F4F6] text-[#111827]",
@@ -58,7 +58,7 @@ export function RelayActuatorsCard() {
                 : "bg-[#F3F4F6] text-[#6B7280]"
             }`}
           >
-            {edgeOnline ? "Live" : "Offline • Antrean"}
+            {edgeOnline ? "Live" : "ESP32 Offline"}
           </span>
         </div>
         <Link
@@ -76,7 +76,9 @@ export function RelayActuatorsCard() {
           const isOn = act?.isOn ?? false;
           const Icon = item.icon;
           const subLabel = !edgeOnline
-            ? `ESP32 offline • Target ${isOn ? "ON" : "OFF"}`
+            ? isOn
+              ? "Mencoba Sinyal... (Auto-OFF)"
+              : "ESP32 offline • OFF"
             : isOn
             ? `${act?.powerWatts ?? item.watt}W Aktif • ${item.role}`
             : `Standby (OFF) • ${item.role}`;
@@ -88,7 +90,7 @@ export function RelayActuatorsCard() {
               title={
                 edgeOnline
                   ? `Ubah status ${item.name}`
-                  : `ESP32 offline — atur antrean target ${item.name}`
+                  : `ESP32 offline — saklar otomatis kembali OFF jika dinyalakan (${item.name})`
               }
               className="flex items-center justify-between py-1 px-2 rounded-xl hover:bg-[#F9FAFB] cursor-pointer transition-colors"
             >
@@ -108,12 +110,12 @@ export function RelayActuatorsCard() {
                 </div>
               </div>
 
-              {/* Tactile Toggle Switch (Neutral Queue when Offline, Pine when Online) */}
+              {/* Tactile Toggle Switch (Neutral Pulse when Offline, Pine when Online) */}
               <div
                 className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${
                   !edgeOnline
                     ? isOn
-                      ? "bg-[#6B7280]"
+                      ? "bg-[#6B7280] animate-pulse"
                       : "bg-[#E5E7EB] border border-[#D1D5DB]"
                     : isOn
                     ? "bg-[#165B39] shadow-[0_0_8px_rgba(22,91,57,0.2)]"

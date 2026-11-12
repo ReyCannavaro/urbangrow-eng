@@ -57,7 +57,7 @@ export function SafetyInterlockPanel({
     },
     {
       id: "ldr-light",
-      title: "Fotoperiode LDR (L4)",
+      title: "Fotoperiode Sensor LDR",
       live: hasLux,
       ok: lightSafe,
       liveValue: hasLux ? `${Math.round(sensors.lightIntensity as number)} lux` : "--",

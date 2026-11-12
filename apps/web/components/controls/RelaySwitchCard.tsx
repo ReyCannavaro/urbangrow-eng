@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { Waves, Wind, Sun, Utensils, Droplets } from "lucide-react";
 import { ActuatorState } from "@/lib/types";
 
 interface RelaySwitchCardProps {
@@ -9,53 +10,83 @@ interface RelaySwitchCardProps {
   onToggle: (id: string) => void;
 }
 
+const ACTUATOR_CONFIG: Record<
+  string,
+  {
+    name: string;
+    role: string;
+    icon: React.ComponentType<{ className?: string }>;
+    iconBg: string;
+  }
+> = {
+  waterPump: {
+    name: "Pompa Sirkulasi 12V",
+    role: "Sirkulasi Kolam → Pakcoy",
+    icon: Waves,
+    iconBg: "bg-[#DCFCE7] text-[#166534]",
+  },
+  aerator: {
+    name: "Aerator Oksigen Nila",
+    role: "Aerasi Kolam Ikan Nila",
+    icon: Wind,
+    iconBg: "bg-[#DCFCE7] text-[#166534]",
+  },
+  growLight: {
+    name: "Grow Light Fotosintesis",
+    role: "Fotoperiode Pakcoy & Kangkung",
+    icon: Sun,
+    iconBg: "bg-[#FEF3C7] text-[#B45309]",
+  },
+  feeder: {
+    name: "Auto-Feeder Dispenser",
+    role: "Dispenser Pelet Pakan (3s)",
+    icon: Utensils,
+    iconBg: "bg-[#F3F4F6] text-[#111827]",
+  },
+  dosingPump: {
+    name: "Pompa Dosing Buffer pH",
+    role: "Stabilisasi Larutan Buffer pH",
+    icon: Droplets,
+    iconBg: "bg-[#DCFCE7] text-[#165B39]",
+  },
+};
+
 export function RelaySwitchCard({
   actuator,
   edgeOnline,
   onToggle,
 }: RelaySwitchCardProps) {
-  const getActuatorRole = () => {
-    switch (actuator.type) {
-      case "pump":
-        return "Sirkulasi Kolam → Pakcoy";
-      case "aerator":
-        return "Aerasi Oksigen Kolam Nila";
-      case "light":
-        return "Fotoperiode Pakcoy & Kangkung";
-      case "feeder":
-        return "Dispenser Pelet (Pulse 3s)";
-      case "dosing":
-      default:
-        return "Buffer Larutan pH";
-    }
+  const conf = ACTUATOR_CONFIG[actuator.id] ?? {
+    name: actuator.name,
+    role: "Kontrol Aktuator",
+    icon: Droplets,
+    iconBg: "bg-[#F3F4F6] text-[#111827]",
   };
 
-  const role = getActuatorRole();
+  const displayName = conf.name;
+  const role = conf.role;
+  const Icon = conf.icon;
   const isLiveOn = edgeOnline && actuator.isOn;
 
   return (
     <div
-      className={`rounded-[24px] bg-white border p-5 transition-colors shadow-xs flex flex-col justify-between h-[136px] group ${
+      className={`rounded-[24px] bg-white border p-5 transition-colors shadow-xs flex flex-col justify-between h-[142px] group ${
         isLiveOn
           ? "border-[#165B39]/40 hover:border-[#165B39]/70"
           : "border-[#E5E7EB] hover:border-[#D1D5DB]"
       }`}
     >
-      {/* Top: Indicator Dot + Name + Role + Toggle Switch */}
+      {/* Top: Icon Badge + Name + Role + Tactile Switch */}
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-2.5 min-w-0">
-          <span
-            className={`h-2.5 w-2.5 rounded-full shrink-0 mt-1.5 transition-colors ${
-              !edgeOnline
-                ? "bg-[#D1D5DB]"
-                : actuator.isOn
-                ? "bg-[#165B39] ring-3 ring-[#DCFCE7]"
-                : "bg-[#D1D5DB]"
-            }`}
-          />
+        <div className="flex items-start gap-3 min-w-0">
+          <div
+            className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${conf.iconBg}`}
+          >
+            <Icon className="h-4.5 w-4.5" />
+          </div>
           <div className="min-w-0">
             <h3 className="font-bold text-sm text-[#111827] leading-snug truncate">
-              {actuator.name}
+              {displayName}
             </h3>
             <p className="text-[11px] text-[#6B7280] mt-0.5 truncate">{role}</p>
           </div>
@@ -67,8 +98,8 @@ export function RelaySwitchCard({
           className="flex items-center gap-2 cursor-pointer shrink-0 pt-0.5"
           title={
             edgeOnline
-              ? `Ubah status ${actuator.name}`
-              : `ESP32 offline — atur target antrean ${actuator.name}`
+              ? `Ubah status ${displayName}`
+              : `ESP32 offline — saklar otomatis kembali OFF jika dinyalakan (${displayName})`
           }
           aria-pressed={actuator.isOn}
         >
@@ -76,10 +107,10 @@ export function RelaySwitchCard({
             className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${
               !edgeOnline
                 ? actuator.isOn
-                  ? "bg-[#6B7280]"
+                  ? "bg-[#6B7280] animate-pulse"
                   : "bg-[#E5E7EB]"
                 : actuator.isOn
-                ? "bg-[#165B39]"
+                ? "bg-[#165B39] shadow-[0_0_8px_rgba(22,91,57,0.2)]"
                 : "bg-[#E5E7EB]"
             }`}
           >
@@ -106,7 +137,9 @@ export function RelaySwitchCard({
         <span
           className={`font-semibold shrink-0 ${
             !edgeOnline
-              ? "text-[#4B5563]"
+              ? actuator.isOn
+                ? "text-[#B45309]"
+                : "text-[#6B7280]"
               : actuator.isOn
               ? "text-[#165B39]"
               : "text-[#6B7280]"
@@ -117,8 +150,8 @@ export function RelaySwitchCard({
               ? "Aktif"
               : "Standby"
             : actuator.isOn
-            ? "Antrean: ON"
-            : "Antrean: OFF"}
+            ? "Mencoba Sinyal..."
+            : "Offline • OFF"}
         </span>
       </div>
     </div>

@@ -4,10 +4,13 @@ import React, { useState, useRef } from "react";
 import { Activity, Clock } from "lucide-react";
 import { SensorData, HistorySample } from "@/lib/types";
 import { useInViewOnce } from "@/components/motion/RevealOnView";
+import { hasAnyNumericSensor } from "@/lib/telemetryHistory";
 
 interface TimeSeriesChartProps {
   history: HistorySample[];
   sensors: SensorData;
+  edgeOnline?: boolean;
+  liveSensorCount?: number;
 }
 
 type MetricKey = "all" | "ph" | "temp" | "tds" | "lux";
@@ -71,15 +74,26 @@ const METRICS: Record<"ph" | "temp" | "tds" | "lux", MetricConfig> = {
   },
 };
 
-export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
+export function TimeSeriesChart({
+  history,
+  sensors,
+  edgeOnline,
+  liveSensorCount,
+}: TimeSeriesChartProps) {
   const [selectedMetric, setSelectedMetric] = useState<MetricKey>("all");
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { ref: chartRevealRef, inView: chartInView } = useInViewOnce<HTMLDivElement>(0.15);
 
-  const dataSamples = history && history.length >= 2 ? history : [];
+  const isStreamActive =
+    Boolean(edgeOnline) &&
+    (typeof liveSensorCount === "number" ? liveSensorCount > 0 : true) &&
+    hasAnyNumericSensor(sensors);
+
+  const dataSamples = isStreamActive && history && history.length >= 2 ? history : [];
 
   const getStats = (key: keyof SensorData) => {
+    if (!isStreamActive) return null;
     const vals = dataSamples
       .map((d) => d.sensors[key])
       .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
@@ -92,13 +106,15 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
   };
 
   const countValidSamples = (key: keyof SensorData): number =>
-    (history || []).reduce(
-      (count, item) =>
-        typeof item.sensors[key] === "number" && Number.isFinite(item.sensors[key])
-          ? count + 1
-          : count,
-      0
-    );
+    !isStreamActive
+      ? 0
+      : (history || []).reduce(
+          (count, item) =>
+            typeof item.sensors[key] === "number" && Number.isFinite(item.sensors[key])
+              ? count + 1
+              : count,
+          0
+        );
 
   const drawableCountForSelection =
     selectedMetric === "all"
@@ -110,7 +126,7 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
         )
       : countValidSamples(METRICS[selectedMetric].key);
 
-  const hasDrawableData = dataSamples.length >= 2 && drawableCountForSelection >= 2;
+  const hasDrawableData = isStreamActive && dataSamples.length >= 2 && drawableCountForSelection >= 2;
   const effectiveHoverIndex = hasDrawableData ? hoverIndex : null;
 
   const phStats = getStats("ph");

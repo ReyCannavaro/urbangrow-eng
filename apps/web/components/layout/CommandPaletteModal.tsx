@@ -188,7 +188,7 @@ export function CommandPaletteModal({ isOpen, onClose }: CommandPaletteModalProp
         id: "act-growlight",
         section: "Aksi Cepat Aktuator",
         title: `${actuators.growLight?.isOn ? "Matikan" : "Nyalakan"} LED Grow Light (RELAY-03)`,
-        subtitle: "Pencahayaan fotosintesis vertikal Pakcoy L4 & Kangkung L2",
+        subtitle: "Pencahayaan fotosintesis tanaman Pakcoy & Kangkung",
         badge: !edgeOnline
           ? `Antrean: ${actuators.growLight?.isOn ? "ON" : "OFF"}`
           : actuators.growLight?.isOn

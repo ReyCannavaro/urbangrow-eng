@@ -104,27 +104,27 @@ class AquaponicsSimulator {
   private actuators: Record<string, ActuatorState> = {
     waterPump: {
       id: "waterPump",
-      name: "Submersible Pump 12V",
+      name: "Pompa Sirkulasi 12V",
       code: "RELAY-01",
       type: "pump",
-      isOn: true,
+      isOn: false,
       mode: "auto",
       powerWatts: 45,
       voltage: "12V DC",
     },
     aerator: {
       id: "aerator",
-      name: "Dual-Port Air Pump",
+      name: "Aerator Oksigen Nila",
       code: "RELAY-02",
       type: "aerator",
-      isOn: true,
+      isOn: false,
       mode: "auto",
       powerWatts: 18,
       voltage: "12V DC",
     },
     growLight: {
       id: "growLight",
-      name: "Full-Spectrum LED Bar",
+      name: "Grow Light Fotosintesis",
       code: "RELAY-03",
       type: "light",
       isOn: false,
@@ -134,7 +134,7 @@ class AquaponicsSimulator {
     },
     feeder: {
       id: "feeder",
-      name: "Feeder Otomatis Terjadwal",
+      name: "Auto-Feeder Dispenser",
       code: "RELAY-04",
       type: "feeder",
       isOn: false,
@@ -144,7 +144,7 @@ class AquaponicsSimulator {
     },
     dosingPump: {
       id: "dosingPump",
-      name: "pH Buffer Dosing Pump",
+      name: "Pompa Dosing Buffer pH",
       code: "RELAY-05",
       type: "dosing",
       isOn: false,
@@ -347,6 +347,20 @@ class AquaponicsSimulator {
     this.actuators[resolvedId].isOn = isOn;
     if (mode) {
       this.actuators[resolvedId].mode = mode;
+    }
+
+    // Hardware physical reality:
+    // Only waterPump has a physical relay attached. If edge is offline or actuator is absent,
+    // auto-revert to false after pulse duration to prevent hanging in stuck ON state.
+    const isEdgeOnline = Array.from(this.connectedDevices.values()).some(
+      (dev) => Date.now() - dev.lastSeenMs <= this.liveSensorTtlMs
+    );
+    if (isOn && (!isEdgeOnline || resolvedId !== "waterPump")) {
+      setTimeout(() => {
+        if (this.actuators[resolvedId]) {
+          this.actuators[resolvedId].isOn = false;
+        }
+      }, 2500);
     }
 
     if (resolvedId === "dosingPump" && isOn && this.anomalyMode === "ph_drop") {

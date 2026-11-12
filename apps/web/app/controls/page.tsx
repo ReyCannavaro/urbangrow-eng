@@ -44,8 +44,7 @@ export default function ControlsPage() {
   };
 
   const actuatorList = Object.values(actuators);
-  const queuedOnCount = actuatorList.filter((a) => a.isOn).length;
-  const activeCount = systemMeta.edgeOnline ? queuedOnCount : 0;
+  const activeCount = systemMeta.edgeOnline ? actuatorList.filter((a) => a.isOn).length : 0;
   const totalLoad = systemMeta.edgeOnline
     ? actuatorList.reduce((acc, a) => acc + (a.isOn ? a.powerWatts : 0), 0)
     : 0;
@@ -59,7 +58,6 @@ export default function ControlsPage() {
         edgeNode={systemMeta.edgeNode}
         totalLoadWatts={totalLoad}
         activeCount={activeCount}
-        queuedCount={queuedOnCount}
         totalCount={totalCount}
       />
 
@@ -98,7 +96,7 @@ export default function ControlsPage() {
         <span>
           {systemMeta.edgeOnline
             ? `${systemMeta.edgeNode} terhubung — perintah relay aktif via HTTPS (${systemMeta.liveSensorCount}/6 sensor live).`
-            : `Node ${systemMeta.edgeNode} sedang offline — saklar mengatur target antrean di server hingga perangkat menyambung.`}
+            : `Node ${systemMeta.edgeNode} sedang offline — saklar otomatis kembali OFF karena perangkat fisik belum terhubung.`}
         </span>
       </div>
 
@@ -111,7 +109,7 @@ export default function ControlsPage() {
               Kanal Relay ({systemMeta.edgeNode})
             </h2>
             <span className="text-xs text-[#6B7280]">
-              {systemMeta.edgeOnline ? "Active-LOW GPIO" : "Antrean Perintah Server"}
+              {systemMeta.edgeOnline ? "Active-LOW GPIO" : "Hardware ESP32 Offline"}
             </span>
           </div>
 

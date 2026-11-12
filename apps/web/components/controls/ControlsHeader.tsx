@@ -7,7 +7,6 @@ interface ControlsHeaderProps {
   edgeNode: string;
   totalLoadWatts: number;
   activeCount: number;
-  queuedCount: number;
   totalCount: number;
 }
 
@@ -16,7 +15,6 @@ export function ControlsHeader({
   edgeNode,
   totalLoadWatts,
   activeCount,
-  queuedCount,
   totalCount,
 }: ControlsHeaderProps) {
   return (
@@ -54,7 +52,7 @@ export function ControlsHeader({
         <span className="px-3 py-1.5 rounded-full bg-white border border-[#E5E7EB] text-[#111827] font-semibold num-tabular">
           {edgeOnline
             ? `Aktif: ${activeCount}/${totalCount}`
-            : `Antrean: ${queuedCount}/${totalCount}`}
+            : `Relay Fisik: 0/${totalCount} ON (Offline)`}
         </span>
       </div>
     </section>

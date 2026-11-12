@@ -97,7 +97,12 @@ export default function AnalyticsPage() {
 
       {/* Hero Interactive Spline Time-Series Chart */}
       <RevealOnView delayMs={0}>
-        <TimeSeriesChart history={history} sensors={sensors} />
+        <TimeSeriesChart
+          history={history}
+          sensors={sensors}
+          edgeOnline={systemMeta.edgeOnline}
+          liveSensorCount={systemMeta.liveSensorCount}
+        />
       </RevealOnView>
 
       {/* Lower Sensor Statistics & 6-Sensor Threshold Checklist */}

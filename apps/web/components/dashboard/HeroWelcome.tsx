@@ -56,7 +56,7 @@ export function HeroWelcome() {
             <div className="text-3xl font-light tracking-tight text-[var(--text-primary)] num-tabular">
               27
             </div>
-            <div className="text-[11px] text-[var(--text-muted)] font-medium">Ikan Nila (L3)</div>
+            <div className="text-[11px] text-[var(--text-muted)] font-medium">Ikan Nila Merah</div>
           </div>
         </div>
 
@@ -69,7 +69,7 @@ export function HeroWelcome() {
             <div className="text-3xl font-light tracking-tight text-[var(--text-primary)] num-tabular">
               27
             </div>
-            <div className="text-[11px] text-[var(--text-muted)] font-medium">Ikan Lele (L1)</div>
+            <div className="text-[11px] text-[var(--text-muted)] font-medium">Ikan Lele Dumbo</div>
           </div>
         </div>
 
