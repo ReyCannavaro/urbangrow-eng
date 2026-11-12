@@ -30,10 +30,10 @@ export function NavigationHeader() {
         <Image
           src="/urbangrow-logo.png"
           alt="UrbanGrow Logo"
-          width={84}
+          width={123}
           height={32}
           priority
-          className="h-6 w-auto object-contain transition-transform group-hover:scale-105"
+          className="h-7 w-auto object-contain transition-transform group-hover:scale-105"
         />
         <span className="hidden sm:inline-block h-3.5 w-px bg-stone-200" />
         <span className="hidden sm:inline-block text-[10px] font-mono font-bold text-stone-500 tracking-wider">

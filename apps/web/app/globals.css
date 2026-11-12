@@ -112,13 +112,15 @@ body {
   }
 
   .app-sidebar-brand {
-    margin-bottom: clamp(8px, 1.8vh, 22px);
-    margin-bottom: clamp(8px, 1.8dvh, 22px);
+    margin-bottom: clamp(10px, 1.8vh, 22px);
+    margin-bottom: clamp(10px, 1.8dvh, 22px);
   }
 
   .app-sidebar-logo {
-    height: clamp(24px, 3.2vh, 32px);
-    height: clamp(24px, 3.2dvh, 32px);
+    width: auto;
+    max-width: 100%;
+    height: clamp(38px, 5.6vh, 46px);
+    height: clamp(38px, 5.6dvh, 46px);
   }
 
   .app-sidebar-groups {

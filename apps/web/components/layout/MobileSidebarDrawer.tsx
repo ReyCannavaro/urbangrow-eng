@@ -121,14 +121,14 @@ export function MobileSidebarDrawer({
         <div>
           {/* Header with Logo & Close Button */}
           <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#E5E7EB]">
-            <Link href="/" onClick={onClose} className="inline-flex items-center">
+            <Link href="/" onClick={onClose} className="inline-flex items-center min-w-0">
               <Image
                 src="/urbangrow-logo.png"
                 alt="UrbanGrow"
-                width={140}
-                height={38}
+                width={185}
+                height={48}
                 priority
-                className="h-7 w-auto object-contain"
+                className="h-9 sm:h-10 w-auto max-w-[205px] object-contain object-left"
               />
             </Link>
 
