@@ -249,3 +249,4 @@ Desain sistem di atas dijadikan referensi langsung saat mengembangkan antarmuka 
 - **Card Corner Radius**: `BorderRadius.circular(24.0)`
 - **Font**: Google Fonts `Geist` & `Geist Mono`
 - **Elevasi**: `elevation: 0` dengan `border: Border.all(color: Color(0xFFE5E7EB))`
+
