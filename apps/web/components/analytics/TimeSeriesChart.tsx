@@ -91,6 +91,28 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
     };
   };
 
+  const countValidSamples = (key: keyof SensorData): number =>
+    (history || []).reduce(
+      (count, item) =>
+        typeof item.sensors[key] === "number" && Number.isFinite(item.sensors[key])
+          ? count + 1
+          : count,
+      0
+    );
+
+  const drawableCountForSelection =
+    selectedMetric === "all"
+      ? Math.max(
+          countValidSamples("ph"),
+          countValidSamples("waterTemperature"),
+          countValidSamples("tds"),
+          countValidSamples("lightIntensity")
+        )
+      : countValidSamples(METRICS[selectedMetric].key);
+
+  const hasDrawableData = dataSamples.length >= 2 && drawableCountForSelection >= 2;
+  const effectiveHoverIndex = hasDrawableData ? hoverIndex : null;
+
   const phStats = getStats("ph");
   const tempStats = getStats("waterTemperature");
   const tdsStats = getStats("tds");
@@ -152,7 +174,7 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
       }
 
       const y = paddingY + normY * (height - 2 * paddingY);
-      return { x, y, val };
+      return { x, y, val, sampleIdx: idx };
     });
 
     const dPath = getCurvedPath(points);
@@ -163,7 +185,10 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
     const dArea = `${dPath} L ${points[points.length - 1].x.toFixed(1)} ${baselineY} L ${points[0].x.toFixed(1)} ${baselineY} Z`;
 
     const lastPoint = points[points.length - 1];
-    const hoveredPoint = hoverIndex !== null && points[hoverIndex] ? points[hoverIndex] : null;
+    const hoveredPoint =
+      effectiveHoverIndex !== null
+        ? points.find((pt) => pt.sampleIdx === effectiveHoverIndex) ?? null
+        : null;
 
     return (
       <g key={config.key}>
@@ -213,7 +238,7 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
   };
 
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
-    if (!containerRef.current || dataSamples.length < 2) return;
+    if (!containerRef.current || !hasDrawableData) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const clientX = e.clientX - rect.left;
     const ratio = Math.max(0, Math.min(1, (clientX - 25) / (rect.width - 50)));
@@ -222,13 +247,13 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
   };
 
   const activeSample =
-    hoverIndex !== null && dataSamples[hoverIndex]
-      ? dataSamples[hoverIndex]
+    hasDrawableData && effectiveHoverIndex !== null && dataSamples[effectiveHoverIndex]
+      ? dataSamples[effectiveHoverIndex]
       : dataSamples[dataSamples.length - 1] ?? null;
 
   const activeSingleConfig = selectedMetric !== "all" ? METRICS[selectedMetric] : null;
   const activeSingleStats =
-    selectedMetric !== "all" && activeSingleConfig
+    hasDrawableData && selectedMetric !== "all" && activeSingleConfig
       ? getStats(activeSingleConfig.key)
       : null;
 
@@ -448,22 +473,24 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
             </g>
           )}
 
-          <g className={chartInView ? "ug-chart-reveal" : "opacity-0"}>
-            {(selectedMetric === "all" || selectedMetric === "temp") &&
-              renderLine(METRICS.temp, selectedMetric === "temp")}
-            {(selectedMetric === "all" || selectedMetric === "ph") &&
-              renderLine(METRICS.ph, selectedMetric === "ph")}
-            {(selectedMetric === "all" || selectedMetric === "tds") &&
-              renderLine(METRICS.tds, selectedMetric === "tds")}
-            {(selectedMetric === "all" || selectedMetric === "lux") &&
-              renderLine(METRICS.lux, selectedMetric === "lux")}
-          </g>
+          {hasDrawableData && (
+            <g className={chartInView ? "ug-chart-reveal" : "opacity-0"}>
+              {(selectedMetric === "all" || selectedMetric === "temp") &&
+                renderLine(METRICS.temp, selectedMetric === "temp")}
+              {(selectedMetric === "all" || selectedMetric === "ph") &&
+                renderLine(METRICS.ph, selectedMetric === "ph")}
+              {(selectedMetric === "all" || selectedMetric === "tds") &&
+                renderLine(METRICS.tds, selectedMetric === "tds")}
+              {(selectedMetric === "all" || selectedMetric === "lux") &&
+                renderLine(METRICS.lux, selectedMetric === "lux")}
+            </g>
+          )}
 
-          {hoverIndex !== null && dataSamples.length >= 2 && (
+          {hasDrawableData && effectiveHoverIndex !== null && (
             <line
-              x1={paddingX + (hoverIndex / (dataSamples.length - 1)) * (width - 2 * paddingX)}
+              x1={paddingX + (effectiveHoverIndex / (dataSamples.length - 1)) * (width - 2 * paddingX)}
               y1={paddingY}
-              x2={paddingX + (hoverIndex / (dataSamples.length - 1)) * (width - 2 * paddingX)}
+              x2={paddingX + (effectiveHoverIndex / (dataSamples.length - 1)) * (width - 2 * paddingX)}
               y2={height - paddingY}
               stroke="#111827"
               strokeWidth={1.5}
@@ -473,18 +500,22 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
           )}
         </svg>
 
-        {dataSamples.length < 2 && (
+        {!hasDrawableData && (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center pointer-events-none">
             <span className="px-3 py-1 rounded-full bg-white border border-[#E5E7EB] text-xs font-semibold text-[#374151] shadow-2xs">
-              Menunggu Telemetri ESP32 ({history.length}/2 Sampel)
+              {selectedMetric === "all"
+                ? `Menunggu Telemetri ESP32 (${Math.min(drawableCountForSelection, 2)}/2 Sampel)`
+                : `Menunggu Sensor ${METRICS[selectedMetric].label} (${Math.min(drawableCountForSelection, 2)}/2 Sampel)`}
             </span>
             <p className="text-xs text-[#6B7280] mt-2 max-w-md">
-              Grafik spline otomatis tergambar setelah minimal 2 paket data sensor masuk dari ESP32-GROW-01.
+              {selectedMetric === "all"
+                ? "Belum ada aliran data aktif yang masuk ke API. Grafik otomatis tergambar setelah minimal 2 paket sensor diterima dari ESP32-GROW-01."
+                : `Sensor ${METRICS[selectedMetric].label} belum mengirimkan minimal 2 sampel numerik aktif ke API.`}
             </p>
           </div>
         )}
 
-        {activeSample && hoverIndex !== null && (
+        {hasDrawableData && activeSample && effectiveHoverIndex !== null && (
           <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm border border-[#E5E7EB] rounded-[16px] p-3 shadow-md text-xs space-y-1.5 pointer-events-none z-10 min-w-[180px]">
             <div className="flex items-center justify-between text-[#6B7280] pb-1 border-b border-[#F3F4F6]">
               <span className="flex items-center gap-1 text-[11px] num-tabular">
@@ -494,7 +525,7 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
                   : activeSample.timestamp}
               </span>
               <span className="text-[10px] text-[#166534] bg-[#DCFCE7] px-1.5 py-0.5 rounded-full font-semibold">
-                #{hoverIndex + 1}
+                #{effectiveHoverIndex + 1}
               </span>
             </div>
             <div className="flex items-center justify-between text-[#111827]">
@@ -544,26 +575,44 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
       {/* 4. Timeline Footer */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-[#6B7280] pt-1 border-t border-[#F3F4F6]">
         <div className="flex items-center gap-6 num-tabular">
-          <span className="text-[#9CA3AF]">-60 Sampel</span>
-          <span className="text-[#9CA3AF]">-45</span>
-          <span className="text-[#9CA3AF] hidden sm:inline">-30</span>
-          <span className="text-[#9CA3AF]">-15</span>
+          {hasDrawableData && (
+            <>
+              <span className="text-[#9CA3AF]">-{dataSamples.length} Sampel</span>
+              {dataSamples.length >= 4 && (
+                <span className="text-[#9CA3AF]">
+                  -{Math.round(dataSamples.length * 0.75)}
+                </span>
+              )}
+              {dataSamples.length >= 4 && (
+                <span className="text-[#9CA3AF] hidden sm:inline">
+                  -{Math.round(dataSamples.length * 0.5)}
+                </span>
+              )}
+              {dataSamples.length >= 4 && (
+                <span className="text-[#9CA3AF]">
+                  -{Math.round(dataSamples.length * 0.25)}
+                </span>
+              )}
+            </>
+          )}
           <span
             className={`font-semibold flex items-center gap-1.5 ${
-              dataSamples.length >= 2 ? "text-[#165B39]" : "text-[#6B7280]"
+              hasDrawableData ? "text-[#165B39]" : "text-[#6B7280]"
             }`}
           >
             <span
               className={`h-2 w-2 rounded-full ${
-                dataSamples.length >= 2 ? "bg-[#165B39]" : "bg-[#9CA3AF]"
+                hasDrawableData ? "bg-[#165B39]" : "bg-[#9CA3AF]"
               }`}
             />
-            {dataSamples.length >= 2 ? "Terkini" : "Menunggu Data"}
+            {hasDrawableData ? "Terkini" : "Menunggu Data ESP32"}
           </span>
         </div>
 
         <span className="text-[11px] text-[#6B7280]">
-          Window 60 Sampel &bull; Sync HTTPS (~2.5s)
+          {hasDrawableData
+            ? `${dataSamples.length}/60 Sampel Aktif • Sync HTTPS (~2.5s)`
+            : "Window 0/60 Sampel • Belum Ada Hit API"}
         </span>
       </div>
     </div>

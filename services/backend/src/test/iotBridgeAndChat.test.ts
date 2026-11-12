@@ -95,6 +95,43 @@ describe("Hybrid IoT Bridge, Actuator Sync & AgriBot AI Tests", () => {
     expect(snap.system.mode).toBe("offline");
     expect(snap.system.edgeOnline).toBe(false);
     expect(snap.system.wifiSignalDbm).toBeNull();
+
+    // History endpoint must report empty/offline when no live telemetry is active
+    const histRes = await app.handle(new Request("http://localhost/api/sensors/history"));
+    expect(histRes.status).toBe(200);
+    const histJson = await histRes.json();
+    expect(histJson.source).toBe("offline");
+    expect(histJson.count).toBe(0);
+    expect(histJson.data).toEqual([]);
+  });
+
+  it("should serve live telemetry history only while active stream exists", async () => {
+    const idleHistRes = await app.handle(new Request("http://localhost/api/sensors/history"));
+    expect(idleHistRes.status).toBe(200);
+    const idleHistJson = await idleHistRes.json();
+    expect(idleHistJson.source).toBe("offline");
+    expect(idleHistJson.data).toEqual([]);
+
+    await app.handle(
+      new Request("http://localhost/api/sensors/telemetry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device_id: "ESP32-GROW-01", ph: 6.9, lux: 410 }),
+      })
+    );
+    await app.handle(
+      new Request("http://localhost/api/sensors/telemetry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device_id: "ESP32-GROW-01", ph: 6.95, lux: 425 }),
+      })
+    );
+
+    const activeHistRes = await app.handle(new Request("http://localhost/api/sensors/history"));
+    expect(activeHistRes.status).toBe(200);
+    const activeHistJson = await activeHistRes.json();
+    expect(activeHistJson.count).toBeGreaterThanOrEqual(2);
+    expect(activeHistJson.data.length).toBeGreaterThanOrEqual(2);
   });
 
   it("should synchronize actuator toggles to /api/iot/commands and enforce pump dry-run protection", async () => {

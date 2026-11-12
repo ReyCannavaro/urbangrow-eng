@@ -219,13 +219,22 @@ class AquaponicsSimulator {
   }
 
   private appendHistorySnapshot() {
+    const nowMs = Date.now();
+    const prev = this.history[this.history.length - 1];
+    if (prev) {
+      const prevMs = Date.parse(prev.timestamp);
+      if (Number.isFinite(prevMs) && nowMs - prevMs > 120_000) {
+        this.history = [];
+      }
+    }
+
     const snapshot = {
-      timestamp: new Date().toISOString(),
+      timestamp: new Date(nowMs).toISOString(),
       sensors: { ...this.state },
       actuators: this.getActuatorStatuses(),
     };
     this.history.push(snapshot);
-    if (this.history.length > 40) {
+    if (this.history.length > 60) {
       this.history.shift();
     }
   }

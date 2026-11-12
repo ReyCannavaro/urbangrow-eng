@@ -15,6 +15,11 @@ import {
   getActiveDirectBackendUrl,
   getWebSocketEndpoint,
 } from "./apiConfig";
+import {
+  extractActiveStreamHistory,
+  isTelemetrySnapshotLive,
+  mergeActiveHistory,
+} from "./telemetryHistory";
 
 interface ActuatorActionResult {
   ok: boolean;
@@ -72,11 +77,6 @@ const DEFAULT_SYSTEM_META: IoTSystemMeta = {
   lastTelemetryAt: null,
   wifiSignalDbm: null,
 };
-
-function hasAnyNumericSensor(s: SensorData | undefined): boolean {
-  if (!s) return false;
-  return Object.values(s).some((v) => typeof v === "number" && Number.isFinite(v));
-}
 
 const TelemetryContext = createContext<TelemetryContextType | undefined>(undefined);
 
@@ -156,20 +156,26 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
 
     setBackendConnected(true);
 
+    const parsedServerNow = json.timestamp ? Date.parse(json.timestamp) : NaN;
+    const serverNowMs = Number.isFinite(parsedServerNow) ? parsedServerNow : Date.now();
+    const isStreamLive = isTelemetrySnapshotLive(json);
+
     const incomingSensors = json.sensors;
     if (incomingSensors) {
       setSensors(incomingSensors);
-      if (hasAnyNumericSensor(incomingSensors)) {
+      if (isStreamLive) {
+        const telemetryTs =
+          json.system?.lastTelemetryAt || json.timestamp || new Date(serverNowMs).toISOString();
         setHistory((prevH) => {
-          const ts = json.timestamp || new Date().toISOString();
-          const last = prevH[prevH.length - 1];
-          if (last && last.timestamp === ts) {
-            return prevH;
+          const activePrev = extractActiveStreamHistory(prevH, serverNowMs);
+          const last = activePrev[activePrev.length - 1];
+          if (last && last.timestamp === telemetryTs) {
+            return activePrev;
           }
           return [
-            ...prevH.slice(-59),
+            ...activePrev.slice(-59),
             {
-              timestamp: ts,
+              timestamp: telemetryTs,
               sensors: incomingSensors,
               actuators: Object.fromEntries(
                 Object.entries(json.actuators || {}).map(([k, v]) => [k, Boolean(v?.isOn)])
@@ -177,6 +183,9 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
             },
           ];
         });
+      } else {
+        // Nobody is currently hitting telemetry API -> keep live charts empty
+        setHistory((prevH) => (prevH.length === 0 ? prevH : []));
       }
     }
 
@@ -244,6 +253,7 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
     setBackendConnected(false);
     setSensors(ALL_NULL_SENSORS);
     setSensorSources(DEFAULT_SENSOR_SOURCES);
+    setHistory((prevH) => (prevH.length === 0 ? prevH : []));
     setSystemMeta((prev) => ({
       ...prev,
       status: "offline",
@@ -264,13 +274,31 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
     }
   }, [applyBackendSnapshot, markBackendOffline]);
 
-  // Initial and periodic database history load from VPS SQLite
+  // Initial and periodic active-session history sync (drops stale/offline DB rows)
   useEffect(() => {
     let cancelled = false;
     async function loadHistoryFromDatabase() {
-      const res = await fetchFromBackend<{ data?: HistorySample[] }>("/api/sensors/history", {}, 3000);
-      if (!cancelled && res.ok && Array.isArray(res.data?.data)) {
-        setHistory(res.data.data);
+      const [currentRes, historyRes] = await Promise.all([
+        fetchFromBackend<BackendTelemetrySnapshot>("/api/sensors/current", {}, 2500),
+        fetchFromBackend<{ data?: HistorySample[] }>("/api/sensors/history", {}, 3000),
+      ]);
+      if (cancelled || !currentRes.ok || !currentRes.data) return;
+
+      const snap = currentRes.data;
+      const parsedServerNow = snap.timestamp ? Date.parse(snap.timestamp) : NaN;
+      const serverNowMs = Number.isFinite(parsedServerNow) ? parsedServerNow : Date.now();
+      const isStreamLive = isTelemetrySnapshotLive(snap);
+
+      if (!isStreamLive) {
+        setHistory((prevH) => (prevH.length === 0 ? prevH : []));
+        return;
+      }
+
+      if (historyRes.ok && Array.isArray(historyRes.data?.data)) {
+        const recentDbSamples = extractActiveStreamHistory(historyRes.data.data, serverNowMs);
+        if (recentDbSamples.length > 0) {
+          setHistory((prevH) => mergeActiveHistory(prevH, recentDbSamples, serverNowMs));
+        }
       }
     }
     void loadHistoryFromDatabase();
