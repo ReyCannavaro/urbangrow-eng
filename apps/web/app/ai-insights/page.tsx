@@ -222,25 +222,64 @@ export default function AiInsightsPage() {
         </div>
       </section>
 
-      {/* Slim Single-Line Telemetry Calibration Notice */}
+      {/* AI Model Calibration & Edge Sync Strip (Studio Minimalist) */}
       <div
         style={{ "--ug-delay": "50ms" } as React.CSSProperties}
-        className={`ug-enter flex items-center gap-2.5 rounded-[18px] border px-4 py-2.5 text-xs ${
-          systemMeta.edgeOnline && systemMeta.liveSensorCount > 0
-            ? "border-[#165B39]/20 bg-[#DCFCE7]/40 text-[#166534]"
-            : "border-[#E5E7EB] bg-white text-[#4B5563]"
-        }`}
+        className="ug-enter rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-all"
       >
-        {systemMeta.edgeOnline && systemMeta.liveSensorCount > 0 ? (
-          <CheckCircle2 className="h-4 w-4 text-[#165B39] shrink-0" />
-        ) : (
-          <span className="h-2 w-2 rounded-full bg-[#9CA3AF] shrink-0" />
-        )}
-        <span>
-          {systemMeta.edgeOnline && systemMeta.liveSensorCount > 0
-            ? `Model GDD dan ADG ikan terkalibrasi oleh ${systemMeta.liveSensorCount}/4 sensor fisik live (${systemMeta.edgeNode}).`
-            : `Maaf, alat sedang offline — proyeksi panen mengacu pada baseline kalibrasi data tebar & semai benih Anda.`}
-        </span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          {/* Left: Node Identity & Dynamic Calibration */}
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-2 shrink-0">
+              {systemMeta.edgeOnline && systemMeta.liveSensorCount > 0 ? (
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#165B39]"></span>
+                </span>
+              ) : (
+                <span className="h-2 w-2 rounded-full bg-[#9CA3AF]" />
+              )}
+              <span className="font-mono text-xs font-semibold text-[#111827]">
+                {systemMeta.edgeNode}
+              </span>
+            </div>
+
+            <span className="hidden sm:inline-block h-3.5 w-px bg-[#E5E7EB]" />
+
+            <div className="text-[11.5px] text-[#4B5563] truncate">
+              {systemMeta.edgeOnline && systemMeta.liveSensorCount > 0 ? (
+                <span>
+                  Model GDD &amp; ADG terkalibrasi dinamis oleh{" "}
+                  <strong className="font-semibold text-[#111827]">
+                    {systemMeta.liveSensorCount}/4 sensor fisik live
+                  </strong>
+                </span>
+              ) : (
+                <span className="text-amber-800 font-medium">
+                  Modul hardware offline &bull; Estimasi panen menggunakan data tebar &amp; semai baseline
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Right: Technical Chips */}
+          <div className="flex items-center gap-2 shrink-0 text-[11px]">
+            <span
+              className={`px-2.5 py-0.5 rounded-lg font-mono font-medium border ${
+                systemMeta.edgeOnline && systemMeta.liveSensorCount > 0
+                  ? "bg-[#F0FDF4] border-emerald-200 text-[#166534]"
+                  : "bg-[#F9FAFB] border-[#E5E7EB] text-[#6B7280]"
+              }`}
+            >
+              {systemMeta.edgeOnline && systemMeta.liveSensorCount > 0
+                ? `${systemMeta.liveSensorCount}/4 SENSOR LIVE`
+                : "BASELINE MODE"}
+            </span>
+            <span className="px-2.5 py-0.5 rounded-lg bg-[#F9FAFB] border border-[#E5E7EB] text-[#4B5563] font-mono">
+              GDD &bull; ADG
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Section 1: Prediksi Panen Ikan */}
