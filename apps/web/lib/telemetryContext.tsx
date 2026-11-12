@@ -153,19 +153,6 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
       hardwareStatus: "development",
       hardwareReason: "Hardware modul servo dispenser belum terpasang (tahap pengembangan)",
     },
-    dosingPump: {
-      id: "dosingPump",
-      name: "Pompa Dosing Buffer pH",
-      code: "RELAY-05",
-      type: "dosing",
-      isOn: false,
-      mode: "manual",
-      powerWatts: 12,
-      voltage: "12V DC",
-      installed: false,
-      hardwareStatus: "development",
-      hardwareReason: "Hardware modul pompa peristaltik belum terpasang (tahap pengembangan)",
-    },
   });
 
   const [history, setHistory] = useState<HistorySample[]>([]);
@@ -271,7 +258,7 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
                 ? "RELAY-03"
                 : id === "feeder"
                 ? "RELAY-04"
-                : "RELAY-05"),
+                : "RELAY-01"),
             type: act.type || updated[id]?.type || (isPump ? "pump" : "aerator"),
             // Actuator can only remain ON if hardware node is actively online and it's waterPump!
             isOn: isEdgeOnline && isPump ? Boolean(act.isOn) : false,

@@ -937,14 +937,6 @@ export class AgriBotEngine {
         reason: "Sirkulasi air biofilter sedang mati.",
       });
     }
-    if (!actuators.dosingPump.isOn && typeof s.ph === "number" && s.ph < 6.4) {
-      suggestedActions.push({
-        actuatorId: "dosingPump",
-        label: "Aktifkan Pompa Buffer pH",
-        targetState: true,
-        reason: `pH air terlalu asam (${s.ph}).`,
-      });
-    }
 
     const overallStatus = worstSeverity(worstSeverity(waterStatus, plantStatus), fishStatus);
 

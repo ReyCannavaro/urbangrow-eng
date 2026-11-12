@@ -43,12 +43,6 @@ const ACTUATOR_CONFIG: Record<
     icon: Utensils,
     iconBg: "bg-[#F3F4F6] text-[#111827]",
   },
-  dosingPump: {
-    name: "Pompa Dosing Buffer pH",
-    role: "Stabilisasi Larutan Buffer pH",
-    icon: Droplets,
-    iconBg: "bg-[#DCFCE7] text-[#165B39]",
-  },
 };
 
 export function RelaySwitchCard({

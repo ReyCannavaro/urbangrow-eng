@@ -13,7 +13,7 @@ export interface ActuatorState {
   id: string;
   name: string;
   code?: string;
-  type: "pump" | "aerator" | "light" | "feeder" | "dosing" | string;
+  type: "pump" | "aerator" | "light" | "feeder" | string;
   isOn: boolean;
   mode: "auto" | "manual";
   powerWatts: number;
@@ -63,9 +63,6 @@ const ACTUATOR_ALIASES: Record<string, string> = {
   feeder: "feeder",
   autoFeeder: "feeder",
   auto_feeder: "feeder",
-  dosingPump: "dosingPump",
-  dosing_pump: "dosingPump",
-  dosing: "dosingPump",
 };
 
 const ALL_SENSOR_KEYS: Array<keyof SensorReading> = [
@@ -157,19 +154,6 @@ class AquaponicsSimulator {
       installed: false,
       hardwareStatus: "development",
       hardwareReason: "Hardware modul servo dispenser belum terpasang (tahap pengembangan)",
-    },
-    dosingPump: {
-      id: "dosingPump",
-      name: "Pompa Dosing Buffer pH",
-      code: "RELAY-05",
-      type: "dosing",
-      isOn: false,
-      mode: "manual",
-      powerWatts: 12,
-      voltage: "12V DC",
-      installed: false,
-      hardwareStatus: "development",
-      hardwareReason: "Hardware modul pompa peristaltik belum terpasang (tahap pengembangan)",
     },
   };
 
@@ -380,13 +364,6 @@ class AquaponicsSimulator {
           this.actuators[resolvedId].isOn = false;
         }
       }, 2500);
-    }
-
-    if (resolvedId === "dosingPump" && isOn && this.anomalyMode === "ph_drop") {
-      setTimeout(() => {
-        this.setAnomaly("none");
-        this.actuators.dosingPump.isOn = false;
-      }, 8000);
     }
 
     return this.actuators[resolvedId];

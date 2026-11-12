@@ -25,11 +25,10 @@ interface AutomationScheduleModalProps {
 }
 
 const ACTUATOR_LABELS: Record<string, string> = {
-  feeder: "Auto-Feeder Ikan (35g)",
-  growLight: "LED Grow Light (RELAY-03)",
-  aerator: "Aerator Oksigen (RELAY-02)",
   waterPump: "Pompa Sirkulasi 12V (RELAY-01)",
-  dosingPump: "Pompa Buffer pH (RELAY-04)",
+  aerator: "Aerator Oksigen (RELAY-02)",
+  growLight: "LED Grow Light (RELAY-03)",
+  feeder: "Auto-Feeder Dispenser (RELAY-04)",
 };
 
 const METRIC_LABELS: Record<string, string> = {
