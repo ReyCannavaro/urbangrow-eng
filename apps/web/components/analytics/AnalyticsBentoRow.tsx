@@ -2,7 +2,6 @@
 
 import React from "react";
 import {
-  ArrowUpRight,
   TrendingUp,
   CheckCircle2,
   Droplets,
@@ -19,7 +18,6 @@ export function AnalyticsBentoRow() {
   const hasTds = typeof sensors.tds === "number";
   const hasAnyWaterSensor = hasPh || hasWaterTemp || hasTds;
 
-  // Dynamic WQI score computed strictly when live ESP32 water sensors exist
   const tdsPenalty = hasTds
     ? (sensors.tds as number) < 400
       ? (400 - (sensors.tds as number)) * 0.03
@@ -56,43 +54,44 @@ export function AnalyticsBentoRow() {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {/* 1. THE INVERTED HERO ANCHOR CARD */}
+      {/* 1. PINE HERO ANCHOR CARD (Matches Dashboard MetricCardsRow) */}
       <div
         style={{ "--ug-delay": "60ms" } as React.CSSProperties}
-        className="ug-enter rounded-[24px] bg-[#165B39] hover:bg-[#145233] text-white p-5 shadow-xs flex flex-col justify-between h-[170px] relative overflow-hidden transition-colors group"
+        className="ug-enter rounded-[24px] bg-[#165B39] hover:bg-[#145233] text-white p-5 shadow-xs flex flex-col justify-between h-[156px] transition-colors"
       >
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-white/90">
             Water Quality Index (WQI)
           </span>
-          <div
-            className="h-8 w-8 rounded-full bg-white flex items-center justify-center text-[#165B39] transition-colors"
-            title="Indeks Kualitas Air Holistik"
-          >
-            <ArrowUpRight className="h-4 w-4 stroke-[2.25] transition-transform duration-200 group-hover:rotate-45" />
-          </div>
+          <span className="h-8 w-8 rounded-full bg-white/15 flex items-center justify-center text-[#68C194]">
+            <TrendingUp className="h-4 w-4" />
+          </span>
         </div>
 
         <div>
-          <div className="text-4xl font-bold tracking-tight num-tabular text-white">
+          <div className="text-3xl sm:text-4xl font-bold tracking-tight num-tabular text-white">
             {wqiScore !== null ? wqiScore : "--"}
             <span className="text-xl font-normal text-white/80">%</span>
           </div>
-          <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 text-[10px] font-mono text-white/90">
-            <TrendingUp className="h-3 w-3 text-[#68C194]" />
+          <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 text-[11px] font-medium text-white/90">
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                systemMeta.liveSensorCount > 0 ? "bg-[#68C194]" : "bg-white/60"
+              }`}
+            />
             <span>
               {systemMeta.liveSensorCount > 0
-                ? `${systemMeta.edgeNode} • ${systemMeta.liveSensorCount} Sensor Live`
+                ? `${systemMeta.edgeNode} • ${systemMeta.liveSensorCount} Live`
                 : "Menunggu Data ESP32"}
             </span>
           </div>
         </div>
       </div>
 
-      {/* 2. KESTABILAN PH AIR */}
+      {/* 2. KESTABILAN pH AIR */}
       <div
         style={{ "--ug-delay": "115ms" } as React.CSSProperties}
-        className="ug-enter rounded-[24px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] p-5 shadow-xs flex flex-col justify-between h-[170px] transition-colors"
+        className="ug-enter rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs flex flex-col justify-between h-[156px]"
       >
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-[#111827]">
@@ -104,12 +103,12 @@ export function AnalyticsBentoRow() {
         </div>
 
         <div>
-          <div className="text-4xl font-bold tracking-tight num-tabular text-[#111827]">
+          <div className="text-3xl sm:text-4xl font-bold tracking-tight num-tabular text-[#111827]">
             {formattedPH}
-            <span className="text-xl font-normal text-[#9CA3AF] ml-1">pH</span>
+            <span className="text-lg font-normal text-[#9CA3AF] ml-1">pH</span>
           </div>
           <div
-            className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium ${
+            className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10.5px] font-medium ${
               !hasPh
                 ? "bg-[#F3F4F6] text-[#6B7280]"
                 : isPhOptimal
@@ -117,8 +116,12 @@ export function AnalyticsBentoRow() {
                 : "bg-[#FEF3C7] text-[#B45309]"
             }`}
           >
-            <CheckCircle2 className="h-3 w-3" />
-            <span>{!hasPh ? "Sensor pH offline" : "Ideal Nitrifikasi: 6.5 – 7.5 pH"}</span>
+            {hasPh ? (
+              <CheckCircle2 className="h-3 w-3" />
+            ) : (
+              <span className="h-1.5 w-1.5 rounded-full bg-[#9CA3AF]" />
+            )}
+            <span>{!hasPh ? "Sensor pH offline" : "Ideal: 6.5 – 7.5 pH"}</span>
           </div>
         </div>
       </div>
@@ -126,7 +129,7 @@ export function AnalyticsBentoRow() {
       {/* 3. SUHU AIR KOLAM */}
       <div
         style={{ "--ug-delay": "170ms" } as React.CSSProperties}
-        className="ug-enter rounded-[24px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] p-5 shadow-xs flex flex-col justify-between h-[170px] transition-colors"
+        className="ug-enter rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs flex flex-col justify-between h-[156px]"
       >
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-[#111827]">
@@ -138,12 +141,12 @@ export function AnalyticsBentoRow() {
         </div>
 
         <div>
-          <div className="text-4xl font-bold tracking-tight num-tabular text-[#111827]">
+          <div className="text-3xl sm:text-4xl font-bold tracking-tight num-tabular text-[#111827]">
             {formattedTemp}
-            <span className="text-xl font-normal text-[#9CA3AF] ml-0.5">°C</span>
+            <span className="text-lg font-normal text-[#9CA3AF] ml-0.5">°C</span>
           </div>
           <div
-            className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium ${
+            className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10.5px] font-medium ${
               !hasWaterTemp
                 ? "bg-[#F3F4F6] text-[#6B7280]"
                 : isTempOptimal
@@ -151,9 +154,13 @@ export function AnalyticsBentoRow() {
                 : "bg-[#FEF3C7] text-[#B45309]"
             }`}
           >
-            <CheckCircle2 className="h-3 w-3" />
+            {hasWaterTemp ? (
+              <CheckCircle2 className="h-3 w-3" />
+            ) : (
+              <span className="h-1.5 w-1.5 rounded-full bg-[#9CA3AF]" />
+            )}
             <span>
-              {!hasWaterTemp ? "Sensor DS18B20 offline" : "Ideal Nila & Lele: 22 – 27°C"}
+              {!hasWaterTemp ? "Sensor DS18B20 offline" : "Ideal: 22 – 27°C"}
             </span>
           </div>
         </div>
@@ -162,24 +169,24 @@ export function AnalyticsBentoRow() {
       {/* 4. NUTRISI TDS TERLARUT */}
       <div
         style={{ "--ug-delay": "225ms" } as React.CSSProperties}
-        className="ug-enter rounded-[24px] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] p-5 shadow-xs flex flex-col justify-between h-[170px] transition-colors"
+        className="ug-enter rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs flex flex-col justify-between h-[156px]"
       >
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-[#111827]">
             Nutrisi TDS Terlarut
           </span>
-          <div className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#D97706]">
+          <div className="h-8 w-8 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#165B39]">
             <Gauge className="h-4 w-4" />
           </div>
         </div>
 
         <div>
-          <div className="text-4xl font-bold tracking-tight num-tabular text-[#111827]">
+          <div className="text-3xl sm:text-4xl font-bold tracking-tight num-tabular text-[#111827]">
             {formattedTDS}
-            <span className="text-xl font-normal text-[#9CA3AF] ml-1">ppm</span>
+            <span className="text-lg font-normal text-[#9CA3AF] ml-1">ppm</span>
           </div>
           <div
-            className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium ${
+            className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10.5px] font-medium ${
               !hasTds
                 ? "bg-[#F3F4F6] text-[#6B7280]"
                 : isTdsOptimal
@@ -187,9 +194,13 @@ export function AnalyticsBentoRow() {
                 : "bg-[#FEF3C7] text-[#B45309]"
             }`}
           >
-            <CheckCircle2 className="h-3 w-3" />
+            {hasTds ? (
+              <CheckCircle2 className="h-3 w-3" />
+            ) : (
+              <span className="h-1.5 w-1.5 rounded-full bg-[#9CA3AF]" />
+            )}
             <span>
-              {!hasTds ? "Sensor TDS offline" : "Target Vegetatif: 400 – 800 ppm"}
+              {!hasTds ? "Sensor TDS offline" : "Target: 400 – 800 ppm"}
             </span>
           </div>
         </div>

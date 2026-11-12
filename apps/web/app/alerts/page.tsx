@@ -5,7 +5,6 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
 import { AlertsHeader } from "@/components/alerts/AlertsHeader";
-import { AlertsBentoRow } from "@/components/alerts/AlertsBentoRow";
 import { AlertGroupSection } from "@/components/alerts/AlertGroupSection";
 import { RevealOnView } from "@/components/motion/RevealOnView";
 import {
@@ -23,7 +22,7 @@ type FilterType = "all" | "warning" | "optimal";
 
 function formatWibClock(iso: string): string {
   const parsed = Date.parse(iso);
-  if (!Number.isFinite(parsed)) return iso;
+  if (!Number.isFinite(parsed)) return iso.replace(/\s*WIB$/i, "");
   return new Date(parsed).toLocaleTimeString("id-ID", {
     timeZone: "Asia/Jakarta",
     hour: "2-digit",
@@ -31,13 +30,57 @@ function formatWibClock(iso: string): string {
   });
 }
 
+function localizeAlertTitle(rawTitle: string): string {
+  return rawTitle
+    .replace(/\bPeringatan Parameter WATERPUMP\b/i, "Pompa Sirkulasi Mati")
+    .replace(/\bPeringatan Parameter AERATOR\b/i, "Aerator Nonaktif")
+    .replace(/\bPeringatan Parameter GROWLIGHT\b/i, "Grow Light Nonaktif")
+    .replace(/\bPeringatan Parameter PH\b/i, "Peringatan Parameter pH Air")
+    .replace(/\bPeringatan Parameter TDS\b/i, "Peringatan Parameter TDS Nutrisi")
+    .replace(/\bPeringatan Parameter WATERTEMPERATURE\b/i, "Peringatan Suhu Air Kolam")
+    .replace(/\bPeringatan Parameter LIGHTINTENSITY\b/i, "Peringatan Intensitas Cahaya")
+    .replace(/\bPeringatan Parameter WATERLEVEL\b/i, "Peringatan Tinggi Muka Air")
+    .replace(/\bPeringatan Parameter DISSOLVEDOXYGEN\b/i, "Peringatan Oksigen Terlarut");
+}
+
+function localizeAlertMessage(rawMessage: string): string {
+  if (/Main water circulation pump is currently turned OFF\.?/i.test(rawMessage)) {
+    return "Pompa sirkulasi air utama (Level 1 → Level 4) sedang berstatus MATI (OFF).";
+  }
+  return rawMessage
+    .replace(
+      /Low Water pH \(([^)]+)\): Acidosis risk for fish\. Buffer dosing needed\.?/i,
+      "pH air terlalu rendah ($1): Risiko stres asam pada ikan, aktifkan buffer penetral."
+    )
+    .replace(
+      /High Water pH \(([^)]+)\): Micronutrient lockout for plant roots\.?/i,
+      "pH air terlalu tinggi ($1): Risiko hambatan serapan mikronutrien akar tanaman."
+    )
+    .replace(
+      /High Water Temp \(([^)]+)\): Depleting dissolved oxygen\.?/i,
+      "Suhu air kolam terlalu tinggi ($1): Menurunkan kadar oksigen terlarut kolam."
+    )
+    .replace(
+      /Critical Water Level \(([^)]+)\): Sump reservoir nearly dry\. Pump protection active\.?/i,
+      "Ketinggian air sump kritis ($1): Reservoir hampir kering, proteksi pompa aktif."
+    )
+    .replace(
+      /Low Light Intensity \(([^)]+)\): Photosynthetic slowdown risk\. Consider enabling Grow Light\.?/i,
+      "Intensitas cahaya rendah ($1): Risiko perlambatan fotosintesis, pertimbangkan aktifkan Grow Light."
+    )
+    .replace(
+      /Hypoxia Warning! Dissolved Oxygen critically low \(([^)]+)\)\. Check aerator!?/i,
+      "Peringatan hipoksia: Oksigen terlarut rendah ($1). Periksa aerator!"
+    );
+}
+
 function mapPersistedAlertsToNotifications(
   rows: PersistedSystemAlert[]
 ): AlertNotification[] {
   return rows.map((r) => ({
     id: r.id,
-    title: r.title,
-    message: r.message,
+    title: localizeAlertTitle(r.title),
+    message: localizeAlertMessage(r.message),
     time: formatWibClock(r.recordedAt),
     severity: r.severity,
     isResolved: r.isResolved,
@@ -47,8 +90,8 @@ function mapPersistedAlertsToNotifications(
 function mapAuditLogsToNotifications(logs: ActuatorAuditLog[]): AlertNotification[] {
   return logs.map((l) => ({
     id: `audit-${l.id}`,
-    title: `${l.actuatorName} → ${l.state ? "AKTIF (ON)" : "MATI (OFF)"}`,
-    message: `${l.note || "Perubahan status relay"} • Sumber: ${l.triggeredBy}`,
+    title: `${l.actuatorName} → ${l.state ? "ON" : "OFF"}`,
+    message: l.note || `Perubahan status dari ${l.triggeredBy}`,
     time: formatWibClock(l.recordedAt),
     severity: "info",
     isResolved: true,
@@ -56,7 +99,7 @@ function mapAuditLogsToNotifications(logs: ActuatorAuditLog[]): AlertNotificatio
 }
 
 export default function AlertsPage() {
-  const { alerts, systemMeta } = useTelemetry();
+  const { alerts } = useTelemetry();
   const [persistedAlerts, setPersistedAlerts] = useState<PersistedSystemAlert[]>([]);
   const [auditLogs, setAuditLogs] = useState<ActuatorAuditLog[]>([]);
   const [filter, setFilter] = useState<FilterType>("all");
@@ -91,7 +134,12 @@ export default function AlertsPage() {
   const mergedAlerts: AlertNotification[] =
     persistedAlerts.length > 0
       ? mapPersistedAlertsToNotifications(persistedAlerts)
-      : alerts;
+      : alerts.map((a) => ({
+          ...a,
+          title: localizeAlertTitle(a.title),
+          message: localizeAlertMessage(a.message),
+          time: a.time.replace(/\s*WIB$/i, ""),
+        }));
 
   const activeAlerts = mergedAlerts.filter((a) => !a.isResolved);
   const resolvedAndAuditLogs: AlertNotification[] = [
@@ -118,57 +166,46 @@ export default function AlertsPage() {
 
   return (
     <div className="space-y-6">
-      {/* 1. Alerts Header with Status Badges */}
       <AlertsHeader onClearAll={clearAll} activeCount={activeAlerts.length} />
 
-      {/* 2. 4-Metric Bento Row */}
-      <AlertsBentoRow
-        activeCount={activeAlerts.length}
-        warningCount={warningCount}
-        resolvedCount={resolvedAndAuditLogs.length}
-        edgeOnline={systemMeta.edgeOnline}
-        liveSensorCount={systemMeta.liveSensorCount}
-        edgeNode={systemMeta.edgeNode}
-      />
-
-      {/* 3. Filter Navigation Strip */}
+      {/* Filter Pills + Quick Link */}
       <div
-        style={{ "--ug-delay": "275ms" } as React.CSSProperties}
+        style={{ "--ug-delay": "60ms" } as React.CSSProperties}
         className="ug-enter flex items-center justify-between flex-wrap gap-3"
       >
-        <div className="flex items-center gap-1.5 p-1 rounded-full border border-[#E5E7EB] bg-white text-xs">
+        <div className="flex items-center gap-1 p-1 rounded-full border border-[#E5E7EB] bg-white text-xs overflow-x-auto max-w-full">
           <button
             type="button"
             onClick={() => setFilter("all")}
-            className={`px-3.5 py-1.5 rounded-full font-medium transition-colors cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-full font-medium transition-colors cursor-pointer shrink-0 ${
               filter === "all"
                 ? "bg-[#165B39] text-white font-semibold"
                 : "text-[#4B5563] hover:text-[#111827] hover:bg-[#F9FAFB]"
             }`}
           >
-            Semua Log ({activeAlerts.length + resolvedAndAuditLogs.length})
+            Semua ({activeAlerts.length + resolvedAndAuditLogs.length})
           </button>
           <button
             type="button"
             onClick={() => setFilter("warning")}
-            className={`px-3.5 py-1.5 rounded-full font-medium transition-colors cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-full font-medium transition-colors cursor-pointer shrink-0 ${
               filter === "warning"
                 ? "bg-[#165B39] text-white font-semibold"
                 : "text-[#4B5563] hover:text-[#111827] hover:bg-[#F9FAFB]"
             }`}
           >
-            Peringatan &amp; Anomali ({warningCount})
+            Peringatan ({warningCount})
           </button>
           <button
             type="button"
             onClick={() => setFilter("optimal")}
-            className={`px-3.5 py-1.5 rounded-full font-medium transition-colors cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-full font-medium transition-colors cursor-pointer shrink-0 ${
               filter === "optimal"
                 ? "bg-[#165B39] text-white font-semibold"
                 : "text-[#4B5563] hover:text-[#111827] hover:bg-[#F9FAFB]"
             }`}
           >
-            Audit Aktuator &amp; Sistem ({infoCount})
+            Riwayat Relay ({infoCount})
           </button>
         </div>
 
@@ -176,26 +213,30 @@ export default function AlertsPage() {
           href="/controls"
           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] hover:border-[#D1D5DB] text-xs font-semibold text-[#111827] transition-colors group"
         >
-          <span>Panel Kontrol Aktuator</span>
+          <span>Panel Kontrol Relay</span>
           <ArrowUpRight className="h-3.5 w-3.5 text-[#165B39] transition-transform duration-200 group-hover:rotate-45" />
         </Link>
       </div>
 
-      {/* 4. Alert Timeline Feed (Persisted SQLite Alerts + Actuator Audit History) */}
+      {/* Asymmetric Grouped Inbox Feed */}
       <RevealOnView delayMs={0}>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <AlertGroupSection
-            title="Peringatan Aktif & Anomali Terkini"
-            alerts={activeFiltered}
-            emptyMessage="Tidak ada anomali parameter yang tertunda. Seluruh parameter sensor dalam rentang aman ECAD."
-          />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          <div className="lg:col-span-5">
+            <AlertGroupSection
+              title="Peringatan Aktif"
+              alerts={activeFiltered}
+              emptyMessage="Tidak ada anomali parameter yang tertunda."
+            />
+          </div>
 
-          <AlertGroupSection
-            title="Riwayat Audit Aktuator & Log Tersimpan (SQLite)"
-            alerts={historyFiltered}
-            isArchive={true}
-            emptyMessage="Belum ada riwayat perubahan relay yang tercatat di database."
-          />
+          <div className="lg:col-span-7">
+            <AlertGroupSection
+              title="Riwayat Audit Sistem & Relay"
+              alerts={historyFiltered}
+              isArchive={true}
+              emptyMessage="Belum ada riwayat aktivitas relay yang tercatat."
+            />
+          </div>
         </div>
       </RevealOnView>
     </div>

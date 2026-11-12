@@ -12,7 +12,6 @@ import {
   BarChart3,
   Bot,
   Bell,
-  Cpu,
   Smartphone,
   Download,
   Sparkles,
@@ -101,7 +100,6 @@ export function MobileSidebarDrawer({
       icon: Bell,
       badge: alerts.length > 0 ? alerts.length : null,
     },
-    { label: "Hardware ESP32", href: "/controls#hardware-esp32", icon: Cpu },
   ];
 
   if (!isOpen) return null;
@@ -184,7 +182,7 @@ export function MobileSidebarDrawer({
             {/* System Menu */}
             <div>
               <div className="px-2.5 mb-1.5 text-[10px] font-bold tracking-wider text-[#9CA3AF] uppercase">
-                Sistem &amp; Hardware
+                Sistem
               </div>
               <nav className="flex flex-col gap-1">
                 {systemNav.map((item) => {

@@ -13,7 +13,7 @@ export function BiologicalPairingCard() {
       status: "Siap Panen",
       statusType: "completed",
       icon: Sprout,
-      iconColor: "text-emerald-700 bg-emerald-50",
+      iconColor: "text-[#165B39] bg-[#DCFCE7]",
     },
     {
       level: "B 3-4",

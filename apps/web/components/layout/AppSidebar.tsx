@@ -11,7 +11,6 @@ import {
   BarChart3,
   Bot,
   Bell,
-  Cpu,
   Smartphone,
   Download,
   Sparkles,
@@ -72,7 +71,6 @@ export function AppSidebar() {
       icon: Bell,
       badge: alerts.length > 0 ? alerts.length : null,
     },
-    { label: "Hardware ESP32", href: "/controls#hardware-esp32", icon: Cpu },
   ];
 
   return (

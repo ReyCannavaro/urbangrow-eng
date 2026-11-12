@@ -6,6 +6,7 @@ import {
   SlidersHorizontal,
   Power,
   Check,
+  CheckCircle2,
 } from "lucide-react";
 import { useTelemetry } from "../../lib/telemetryContext";
 import { ClimateScoreCard } from "../../components/ai/ClimateScoreCard";
@@ -170,13 +171,9 @@ export default function AiInsightsPage() {
       computeLocalFishForecast(activeCohort.lele, liveSensors)
     : undefined;
 
-  const totalFishCount =
-    (showNila ? activeCohort.nila.count : 0) +
-    (showLele ? activeCohort.lele.count : 0);
-
   const cleanRecommendedAction = anomaly?.recommended_action
     ? anomaly.recommended_action.toLowerCase().includes("ai engine offline")
-      ? "Mode heuristik ECAD aktif: pemantauan otomatis pH, suhu air DS18B20, TDS, iklim DHT22, dan intensitas cahaya LDR berada dalam kondisi terpantau."
+      ? "Mode heuristik ECAD aktif: pemantauan parameter pH, suhu air, TDS, iklim mikro, dan cahaya berjalan otomatis."
       : anomaly.recommended_action.replace(/,?\s*Δ?DO\s*[^,.)]+/gi, "")
     : "";
 
@@ -194,15 +191,14 @@ export default function AiInsightsPage() {
         className="ug-enter flex flex-col justify-between gap-4 pb-1 sm:flex-row sm:items-center"
       >
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[#111827]">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#111827]">
             Prediksi Panen &amp; Inteligensi AI
           </h1>
           <p className="mt-1 text-xs text-[#6B7280]">
-            Proyeksi siap panen budidaya ikan (Nila / Lele), semai benih sayuran (Pakcoy &amp; Kangkung), dan skor adaptasi iklim.
+            Proyeksi siap panen budidaya ikan (Nila / Lele), sayuran (Pakcoy &amp; Kangkung), dan skor adaptasi iklim.
           </p>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           <button
             type="button"
@@ -227,75 +223,38 @@ export default function AiInsightsPage() {
         </div>
       </section>
 
-      {/* ===================================================================
-          1. INTEGRATED AGRO-INTELLIGENCE HORIZON (Replaces Generic 3-Box Strip)
-          =================================================================== */}
-      <section
-        style={{ "--ug-delay": "65ms" } as React.CSSProperties}
-        className="ug-enter rounded-[24px] bg-[#165B39] text-white p-5 sm:p-6 shadow-sm border border-[#145233]"
+      {/* Slim Single-Line Telemetry Calibration Notice */}
+      <div
+        style={{ "--ug-delay": "50ms" } as React.CSSProperties}
+        className={`ug-enter flex items-center gap-2.5 rounded-[18px] border px-4 py-2.5 text-xs ${
+          systemMeta.edgeOnline && systemMeta.liveSensorCount > 0
+            ? "border-[#165B39]/20 bg-[#DCFCE7]/40 text-[#166534]"
+            : "border-[#E5E7EB] bg-white text-[#4B5563]"
+        }`}
       >
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span
-                className={`h-2.5 w-2.5 rounded-full ${
-                  systemMeta.edgeOnline && systemMeta.liveSensorCount > 0
-                    ? "bg-[#68C194]"
-                    : "bg-[#9CA3AF]"
-                }`}
-              />
-              <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#68C194]">
-                ECAD PREDICTIVE ENGINE &bull;{" "}
-                {systemMeta.liveSensorCount > 0
-                  ? `${systemMeta.liveSensorCount} SENSOR LIVE (${systemMeta.edgeNode})`
-                  : "BASELINE GDD (MENUNGGU ESP32)"}
-              </span>
-            </div>
-            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
-              <span>Horizon Panen &amp; Akumulasi Pertumbuhan Hayati</span>
-            </h2>
-            <p className="text-xs text-white/80 max-w-2xl leading-relaxed">
-              Model matematis GDD (<em>Growing Degree Days</em>) memproyeksikan laju kematangan tanaman dari tanggal semai benih, disinkronkan dengan estimasi bobot rata-rata harian (ADG) bibit ikan.
-            </p>
-          </div>
+        {systemMeta.edgeOnline && systemMeta.liveSensorCount > 0 ? (
+          <CheckCircle2 className="h-4 w-4 text-[#165B39] shrink-0" />
+        ) : (
+          <span className="h-2 w-2 rounded-full bg-[#9CA3AF] shrink-0" />
+        )}
+        <span>
+          {systemMeta.edgeOnline && systemMeta.liveSensorCount > 0
+            ? `Model GDD dan ADG ikan terkalibrasi oleh ${systemMeta.liveSensorCount}/6 sensor live (${systemMeta.edgeNode}).`
+            : `ESP32 offline — proyeksi panen menggunakan baseline kalibrasi dari data tebar & semai benih Anda.`}
+        </span>
+      </div>
 
-          {/* Integrated Biological Horizon Metrics (Typography-First) */}
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0 font-mono text-xs">
-            <div className="px-3 py-2 rounded-xl bg-white/10 border border-white/15">
-              <div className="text-[9.5px] uppercase tracking-wider text-white/60">Batch Ikan</div>
-              <div className="font-bold text-white text-sm num-tabular mt-0.5">
-                {totalFishCount} Ekor <span className="text-[10px] text-white/60 font-normal">({activeCohort.fishMode === "both" ? "Nila & Lele" : activeCohort.fishMode === "nila" ? "Nila" : "Lele"})</span>
-              </div>
-            </div>
-
-            <div className="px-3 py-2 rounded-xl bg-white/10 border border-white/15">
-              <div className="text-[9.5px] uppercase tracking-wider text-white/60">Pakcoy (L4)</div>
-              <div className="font-bold text-[#68C194] text-sm num-tabular mt-0.5">
-                {pakcoy.estimatedDaysRemaining} Hari <span className="text-[10px] text-white/60 font-normal">({formatIndonesianDate(pakcoy.estimatedHarvestDate)})</span>
-              </div>
-            </div>
-
-            <div className="px-3 py-2 rounded-xl bg-white/10 border border-white/15">
-              <div className="text-[9.5px] uppercase tracking-wider text-white/60">Kangkung (L2)</div>
-              <div className="font-bold text-[#FDE68A] text-sm num-tabular mt-0.5">
-                {kangkung.estimatedDaysRemaining} Hari <span className="text-[10px] text-white/60 font-normal">({formatIndonesianDate(kangkung.estimatedHarvestDate)})</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Section 1: Prediksi Panen Ikan (Nila / Lele) */}
+      {/* Section 1: Prediksi Panen Ikan */}
       <section
-        style={{ "--ug-delay": "130ms" } as React.CSSProperties}
+        style={{ "--ug-delay": "100ms" } as React.CSSProperties}
         className="ug-enter space-y-3"
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-bold text-[#111827]">
-            Proyeksi Pertumbuhan &amp; Panen Budidaya Ikan
+            Proyeksi Pertumbuhan &amp; Panen Ikan
           </h2>
           <span className="text-xs text-[#6B7280]">
-            Dihitung dari panjang tebar awal, tanggal tebar &amp; telemetri pH/suhu air
+            Dihitung dari panjang tebar, tanggal tebar &amp; suhu air
           </span>
         </div>
 
@@ -309,15 +268,15 @@ export default function AiInsightsPage() {
         </div>
       </section>
 
-      {/* Section 2: Prediksi Panen Sayuran (Tanam dari Benih) */}
+      {/* Section 2: Prediksi Panen Sayuran */}
       <RevealOnView delayMs={0}>
         <section className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-bold text-[#111827]">
-              Proyeksi Panen Sayuran Vertikal (Tanam dari Benih)
+              Proyeksi Panen Sayuran Vertikal
             </h2>
             <span className="text-xs text-[#6B7280]">
-              Model GDD penuh sejak tanggal semai benih
+              Model GDD sejak tanggal semai benih
             </span>
           </div>
 
@@ -360,29 +319,29 @@ export default function AiInsightsPage() {
           {climateData && <ClimateScoreCard data={climateData} />}
 
           {anomaly && (
-            <div className="flex flex-col justify-between rounded-[24px] border border-[#E5E7EB] bg-white p-5 sm:p-6 transition-colors hover:bg-[#F9FAFB]/40 hover:border-[#D1D5DB]">
+            <div className="flex flex-col justify-between rounded-[24px] border border-[#E5E7EB] bg-white p-5 sm:p-6 shadow-xs">
               <div>
                 <div className="flex items-center justify-between border-b border-[#F3F4F6] pb-3.5">
                   <div>
-                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#165B39] block">
-                      AI Diagnostic Synthesis
-                    </span>
-                    <h3 className="text-base font-bold text-[#111827] mt-0.5">
-                      Rekomendasi Tindakan Adaptif AI
+                    <h3 className="text-base font-bold text-[#111827]">
+                      Rekomendasi Tindakan Adaptif
                     </h3>
+                    <p className="text-xs text-[#6B7280] mt-0.5">
+                      Evaluasi AI berdasarkan tren sensor dan status aktuator
+                    </p>
                   </div>
                   <span
-                    className={`rounded-full px-2.5 py-0.5 font-mono text-xs font-bold ${
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                       anomaly.risk_level === "OFFLINE"
-                        ? "border border-[#E5E7EB] bg-[#F3F4F6] text-[#4B5563]"
+                        ? "bg-[#F3F4F6] text-[#6B7280]"
                         : anomaly.risk_level === "CRITICAL"
-                        ? "border border-rose-200 bg-rose-50 text-rose-700"
+                        ? "bg-rose-50 text-rose-700"
                         : anomaly.is_anomaly
-                        ? "border border-amber-200 bg-amber-50 text-amber-700"
-                        : "border border-[#165B39]/20 bg-[#DCFCE7] text-[#166534]"
+                        ? "bg-[#FEF3C7] text-[#B45309]"
+                        : "bg-[#DCFCE7] text-[#166534]"
                     }`}
                   >
-                    {anomaly.risk_level}
+                    {anomaly.risk_level === "OFFLINE" ? "Offline" : anomaly.risk_level}
                   </span>
                 </div>
 
@@ -391,18 +350,18 @@ export default function AiInsightsPage() {
                 </p>
 
                 {cleanWaterForecast && (
-                  <div className="mt-4 rounded-2xl border border-[#F3F4F6] bg-[#F9FAFB] p-3.5 text-xs leading-relaxed text-[#4B5563]">
+                  <div className="mt-4 pt-4 border-t border-[#F3F4F6] text-xs leading-relaxed text-[#4B5563]">
                     <span className="mb-1 block font-semibold text-[#111827]">
-                      Proyeksi Stabilitas Biofilter 24 Jam:
+                      Proyeksi Biofilter 24 Jam
                     </span>
                     {cleanWaterForecast}
                   </div>
                 )}
 
                 {diagnostics?.suggestedActions && diagnostics.suggestedActions.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    <span className="block text-[11px] font-semibold text-[#6B7280]">
-                      Eksekusi Cepat Rekomendasi AI:
+                  <div className="mt-4 space-y-2 pt-3 border-t border-[#F3F4F6]">
+                    <span className="block text-xs font-semibold text-[#6B7280]">
+                      Eksekusi Rekomendasi Aktuator:
                     </span>
                     <div className="flex flex-wrap gap-2">
                       {diagnostics.suggestedActions.map((act) => {
@@ -418,11 +377,11 @@ export default function AiInsightsPage() {
                             className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
                               alreadyTargeted
                                 ? edgeOnline
-                                  ? "border border-[#165B39]/25 bg-[#DCFCE7] text-[#166534] cursor-default"
-                                  : "border border-[#E5E7EB] bg-[#F3F4F6] text-[#4B5563] cursor-default"
+                                  ? "bg-[#DCFCE7] text-[#166534] cursor-default"
+                                  : "bg-[#F3F4F6] text-[#6B7280] cursor-default"
                                 : edgeOnline
                                 ? "bg-[#165B39] text-white hover:bg-[#124B2E] cursor-pointer"
-                                : "border border-[#D1D5DB] bg-white text-[#374151] hover:bg-[#F9FAFB] cursor-pointer"
+                                : "border border-[#E5E7EB] bg-white text-[#111827] hover:bg-[#F9FAFB] cursor-pointer"
                             }`}
                             title={act.reason}
                           >
@@ -447,13 +406,13 @@ export default function AiInsightsPage() {
               </div>
 
               <div className="mt-4 flex items-center justify-between border-t border-[#F3F4F6] pt-3 text-xs text-[#6B7280]">
-                <span>Terakhir diperbarui: {formatIndonesianDate(activeCohort.updatedAt.split("T")[0])}</span>
+                <span>Diperbarui: {formatIndonesianDate(activeCohort.updatedAt.split("T")[0])}</span>
                 <button
                   type="button"
                   onClick={handleOpenSetup}
                   className="font-semibold text-[#165B39] hover:underline cursor-pointer"
                 >
-                  Sesuaikan Parameter Batch →
+                  Sesuaikan Parameter &rarr;
                 </button>
               </div>
             </div>
@@ -461,7 +420,6 @@ export default function AiInsightsPage() {
         </section>
       </RevealOnView>
 
-      {/* Setup Data Prediksi Popup Modal */}
       <PredictionSetupModal
         key={modalKey}
         isOpen={isSetupOpen}

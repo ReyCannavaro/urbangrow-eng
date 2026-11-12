@@ -357,7 +357,7 @@ export function PredictionSetupModal({
                           Kolam Level 1 • Dasar Sistem Biofilter
                         </p>
                       </div>
-                      <span className="rounded-full bg-[#F3F4F6] px-2.5 py-0.5 text-[11px] font-semibold text-[#374151]">
+                      <span className="rounded-full bg-[#DCFCE7] px-2.5 py-0.5 text-[11px] font-semibold text-[#166534]">
                         Level 1
                       </span>
                     </div>
@@ -459,7 +459,7 @@ export function PredictionSetupModal({
                           }
                           className={`rounded-full border px-2 py-0.5 transition-colors cursor-pointer ${
                             draft.lele.targetHarvestLengthCm === cm
-                              ? "border-[#111827] bg-[#F3F4F6] font-semibold text-[#111827]"
+                              ? "border-[#165B39] bg-[#DCFCE7] font-semibold text-[#166534]"
                               : "border-[#E5E7EB] bg-white hover:bg-[#F3F4F6]"
                           }`}
                         >

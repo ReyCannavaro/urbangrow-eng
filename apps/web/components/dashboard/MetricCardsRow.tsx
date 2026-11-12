@@ -141,7 +141,11 @@ export function MetricCardsRow() {
                   : "bg-[#FEF3C7] text-[#B45309]"
               }`}
             >
-              <CheckCircle2 className="h-3 w-3" />
+              {hasWaterTemp ? (
+                <CheckCircle2 className="h-3 w-3" />
+              ) : (
+                <span className="h-1.5 w-1.5 rounded-full bg-[#9CA3AF]" />
+              )}
               <span>
                 {!hasWaterTemp
                   ? "Sensor DS18B20 offline"

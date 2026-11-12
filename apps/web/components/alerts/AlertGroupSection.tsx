@@ -15,41 +15,37 @@ interface AlertGroupSectionProps {
 export function AlertGroupSection({
   title,
   alerts,
-  emptyMessage = "Tidak ada notifikasi aktif. Seluruh sistem akuaponik beroperasi optimal.",
+  emptyMessage = "Tidak ada notifikasi aktif. Seluruh parameter berada dalam rentang aman.",
   isArchive = false,
 }: AlertGroupSectionProps) {
   return (
-    <div className="space-y-3.5">
-      <div className="flex items-center justify-between pb-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 className="text-xs font-bold text-[#374151] uppercase tracking-wider">
-            {title}
-          </h3>
-          <span className="px-2 py-0.5 rounded-full bg-[#F3F4F6] text-[10px] font-mono text-[#4B5563] font-bold whitespace-nowrap shrink-0">
-            {alerts.length} Log
-          </span>
-        </div>
+    <div className="rounded-[24px] bg-white border border-[#E5E7EB] shadow-xs overflow-hidden">
+      <div className="px-5 py-4 border-b border-[#F3F4F6] flex items-center justify-between gap-3">
+        <h3 className="text-sm font-bold text-[#111827]">{title}</h3>
+        <span className="px-2.5 py-0.5 rounded-full bg-[#F3F4F6] text-[11px] font-semibold text-[#4B5563] num-tabular">
+          {alerts.length}
+        </span>
       </div>
 
-      <div className="space-y-3">
-        {alerts.map((alt) => (
-          <AlertItemCard key={alt.id} alert={alt} isArchive={isArchive} />
-        ))}
-
-        {alerts.length === 0 && (
-          <div className="p-8 text-center bg-white rounded-[24px] border border-dashed border-[#E5E7EB] space-y-2">
-            <div className="h-10 w-10 rounded-full bg-[#DCFCE7] text-[#166534] flex items-center justify-center mx-auto">
-              <CheckCircle2 className="h-5 w-5" />
-            </div>
-            <div className="text-sm font-bold text-[#111827]">
-              Semua Kondisi Terkendali
-            </div>
-            <p className="text-xs text-[#6B7280] max-w-sm mx-auto">
-              {emptyMessage}
-            </p>
+      {alerts.length === 0 ? (
+        <div className="p-8 text-center space-y-2">
+          <div className="h-10 w-10 rounded-full bg-[#DCFCE7] text-[#165B39] flex items-center justify-center mx-auto">
+            <CheckCircle2 className="h-5 w-5" />
           </div>
-        )}
-      </div>
+          <div className="text-sm font-bold text-[#111827]">
+            Semua Kondisi Terkendali
+          </div>
+          <p className="text-xs text-[#6B7280] max-w-xs mx-auto leading-relaxed">
+            {emptyMessage}
+          </p>
+        </div>
+      ) : (
+        <div className="divide-y divide-[#F3F4F6]">
+          {alerts.map((alt) => (
+            <AlertItemCard key={alt.id} alert={alt} isArchive={isArchive} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

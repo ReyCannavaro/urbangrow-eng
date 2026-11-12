@@ -1,11 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import {
-  Activity,
-  Clock,
-  CheckCircle2,
-} from "lucide-react";
+import { Activity, Clock } from "lucide-react";
 import { SensorData, HistorySample } from "@/lib/types";
 import { useInViewOnce } from "@/components/motion/RevealOnView";
 
@@ -33,7 +29,7 @@ const METRICS: Record<"ph" | "temp" | "tds" | "lux", MetricConfig> = {
     key: "waterTemperature",
     label: "Suhu Air",
     unit: "°C",
-    color: "#0D9488", // Emerald Teal
+    color: "#4EAB7C", // Dashboard Sage Mint
     fillId: "gradient-temp",
     min: 20.0,
     max: 30.0,
@@ -44,7 +40,7 @@ const METRICS: Record<"ph" | "temp" | "tds" | "lux", MetricConfig> = {
     key: "ph",
     label: "pH Air",
     unit: "pH",
-    color: "#165B39", // Deep Forest Pine
+    color: "#165B39", // Dashboard Forest Pine
     fillId: "gradient-ph",
     min: 6.0,
     max: 8.5,
@@ -66,7 +62,7 @@ const METRICS: Record<"ph" | "temp" | "tds" | "lux", MetricConfig> = {
     key: "lightIntensity",
     label: "Cahaya LDR",
     unit: "lux",
-    color: "#4B5563", // Charcoal Ink
+    color: "#4B5563", // Slate Charcoal
     fillId: "gradient-lux",
     min: 0,
     max: 3000,
@@ -83,7 +79,6 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
 
   const dataSamples = history && history.length >= 2 ? history : [];
 
-  // Compute min/max stats strictly from valid numeric readings
   const getStats = (key: keyof SensorData) => {
     const vals = dataSamples
       .map((d) => d.sensors[key])
@@ -101,13 +96,16 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
   const tdsStats = getStats("tds");
   const luxStats = getStats("lightIntensity");
 
-  // Chart dimensions inside SVG viewBox
+  const hasLivePh = typeof sensors.ph === "number";
+  const hasLiveTemp = typeof sensors.waterTemperature === "number";
+  const hasLiveTds = typeof sensors.tds === "number";
+  const hasLiveLux = typeof sensors.lightIntensity === "number";
+
   const width = 900;
   const height = 280;
   const paddingX = 45;
   const paddingY = 25;
 
-  // Generate smooth cubic Bézier spline curve
   const getCurvedPath = (points: { x: number; y: number }[]): string => {
     if (points.length < 2) return "";
     let d = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
@@ -120,7 +118,6 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
     return d;
   };
 
-  // Render a specific metric curve
   const renderLine = (config: MetricConfig, isHighlighted: boolean) => {
     if (dataSamples.length < 2) return null;
 
@@ -139,11 +136,6 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
     const isFlat = rawSpan < 0.0001;
     const span = Math.max(0.01, rawSpan);
 
-    // Altitude Bands for 4 Physical Multi-Trace Channels
-    // Temp (band 0): 0.05 - 0.24
-    // pH (band 1): 0.28 - 0.47
-    // TDS (band 2): 0.51 - 0.70
-    // Lux (band 3): 0.74 - 0.93
     const bandBases = [0.05, 0.28, 0.51, 0.74];
     const bandHeight = 0.19;
 
@@ -156,7 +148,6 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
         const base = bandBases[config.bandIndex] ?? 0.5;
         normY = base + (1 - normalizedLocal) * bandHeight;
       } else {
-        // Zoom in to full height with 15% top/bottom margin
         normY = 0.1 + (1 - normalizedLocal) * 0.8;
       }
 
@@ -176,7 +167,6 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
 
     return (
       <g key={config.key}>
-        {/* Soft Gradient Area Fill */}
         <path
           d={dArea}
           fill={`url(#${config.fillId})`}
@@ -184,7 +174,6 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
           className="transition-opacity duration-300"
         />
 
-        {/* Spline Path */}
         <path
           d={dPath}
           fill="none"
@@ -195,7 +184,6 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
           className="transition-all duration-300"
         />
 
-        {/* Active Live Node (Rightmost endpoint) */}
         <circle
           cx={lastPoint.x}
           cy={lastPoint.y}
@@ -210,7 +198,6 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
           opacity={0.22}
         />
 
-        {/* Hovered node point */}
         {hoveredPoint && (
           <circle
             cx={hoveredPoint.x}
@@ -239,7 +226,6 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
       ? dataSamples[hoverIndex]
       : dataSamples[dataSamples.length - 1] ?? null;
 
-  // Selected single metric stats for scale ticks
   const activeSingleConfig = selectedMetric !== "all" ? METRICS[selectedMetric] : null;
   const activeSingleStats =
     selectedMetric !== "all" && activeSingleConfig
@@ -249,81 +235,47 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
   return (
     <div
       ref={chartRevealRef}
-      className="rounded-[28px] bg-white border border-[#E5E7EB] p-6 sm:p-7 shadow-xs space-y-6"
+      className="rounded-[24px] bg-white border border-[#E5E7EB] p-6 shadow-xs space-y-5"
     >
-      {/* 1. Header with Title & Filter Pills */}
+      {/* 1. Header with Title & Unified Pine Filter Pills */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-full bg-[#DCFCE7] flex items-center justify-center text-[#166534]">
+            <div className="h-7 w-7 rounded-full bg-[#DCFCE7] flex items-center justify-center text-[#165B39]">
               <Activity className="h-4 w-4" />
             </div>
             <h3 className="font-bold text-base text-[#111827] tracking-tight">
-              Kurva Fluktuasi Telemetri (Real-time Sliding Window)
+              Kurva Fluktuasi Telemetri
             </h3>
           </div>
           <p className="text-xs text-[#6B7280] mt-1 ml-9">
-            Multi-trace telemetri fisik ESP32 dengan interpolasi spline kontinu 60 sampel live.
+            Multi-trace sensor ESP32 pada sliding window 60 sampel terakhir.
           </p>
         </div>
 
-        {/* Metric Selector Pills */}
         <div className="flex items-center gap-1 p-1 rounded-full border border-[#E5E7EB] bg-[#F8F9FA] text-xs self-start sm:self-auto overflow-x-auto max-w-full">
-          <button
-            type="button"
-            onClick={() => setSelectedMetric("all")}
-            className={`px-3.5 py-1.5 rounded-full font-medium transition-colors cursor-pointer shrink-0 ${
-              selectedMetric === "all"
-                ? "bg-[#165B39] text-white font-semibold"
-                : "text-[#4B5563] hover:text-[#111827] hover:bg-white"
-            }`}
-          >
-            Semua Kanal
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedMetric("ph")}
-            className={`px-3.5 py-1.5 rounded-full font-medium transition-colors cursor-pointer shrink-0 ${
-              selectedMetric === "ph"
-                ? "bg-[#165B39] text-white font-semibold"
-                : "text-[#4B5563] hover:text-[#111827] hover:bg-white"
-            }`}
-          >
-            pH Air
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedMetric("temp")}
-            className={`px-3.5 py-1.5 rounded-full font-medium transition-colors cursor-pointer shrink-0 ${
-              selectedMetric === "temp"
-                ? "bg-[#165B39] text-white font-semibold"
-                : "text-[#4B5563] hover:text-[#111827] hover:bg-white"
-            }`}
-          >
-            Suhu Air
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedMetric("tds")}
-            className={`px-3.5 py-1.5 rounded-full font-medium transition-colors cursor-pointer shrink-0 ${
-              selectedMetric === "tds"
-                ? "bg-[#165B39] text-white font-semibold"
-                : "text-[#4B5563] hover:text-[#111827] hover:bg-white"
-            }`}
-          >
-            TDS Nutrisi
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedMetric("lux")}
-            className={`px-3.5 py-1.5 rounded-full font-medium transition-colors cursor-pointer shrink-0 ${
-              selectedMetric === "lux"
-                ? "bg-[#4B5563] text-white font-semibold"
-                : "text-[#4B5563] hover:text-[#111827] hover:bg-white"
-            }`}
-          >
-            Cahaya LDR
-          </button>
+          {(
+            [
+              { id: "all", label: "Semua Kanal" },
+              { id: "ph", label: "pH Air" },
+              { id: "temp", label: "Suhu Air" },
+              { id: "tds", label: "TDS Nutrisi" },
+              { id: "lux", label: "Cahaya LDR" },
+            ] as const
+          ).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setSelectedMetric(tab.id)}
+              className={`px-3.5 py-1.5 rounded-full font-medium transition-colors cursor-pointer shrink-0 ${
+                selectedMetric === tab.id
+                  ? "bg-[#165B39] text-white font-semibold"
+                  : "text-[#4B5563] hover:text-[#111827] hover:bg-white"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -335,7 +287,7 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
           onClick={() => setSelectedMetric(selectedMetric === "ph" ? "all" : "ph")}
           className={`p-3.5 rounded-[18px] border text-left transition-colors cursor-pointer ${
             selectedMetric === "ph"
-              ? "border-[#165B39] bg-[#DCFCE7]/25"
+              ? "border-[#165B39] bg-[#DCFCE7]/35"
               : "border-[#E5E7EB] bg-[#F8F9FA] hover:bg-white hover:border-[#D1D5DB]"
           }`}
         >
@@ -344,39 +296,41 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
               <span className="h-2 w-2 rounded-full bg-[#165B39]" />
               pH Air
             </span>
-            <span className="font-mono text-[10px] text-[#9CA3AF]">
-              {phStats ? `${phStats.min.toFixed(2)}-${phStats.max.toFixed(2)}` : "6.5-7.5"}
+            <span className="text-[11px] text-[#9CA3AF] num-tabular">
+              {hasLivePh && phStats
+                ? `${phStats.min.toFixed(2)}–${phStats.max.toFixed(2)}`
+                : "Ideal 6.5–7.5"}
             </span>
           </div>
           <div className="text-xl font-bold tracking-tight text-[#111827] num-tabular mt-1">
-            {typeof sensors.ph === "number" ? sensors.ph.toFixed(2) : "--"}
+            {hasLivePh ? (sensors.ph as number).toFixed(2) : "--"}
             <span className="text-xs font-normal text-[#6B7280] ml-1">pH</span>
           </div>
         </button>
 
-        {/* Suhu Chip */}
+        {/* Suhu Chip (Aligned to Dashboard Sage Mint #4EAB7C) */}
         <button
           type="button"
           onClick={() => setSelectedMetric(selectedMetric === "temp" ? "all" : "temp")}
           className={`p-3.5 rounded-[18px] border text-left transition-colors cursor-pointer ${
             selectedMetric === "temp"
-              ? "border-[#0D9488] bg-[#CCFBF1]/35"
+              ? "border-[#4EAB7C] bg-[#DCFCE7]/35"
               : "border-[#E5E7EB] bg-[#F8F9FA] hover:bg-white hover:border-[#D1D5DB]"
           }`}
         >
           <div className="flex items-center justify-between text-xs text-[#6B7280]">
             <span className="flex items-center gap-1.5 font-medium">
-              <span className="h-2 w-2 rounded-full bg-[#0D9488]" />
+              <span className="h-2 w-2 rounded-full bg-[#4EAB7C]" />
               Suhu Air
             </span>
-            <span className="font-mono text-[10px] text-[#9CA3AF]">
-              {tempStats ? `${tempStats.min.toFixed(1)}-${tempStats.max.toFixed(1)}°C` : "24-28°C"}
+            <span className="text-[11px] text-[#9CA3AF] num-tabular">
+              {hasLiveTemp && tempStats
+                ? `${tempStats.min.toFixed(1)}–${tempStats.max.toFixed(1)}°C`
+                : "Ideal 22–27°C"}
             </span>
           </div>
           <div className="text-xl font-bold tracking-tight text-[#111827] num-tabular mt-1">
-            {typeof sensors.waterTemperature === "number"
-              ? sensors.waterTemperature.toFixed(1)
-              : "--"}
+            {hasLiveTemp ? (sensors.waterTemperature as number).toFixed(1) : "--"}
             <span className="text-xs font-normal text-[#6B7280] ml-1">°C</span>
           </div>
         </button>
@@ -396,12 +350,14 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
               <span className="h-2 w-2 rounded-full bg-[#D97706]" />
               TDS Nutrisi
             </span>
-            <span className="font-mono text-[10px] text-[#9CA3AF]">
-              {tdsStats ? `${Math.round(tdsStats.min)}-${Math.round(tdsStats.max)}` : "400-800"}
+            <span className="text-[11px] text-[#9CA3AF] num-tabular">
+              {hasLiveTds && tdsStats
+                ? `${Math.round(tdsStats.min)}–${Math.round(tdsStats.max)}`
+                : "400–800 ppm"}
             </span>
           </div>
           <div className="text-xl font-bold tracking-tight text-[#111827] num-tabular mt-1">
-            {typeof sensors.tds === "number" ? Math.round(sensors.tds) : "--"}
+            {hasLiveTds ? Math.round(sensors.tds as number) : "--"}
             <span className="text-xs font-normal text-[#6B7280] ml-1">ppm</span>
           </div>
         </button>
@@ -421,14 +377,14 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
               <span className="h-2 w-2 rounded-full bg-[#4B5563]" />
               Cahaya LDR
             </span>
-            <span className="font-mono text-[10px] text-[#9CA3AF]">
-              {luxStats ? `${Math.round(luxStats.min)}-${Math.round(luxStats.max)}` : "300-2500"}
+            <span className="text-[11px] text-[#9CA3AF] num-tabular">
+              {hasLiveLux && luxStats
+                ? `${Math.round(luxStats.min)}–${Math.round(luxStats.max)}`
+                : "300–2500 lux"}
             </span>
           </div>
           <div className="text-xl font-bold tracking-tight text-[#111827] num-tabular mt-1">
-            {typeof sensors.lightIntensity === "number"
-              ? Math.round(sensors.lightIntensity)
-              : "--"}
+            {hasLiveLux ? Math.round(sensors.lightIntensity as number) : "--"}
             <span className="text-xs font-normal text-[#6B7280] ml-1">lux</span>
           </div>
         </button>
@@ -437,7 +393,7 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
       {/* 3. The SVG Chart Canvas */}
       <div
         ref={containerRef}
-        className="relative h-[290px] w-full rounded-[22px] bg-[#F8F9FA] border border-[#E5E7EB] p-2 overflow-hidden select-none"
+        className="relative h-[280px] w-full rounded-[20px] bg-[#F8F9FA] border border-[#E5E7EB] p-2 overflow-hidden select-none"
       >
         <svg
           viewBox={`0 0 ${width} ${height}`}
@@ -452,8 +408,8 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
               <stop offset="100%" stopColor="#165B39" stopOpacity="0.0" />
             </linearGradient>
             <linearGradient id="gradient-temp" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#0D9488" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="#0D9488" stopOpacity="0.0" />
+              <stop offset="0%" stopColor="#4EAB7C" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#4EAB7C" stopOpacity="0.0" />
             </linearGradient>
             <linearGradient id="gradient-tds" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#D97706" stopOpacity="0.4" />
@@ -465,7 +421,6 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
             </linearGradient>
           </defs>
 
-          {/* Dotted Grid Horizontal Guides */}
           {[0.2, 0.4, 0.6, 0.8].map((ratio) => (
             <line
               key={ratio}
@@ -479,7 +434,6 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
             />
           ))}
 
-          {/* Single-metric mode Y-axis labels */}
           {activeSingleStats && activeSingleConfig && (
             <g className="font-mono text-[9px] fill-[#9CA3AF]">
               <text x={8} y={paddingY + 0.15 * (height - 2 * paddingY)}>
@@ -494,7 +448,6 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
             </g>
           )}
 
-          {/* Time-series Splines (Sweep reveal left-to-right when viewed) */}
           <g className={chartInView ? "ug-chart-reveal" : "opacity-0"}>
             {(selectedMetric === "all" || selectedMetric === "temp") &&
               renderLine(METRICS.temp, selectedMetric === "temp")}
@@ -506,7 +459,6 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
               renderLine(METRICS.lux, selectedMetric === "lux")}
           </g>
 
-          {/* Interactive Crosshair Line on Hover */}
           {hoverIndex !== null && dataSamples.length >= 2 && (
             <line
               x1={paddingX + (hoverIndex / (dataSamples.length - 1)) * (width - 2 * paddingX)}
@@ -521,37 +473,35 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
           )}
         </svg>
 
-        {/* Empty chart state overlay */}
         {dataSamples.length < 2 && (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center pointer-events-none">
-            <span className="px-3 py-1 rounded-full bg-white border border-[#E5E7EB] font-mono text-[10.5px] font-semibold text-[#374151] shadow-2xs">
+            <span className="px-3 py-1 rounded-full bg-white border border-[#E5E7EB] text-xs font-semibold text-[#374151] shadow-2xs">
               Menunggu Telemetri ESP32 ({history.length}/2 Sampel)
             </span>
             <p className="text-xs text-[#6B7280] mt-2 max-w-md">
-              Grafik spline otomatis tergambar setelah minimal 2 paket data sensor masuk dari ESP32-GROW-01 ke server backend.
+              Grafik spline otomatis tergambar setelah minimal 2 paket data sensor masuk dari ESP32-GROW-01.
             </p>
           </div>
         )}
 
-        {/* Hover Crosshair Tooltip Floating Card */}
         {activeSample && hoverIndex !== null && (
-          <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm border border-[#E5E7EB] rounded-[16px] p-3 shadow-md text-xs font-mono space-y-1.5 pointer-events-none z-10 min-w-[190px]">
+          <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm border border-[#E5E7EB] rounded-[16px] p-3 shadow-md text-xs space-y-1.5 pointer-events-none z-10 min-w-[180px]">
             <div className="flex items-center justify-between text-[#6B7280] pb-1 border-b border-[#F3F4F6]">
-              <span className="flex items-center gap-1 text-[11px]">
+              <span className="flex items-center gap-1 text-[11px] num-tabular">
                 <Clock className="h-3 w-3" />
                 {activeSample.timestamp.includes("T")
                   ? activeSample.timestamp.split("T")[1]?.slice(0, 8)
                   : activeSample.timestamp}
               </span>
-              <span className="text-[10px] text-[#166534] bg-[#DCFCE7] px-1.5 py-0.2 rounded-full font-bold">
-                T-{Math.max(0, (dataSamples.length - 1 - hoverIndex) * 5).toFixed(0)}s
+              <span className="text-[10px] text-[#166534] bg-[#DCFCE7] px-1.5 py-0.5 rounded-full font-semibold">
+                #{hoverIndex + 1}
               </span>
             </div>
             <div className="flex items-center justify-between text-[#111827]">
               <span className="flex items-center gap-1.5 text-[11px]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#165B39]" /> pH:
               </span>
-              <span className="font-bold">
+              <span className="font-bold num-tabular">
                 {typeof activeSample.sensors.ph === "number"
                   ? activeSample.sensors.ph.toFixed(2)
                   : "--"}
@@ -559,9 +509,9 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
             </div>
             <div className="flex items-center justify-between text-[#111827]">
               <span className="flex items-center gap-1.5 text-[11px]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#0D9488]" /> Suhu:
+                <span className="h-1.5 w-1.5 rounded-full bg-[#4EAB7C]" /> Suhu:
               </span>
-              <span className="font-bold">
+              <span className="font-bold num-tabular">
                 {typeof activeSample.sensors.waterTemperature === "number"
                   ? `${activeSample.sensors.waterTemperature.toFixed(1)}°C`
                   : "--"}
@@ -571,7 +521,7 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
               <span className="flex items-center gap-1.5 text-[11px]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#D97706]" /> TDS:
               </span>
-              <span className="font-bold">
+              <span className="font-bold num-tabular">
                 {typeof activeSample.sensors.tds === "number"
                   ? `${Math.round(activeSample.sensors.tds)} ppm`
                   : "--"}
@@ -581,7 +531,7 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
               <span className="flex items-center gap-1.5 text-[11px]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#4B5563]" /> LDR:
               </span>
-              <span className="font-bold">
+              <span className="font-bold num-tabular">
                 {typeof activeSample.sensors.lightIntensity === "number"
                   ? `${Math.round(activeSample.sensors.lightIntensity)} lux`
                   : "--"}
@@ -591,15 +541,15 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
         )}
       </div>
 
-      {/* 4. Timeline Axis Markers & Telemetry Health Status */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-[#6B7280] font-mono pt-1 border-t border-[#F3F4F6]">
-        <div className="flex items-center gap-6">
+      {/* 4. Timeline Footer */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-[#6B7280] pt-1 border-t border-[#F3F4F6]">
+        <div className="flex items-center gap-6 num-tabular">
           <span className="text-[#9CA3AF]">-60 Sampel</span>
           <span className="text-[#9CA3AF]">-45</span>
           <span className="text-[#9CA3AF] hidden sm:inline">-30</span>
           <span className="text-[#9CA3AF]">-15</span>
           <span
-            className={`font-bold flex items-center gap-1.5 ${
+            className={`font-semibold flex items-center gap-1.5 ${
               dataSamples.length >= 2 ? "text-[#165B39]" : "text-[#6B7280]"
             }`}
           >
@@ -608,16 +558,13 @@ export function TimeSeriesChart({ history, sensors }: TimeSeriesChartProps) {
                 dataSamples.length >= 2 ? "bg-[#165B39]" : "bg-[#9CA3AF]"
               }`}
             />
-            {dataSamples.length >= 2 ? "Data Tersinkron" : "Menunggu Data"}
+            {dataSamples.length >= 2 ? "Terkini" : "Menunggu Data"}
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <CheckCircle2 className="h-3.5 w-3.5 text-[#166534]" />
-          <span className="text-[11px] text-[#374151]">
-            Window 60 Sampel • Frekuensi Ingesti 1500ms
-          </span>
-        </div>
+        <span className="text-[11px] text-[#6B7280]">
+          Window 60 Sampel &bull; Sync HTTPS (~2.5s)
+        </span>
       </div>
     </div>
   );
