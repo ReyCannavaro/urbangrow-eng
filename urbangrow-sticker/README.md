@@ -38,3 +38,4 @@ pip install vtracer pillow numpy
 python urbangrow-sticker/convert_stickers.py
 ```
 Script tersebut berlokasi di [`urbangrow-sticker/convert_stickers.py`](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/urbangrow-sticker/convert_stickers.py).
+
