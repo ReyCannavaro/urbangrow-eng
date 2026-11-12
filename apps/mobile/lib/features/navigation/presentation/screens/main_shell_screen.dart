@@ -60,10 +60,10 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
             ],
           ),
 
-          // Floating Bottom Navigation Bar (5-Menu Ergonomic Bottom Dock with Center AgriBot AI)
+          // Floating Bottom Navigation Bar (High-End Scandinavian Agro-Tech Floating Dock)
           Positioned(
-            left: 12,
-            right: 12,
+            left: 14,
+            right: 14,
             bottom: 18,
             child: _buildFloatingBottomNav(),
           ),
@@ -74,13 +74,19 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
 
   Widget _buildFloatingBottomNav() {
     return Container(
-      height: 66,
+      height: 64,
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.98),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppTheme.borderMedium),
-        boxShadow: AppTheme.floatingPillShadow,
+        border: Border.all(color: AppTheme.borderLight, width: 1.2),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14111827),
+            blurRadius: 24,
+            offset: Offset(0, 8),
+          ),
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -106,7 +112,7 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
             ),
           ),
 
-          // Slot 3: AgriBot AI (Center Highlighted Floating Button)
+          // Slot 3: AgriBot AI (Elevated Floating Center Action Button)
           _buildCenterAgriBotButton(),
 
           // Slot 4: Wawasan (Analitik IoT & Prediksi AI)
@@ -150,33 +156,41 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
       },
       borderRadius: BorderRadius.circular(999),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
         padding: const EdgeInsets.symmetric(vertical: 4),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.pinePrimary : Colors.transparent,
-          borderRadius: BorderRadius.circular(999),
-        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               isSelected ? activeIcon : icon,
-              size: 20,
-              color: isSelected ? Colors.white : AppTheme.textSecondary,
+              size: isSelected ? 21 : 19,
+              color: isSelected ? AppTheme.pinePrimary : AppTheme.textMuted,
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 3),
             Text(
               label,
               style: TextStyle(
-                fontSize: 9.5,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                color: isSelected ? Colors.white : AppTheme.textSecondary,
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                color: isSelected ? AppTheme.pinePrimary : AppTheme.textSecondary,
                 letterSpacing: -0.2,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 2),
+            // Active Botanical Indicator Dot
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              width: isSelected ? 4 : 0,
+              height: isSelected ? 4 : 0,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppTheme.sageMint,
+              ),
             ),
           ],
         ),
@@ -198,22 +212,29 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
         },
         borderRadius: BorderRadius.circular(999),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
+          duration: const Duration(milliseconds: 240),
           curve: Curves.easeOutCubic,
-          width: 54,
-          height: 54,
+          width: 52,
+          height: 52,
           decoration: BoxDecoration(
-            color: isSelected ? AppTheme.pineDark : AppTheme.pinePrimary,
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF165B39),
+                Color(0xFF0F3F27),
+              ],
+            ),
             shape: BoxShape.circle,
             border: Border.all(
               color: isSelected ? AppTheme.sageMint : Colors.white,
-              width: isSelected ? 2.2 : 1.5,
+              width: isSelected ? 2.5 : 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: AppTheme.pinePrimary.withValues(alpha: isSelected ? 0.45 : 0.28),
-                blurRadius: isSelected ? 14 : 8,
-                offset: const Offset(0, 3),
+                color: const Color(0xFF165B39).withValues(alpha: isSelected ? 0.45 : 0.28),
+                blurRadius: isSelected ? 16 : 8,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
@@ -222,7 +243,7 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
             children: [
               Icon(
                 isSelected ? Icons.psychology_rounded : Icons.auto_awesome_rounded,
-                size: 22,
+                size: 20,
                 color: isSelected ? AppTheme.sageMint : Colors.white,
               ),
               const SizedBox(height: 1),
