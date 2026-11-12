@@ -6,7 +6,6 @@ import {
   SlidersHorizontal,
   Power,
   Check,
-  CheckCircle2,
 } from "lucide-react";
 import { useTelemetry } from "../../lib/telemetryContext";
 import { ClimateScoreCard } from "../../components/ai/ClimateScoreCard";
