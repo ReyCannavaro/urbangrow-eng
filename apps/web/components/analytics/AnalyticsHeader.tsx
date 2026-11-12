@@ -22,7 +22,7 @@ export function AnalyticsHeader() {
           Analitik &amp; Deret Waktu IoT
         </h1>
         <p className="text-xs text-[#6B7280] mt-1 max-w-2xl">
-          Evaluasi tren sensor, kestabilan kualitas air, dan efisiensi biofilter secara berkelanjutan.
+          Pemantauan deret waktu dan statistik aktual dari 6 sensor fisik ESP32 (pH, TDS, DS18B20, DHT22, dan LDR).
         </p>
       </div>
 

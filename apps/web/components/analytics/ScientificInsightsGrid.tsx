@@ -1,231 +1,241 @@
 "use client";
 
 import React from "react";
-import { CheckCircle2, Thermometer, Sun } from "lucide-react";
+import { Droplets, Thermometer, Sun } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
+import { HistorySample, SensorKey } from "@/lib/types";
+
+interface SensorWindowStats {
+  count: number;
+  min: number;
+  max: number;
+  avg: number;
+}
+
+function computeSensorStats(
+  history: HistorySample[],
+  key: SensorKey
+): SensorWindowStats | null {
+  const values = history
+    .map((sample) => sample.sensors[key])
+    .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+
+  if (values.length === 0) return null;
+
+  const total = values.reduce((acc, v) => acc + v, 0);
+  return {
+    count: values.length,
+    min: Math.min(...values),
+    max: Math.max(...values),
+    avg: total / values.length,
+  };
+}
 
 export function ScientificInsightsGrid() {
-  const { sensors, actuators, systemMeta } = useTelemetry();
+  const { sensors, history, actuators, systemMeta } = useTelemetry();
   const edgeOnline = systemMeta.edgeOnline;
 
   const hasPh = typeof sensors.ph === "number";
-  const hasWaterTemp = typeof sensors.waterTemperature === "number";
   const hasTds = typeof sensors.tds === "number";
+  const hasWaterTemp = typeof sensors.waterTemperature === "number";
   const hasAirTemp = typeof sensors.airTemperature === "number";
   const hasHumidity = typeof sensors.humidity === "number";
   const hasLux = typeof sensors.lightIntensity === "number";
-  const hasBiofilter = hasPh || hasWaterTemp || hasTds;
 
-  const phDeviation = hasPh ? Math.abs((sensors.ph as number) - 7.0) : 0;
-  const tempDeviation = hasWaterTemp
-    ? Math.abs((sensors.waterTemperature as number) - 25.0)
+  const phStats = computeSensorStats(history, "ph");
+  const tdsStats = computeSensorStats(history, "tds");
+  const waterTempStats = computeSensorStats(history, "waterTemperature");
+  const airTempStats = computeSensorStats(history, "airTemperature");
+  const humidityStats = computeSensorStats(history, "humidity");
+  const luxStats = computeSensorStats(history, "lightIntensity");
+
+  const hasWaterQualityLive = hasPh || hasTds;
+  const hasThermalLive = hasWaterTemp || hasAirTemp || hasHumidity;
+
+  const formattedPh = hasPh ? (sensors.ph as number).toFixed(2) : "--";
+  const formattedTds = hasTds ? String(Math.round(sensors.tds as number)) : "--";
+  const formattedWaterTemp = hasWaterTemp
+    ? (sensors.waterTemperature as number).toFixed(1)
+    : "--";
+  const formattedAirTemp = hasAirTemp
+    ? (sensors.airTemperature as number).toFixed(1)
+    : "--";
+  const formattedHumidity = hasHumidity
+    ? String(Math.round(sensors.humidity as number))
+    : "--";
+  const formattedLux = hasLux
+    ? String(Math.round(sensors.lightIntensity as number))
+    : "--";
+
+  const luxBarPct = hasLux
+    ? Math.max(0, Math.min(100, Math.round(((sensors.lightIntensity as number) / 2500) * 100)))
     : 0;
-  const pumpPenalty = actuators.waterPump?.isOn ? 0 : 8.5;
-  const totalEfficiency = hasBiofilter
-    ? Number(
-        Math.max(
-          62,
-          Math.min(
-            98.5,
-            97.2 - phDeviation * 5.2 - Math.max(0, tempDeviation - 2) * 1.6 - pumpPenalty
-          )
-        ).toFixed(1)
-      )
-    : null;
-  const nitrateRatio =
-    hasTds && (sensors.tds as number) >= 400 && (sensors.tds as number) <= 800
-      ? 0.768
-      : 0.72;
-  const nitratePct =
-    totalEfficiency !== null ? Number((totalEfficiency * nitrateRatio).toFixed(1)) : 0;
-  const nitrificationPct =
-    totalEfficiency !== null ? Number((totalEfficiency - nitratePct).toFixed(1)) : 0;
-  const residuePct =
-    totalEfficiency !== null ? Number((100 - totalEfficiency).toFixed(1)) : 0;
-
-  const formattedTemp = hasWaterTemp ? (sensors.waterTemperature as number).toFixed(1) : "--";
-  const formattedAirTemp = hasAirTemp ? (sensors.airTemperature as number).toFixed(1) : "--";
-  const formattedHumidity = hasHumidity ? Math.round(sensors.humidity as number) : "--";
-  const formattedLux = hasLux ? Math.round(sensors.lightIntensity as number) : "--";
-
-  const thermalStabilityPct = hasWaterTemp
-    ? Math.round(
-        Math.max(
-          45,
-          Math.min(100, 100 - Math.abs((sensors.waterTemperature as number) - 24.5) * 8)
-        )
-      )
-    : null;
-  const airDelta =
-    hasAirTemp && hasWaterTemp
-      ? Number(((sensors.airTemperature as number) - (sensors.waterTemperature as number)).toFixed(1))
-      : null;
-
-  const lightEfficiencyPct = !hasLux
-    ? null
-    : (sensors.lightIntensity as number) >= 1200
-    ? 100
-    : (sensors.lightIntensity as number) >= 500
-    ? 90
-    : (sensors.lightIntensity as number) >= 250
-    ? 78
-    : 62;
-  const estimatedPpfd = hasLux
-    ? Math.round((sensors.lightIntensity as number) * 0.0185)
-    : null;
 
   return (
     <div className="space-y-4">
       <div>
         <h2 className="text-base font-bold text-[#111827] tracking-tight">
-          Korelasi Bioproses &amp; Stabilitas Ekosistem
+          Ringkasan Statistik 6 Sensor ESP32
         </h2>
         <p className="text-xs text-[#6B7280] mt-0.5">
-          Ringkasan efisiensi nitrifikasi, keseimbangan termal iklim mikro, dan kecukupan cahaya.
+          Nilai terkini dan statistik min/rata-rata/maks aktual dari sensor pH, TDS, DS18B20, DHT22, dan LDR.
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* CARD 1: KONVERSI NITRIFIKASI */}
+        {/* CARD 1: KUALITAS AIR (PROBE pH & TDS) */}
         <div className="rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs flex flex-col justify-between space-y-4">
-          <div>
+          <div className="space-y-4">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <div className="h-7 w-7 rounded-full bg-[#DCFCE7] flex items-center justify-center text-[#165B39]">
-                  <CheckCircle2 className="h-4 w-4" />
+                  <Droplets className="h-4 w-4" />
                 </div>
                 <span className="text-xs font-bold text-[#111827]">
-                  Konversi Nitrifikasi
+                  Kualitas Air
                 </span>
               </div>
               <span
                 className={`px-2 py-0.5 rounded-full text-[10.5px] font-semibold shrink-0 ${
-                  edgeOnline && actuators.waterPump?.isOn
+                  hasWaterQualityLive
                     ? "bg-[#DCFCE7] text-[#166534]"
                     : "bg-[#F3F4F6] text-[#6B7280]"
                 }`}
               >
-                {!edgeOnline
-                  ? "Offline"
-                  : actuators.waterPump?.isOn
-                  ? "Aktif"
-                  : "Terjeda"}
+                {hasWaterQualityLive ? "Live" : "Offline"}
               </span>
             </div>
 
-            <div className="mt-4">
-              <div className="text-3xl font-bold tracking-tight num-tabular text-[#111827]">
-                {totalEfficiency !== null ? totalEfficiency.toFixed(1) : "--"}
-                <span className="text-lg font-normal text-[#9CA3AF] ml-0.5">%</span>
+            <div className="space-y-3 divide-y divide-[#F3F4F6]">
+              {/* pH Sensor */}
+              <div className="pb-3">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-[11px] font-medium text-[#6B7280]">
+                    Sensor pH Air
+                  </span>
+                  <span className="text-[10.5px] text-[#9CA3AF]">
+                    Ideal 6.5–7.5
+                  </span>
+                </div>
+                <div className="text-2xl font-bold tracking-tight num-tabular text-[#111827] mt-0.5">
+                  {formattedPh}
+                  <span className="text-sm font-normal text-[#9CA3AF] ml-1">pH</span>
+                </div>
+                <div className="flex items-center justify-between text-[10.5px] text-[#6B7280] num-tabular mt-1.5">
+                  <span>Min: {phStats ? phStats.min.toFixed(2) : "--"}</span>
+                  <span>Avg: {phStats ? phStats.avg.toFixed(2) : "--"}</span>
+                  <span>Max: {phStats ? phStats.max.toFixed(2) : "--"}</span>
+                </div>
               </div>
-              <p className="text-[11px] text-[#6B7280] mt-0.5">
-                Perombakan Amonia ke Nitrat (NH3 &rarr; NO3-)
-              </p>
-            </div>
 
-            <div className="mt-4 space-y-1.5">
-              <div className="flex items-center justify-between text-[11px] text-[#6B7280]">
-                <span>Distribusi Biofilter</span>
-                <span className={totalEfficiency !== null ? "text-[#165B39] font-semibold" : "text-[#9CA3AF]"}>
-                  {totalEfficiency !== null ? `${nitratePct}% Terserap` : "Menunggu"}
-                </span>
-              </div>
-              <div className="h-2.5 w-full rounded-full bg-[#F3F4F6] overflow-hidden flex">
-                <div
-                  className="bg-[#165B39] h-full transition-all duration-300"
-                  style={{ width: `${nitratePct}%` }}
-                />
-                <div
-                  className="bg-[#4EAB7C] h-full transition-all duration-300"
-                  style={{ width: `${nitrificationPct}%` }}
-                />
-                <div
-                  className="bg-[#CBD5E1] h-full transition-all duration-300"
-                  style={{ width: `${residuePct}%` }}
-                />
-              </div>
-              <div className="flex items-center justify-between text-[10px] text-[#9CA3AF] num-tabular pt-0.5">
-                <span className="flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#165B39]" /> Nitrat {totalEfficiency !== null ? `${nitratePct}%` : "--"}
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#4EAB7C]" /> Proses {totalEfficiency !== null ? `${nitrificationPct}%` : "--"}
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#9CA3AF]" /> Residu {totalEfficiency !== null ? `${residuePct}%` : "--"}
-                </span>
+              {/* TDS Sensor */}
+              <div>
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-[11px] font-medium text-[#6B7280]">
+                    Sensor TDS Nutrisi
+                  </span>
+                  <span className="text-[10.5px] text-[#9CA3AF]">
+                    Ideal 400–800
+                  </span>
+                </div>
+                <div className="text-2xl font-bold tracking-tight num-tabular text-[#111827] mt-0.5">
+                  {formattedTds}
+                  <span className="text-sm font-normal text-[#9CA3AF] ml-1">ppm</span>
+                </div>
+                <div className="flex items-center justify-between text-[10.5px] text-[#6B7280] num-tabular mt-1.5">
+                  <span>Min: {tdsStats ? Math.round(tdsStats.min) : "--"}</span>
+                  <span>Avg: {tdsStats ? Math.round(tdsStats.avg) : "--"}</span>
+                  <span>Max: {tdsStats ? Math.round(tdsStats.max) : "--"}</span>
+                </div>
               </div>
             </div>
           </div>
 
           <div className="pt-3 border-t border-[#F3F4F6] text-[11px] text-[#6B7280] leading-relaxed">
-            Biofilter Kangkung (L2) dan Pakcoy (L4) menyerap limbah ikan menjadi nutrisi daun berkelanjutan.
+            Diukur langsung oleh probe pH air dan sensor TDS analog pada sirkulasi kolam.
           </div>
         </div>
 
-        {/* CARD 2: STABILITAS TERMAL */}
+        {/* CARD 2: SUHU AIR & IKLIM MIKRO (DS18B20 & DHT22) */}
         <div className="rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs flex flex-col justify-between space-y-4">
-          <div>
+          <div className="space-y-4">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <div className="h-7 w-7 rounded-full bg-[#DCFCE7] flex items-center justify-center text-[#165B39]">
                   <Thermometer className="h-4 w-4" />
                 </div>
                 <span className="text-xs font-bold text-[#111827]">
-                  Stabilitas Termal
+                  Suhu &amp; Iklim Mikro
                 </span>
               </div>
               <span
                 className={`px-2 py-0.5 rounded-full text-[10.5px] font-semibold shrink-0 ${
-                  airDelta !== null
+                  hasThermalLive
                     ? "bg-[#DCFCE7] text-[#166534]"
                     : "bg-[#F3F4F6] text-[#6B7280]"
                 }`}
               >
-                {airDelta !== null
-                  ? `Δ ${airDelta >= 0 ? `+${airDelta}` : airDelta}°C`
-                  : "Offline"}
+                {hasThermalLive ? "Live" : "Offline"}
               </span>
             </div>
 
-            <div className="mt-4">
-              <div className="text-3xl font-bold tracking-tight num-tabular text-[#111827]">
-                {formattedTemp}
-                <span className="text-lg font-normal text-[#9CA3AF] ml-0.5">°C</span>
-              </div>
-              <p className="text-[11px] text-[#6B7280] mt-0.5">
-                {thermalStabilityPct !== null
-                  ? `${thermalStabilityPct}% berada di zona nyaman (22–27°C)`
-                  : "Menunggu data DS18B20"}
-              </p>
-            </div>
-
-            <div className="mt-4 space-y-2.5">
-              <div className="h-2.5 w-full rounded-full bg-[#F3F4F6] overflow-hidden">
-                <div
-                  className="h-full bg-[#4EAB7C] rounded-full transition-all duration-300"
-                  style={{ width: `${thermalStabilityPct ?? 0}%` }}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3 pt-1 text-xs">
-                <div>
-                  <div className="text-[10.5px] text-[#6B7280]">Suhu Udara</div>
-                  <div className="font-semibold text-[#111827] num-tabular">{formattedAirTemp}°C</div>
+            <div className="divide-y divide-[#F3F4F6] text-xs">
+              <div className="pb-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-[#6B7280]">
+                    Suhu Air (DS18B20)
+                  </span>
+                  <span className="text-sm font-bold text-[#111827] num-tabular">
+                    {formattedWaterTemp} °C
+                  </span>
                 </div>
-                <div>
-                  <div className="text-[10.5px] text-[#6B7280]">Kelembaban</div>
-                  <div className="font-semibold text-[#111827] num-tabular">{formattedHumidity}%</div>
+                <div className="text-[10.5px] text-[#9CA3AF] num-tabular mt-0.5">
+                  {waterTempStats
+                    ? `Buffer: ${waterTempStats.min.toFixed(1)}–${waterTempStats.max.toFixed(1)}°C (avg ${waterTempStats.avg.toFixed(1)}°C)`
+                    : "Menunggu sampel DS18B20"}
+                </div>
+              </div>
+
+              <div className="py-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-[#6B7280]">
+                    Suhu Udara (DHT22)
+                  </span>
+                  <span className="text-sm font-bold text-[#111827] num-tabular">
+                    {formattedAirTemp} °C
+                  </span>
+                </div>
+                <div className="text-[10.5px] text-[#9CA3AF] num-tabular mt-0.5">
+                  {airTempStats
+                    ? `Buffer: ${airTempStats.min.toFixed(1)}–${airTempStats.max.toFixed(1)}°C (avg ${airTempStats.avg.toFixed(1)}°C)`
+                    : "Menunggu sampel DHT22"}
+                </div>
+              </div>
+
+              <div className="pt-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-[#6B7280]">
+                    Kelembaban (DHT22)
+                  </span>
+                  <span className="text-sm font-bold text-[#111827] num-tabular">
+                    {formattedHumidity} %
+                  </span>
+                </div>
+                <div className="text-[10.5px] text-[#9CA3AF] num-tabular mt-0.5">
+                  {humidityStats
+                    ? `Buffer: ${Math.round(humidityStats.min)}–${Math.round(humidityStats.max)}% (avg ${Math.round(humidityStats.avg)}%)`
+                    : "Menunggu sampel DHT22"}
                 </div>
               </div>
             </div>
           </div>
 
           <div className="pt-3 border-t border-[#F3F4F6] text-[11px] text-[#6B7280] leading-relaxed">
-            Resirkulasi air konstan meredam fluktuasi panas harian demi kesehatan kolam Nila dan Lele.
+            Pembacaan suhu air DS18B20 dan suhu/kelembaban udara sekitar dari DHT22.
           </div>
         </div>
 
-        {/* CARD 3: INTENSITAS CAHAYA LDR */}
+        {/* CARD 3: INTENSITAS CAHAYA (SENSOR LDR) */}
         <div className="rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs flex flex-col justify-between space-y-4">
           <div>
             <div className="flex items-center justify-between gap-2">
@@ -234,7 +244,7 @@ export function ScientificInsightsGrid() {
                   <Sun className="h-4 w-4" />
                 </div>
                 <span className="text-xs font-bold text-[#111827]">
-                  Intensitas Cahaya
+                  Cahaya (LDR)
                 </span>
               </div>
               <span
@@ -249,7 +259,7 @@ export function ScientificInsightsGrid() {
                 {!hasLux
                   ? "Offline"
                   : (sensors.lightIntensity as number) >= 300
-                  ? "PAR Cukup"
+                  ? "Terang"
                   : "Redup"}
               </span>
             </div>
@@ -260,9 +270,11 @@ export function ScientificInsightsGrid() {
                 <span className="text-lg font-normal text-[#9CA3AF] ml-1">lux</span>
               </div>
               <p className="text-[11px] text-[#6B7280] mt-0.5">
-                {estimatedPpfd !== null
-                  ? `Estimasi PPFD ~${estimatedPpfd} µmol/m²/s`
-                  : "Menunggu data LDR dari ESP32"}
+                {hasLux
+                  ? (sensors.lightIntensity as number) >= 300
+                    ? "Memenuhi ambang ≥ 300 lux"
+                    : "Di bawah ambang 300 lux"
+                  : "Menunggu data sensor LDR dari ESP32"}
               </p>
             </div>
 
@@ -270,23 +282,27 @@ export function ScientificInsightsGrid() {
               <div className="h-2.5 w-full rounded-full bg-[#F3F4F6] overflow-hidden">
                 <div
                   className="h-full bg-[#165B39] rounded-full transition-all duration-300"
-                  style={{ width: `${lightEfficiencyPct ?? 0}%` }}
+                  style={{ width: `${luxBarPct}%` }}
                 />
               </div>
               <div className="grid grid-cols-2 gap-3 pt-1 text-xs">
                 <div>
-                  <div className="text-[10.5px] text-[#6B7280]">Efisiensi GDD</div>
-                  <div className="font-semibold text-[#165B39] num-tabular">
-                    {lightEfficiencyPct !== null ? `${lightEfficiencyPct}%` : "--"}
+                  <div className="text-[10.5px] text-[#6B7280]">Min–Maks (LDR)</div>
+                  <div className="font-semibold text-[#111827] num-tabular">
+                    {luxStats
+                      ? `${Math.round(luxStats.min)}–${Math.round(luxStats.max)} lux`
+                      : "--"}
                   </div>
                 </div>
                 <div>
                   <div className="text-[10.5px] text-[#6B7280]">Grow Light</div>
                   <div className="font-semibold text-[#111827]">
                     {!edgeOnline
-                      ? "Offline"
+                      ? actuators.growLight?.isOn
+                        ? "Antrean ON"
+                        : "Offline"
                       : actuators.growLight?.isOn
-                      ? "85W Aktif"
+                      ? "Aktif (85W)"
                       : "Standby"}
                   </div>
                 </div>
@@ -295,7 +311,7 @@ export function ScientificInsightsGrid() {
           </div>
 
           <div className="pt-3 border-t border-[#F3F4F6] text-[11px] text-[#6B7280] leading-relaxed">
-            Pembacaan lux memodulasi proyeksi hari panen GDD dan rekomendasi fotoperiode tanaman.
+            Sensor cahaya LDR memantau intensitas pencahayaan area tanam (target ≥ 300 lux).
           </div>
         </div>
       </div>

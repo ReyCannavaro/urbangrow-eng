@@ -14,24 +14,79 @@ export default function AnalyticsPage() {
   const { history, sensors, backendConnected, systemMeta } = useTelemetry();
 
   const hasPh = typeof sensors.ph === "number";
-  const hasWaterTemp = typeof sensors.waterTemperature === "number";
   const hasTds = typeof sensors.tds === "number";
-  const hasAnyWaterSensor = hasPh || hasWaterTemp || hasTds;
+  const hasWaterTemp = typeof sensors.waterTemperature === "number";
+  const hasAirTemp = typeof sensors.airTemperature === "number";
+  const hasHumidity = typeof sensors.humidity === "number";
+  const hasLux = typeof sensors.lightIntensity === "number";
 
-  const formattedTemp = hasWaterTemp
-    ? (sensors.waterTemperature as number).toFixed(1)
-    : "--";
-  const formattedTDS = hasTds ? Math.round(sensors.tds as number) : "--";
-  const formattedPH = hasPh ? (sensors.ph as number).toFixed(2) : "--";
+  const sensorRows = [
+    {
+      label: "pH Air (Probe pH)",
+      measured: hasPh ? `${(sensors.ph as number).toFixed(2)} pH` : "-- pH",
+      ideal: "Ideal: 6.5–7.5 pH",
+      live: hasPh,
+      ok: hasPh && (sensors.ph as number) >= 6.5 && (sensors.ph as number) <= 7.5,
+      warnLabel: "Di Luar Rentang",
+    },
+    {
+      label: "TDS Nutrisi (Sensor TDS)",
+      measured: hasTds ? `${Math.round(sensors.tds as number)} ppm` : "-- ppm",
+      ideal: "Ideal: 400–800 ppm",
+      live: hasTds,
+      ok: hasTds && (sensors.tds as number) >= 400 && (sensors.tds as number) <= 800,
+      warnLabel: "Di Luar Rentang",
+    },
+    {
+      label: "Suhu Air Kolam (DS18B20)",
+      measured: hasWaterTemp
+        ? `${(sensors.waterTemperature as number).toFixed(1)} °C`
+        : "-- °C",
+      ideal: "Ideal: 22–27 °C",
+      live: hasWaterTemp,
+      ok:
+        hasWaterTemp &&
+        (sensors.waterTemperature as number) >= 22 &&
+        (sensors.waterTemperature as number) <= 27,
+      warnLabel: "Di Luar Rentang",
+    },
+    {
+      label: "Suhu Udara (DHT22)",
+      measured: hasAirTemp
+        ? `${(sensors.airTemperature as number).toFixed(1)} °C`
+        : "-- °C",
+      ideal: "Ideal: 23–32 °C",
+      live: hasAirTemp,
+      ok:
+        hasAirTemp &&
+        (sensors.airTemperature as number) >= 23 &&
+        (sensors.airTemperature as number) <= 32,
+      warnLabel: "Di Luar Rentang",
+    },
+    {
+      label: "Kelembaban Udara (DHT22)",
+      measured: hasHumidity
+        ? `${Math.round(sensors.humidity as number)} %`
+        : "-- %",
+      ideal: "Ideal: 55–80 %",
+      live: hasHumidity,
+      ok:
+        hasHumidity &&
+        (sensors.humidity as number) >= 55 &&
+        (sensors.humidity as number) <= 80,
+      warnLabel: "Di Luar Rentang",
+    },
+    {
+      label: "Intensitas Cahaya (LDR)",
+      measured: hasLux ? `${Math.round(sensors.lightIntensity as number)} lux` : "-- lux",
+      ideal: "Target: ≥ 300 lux",
+      live: hasLux,
+      ok: hasLux && (sensors.lightIntensity as number) >= 300,
+      warnLabel: "Redup",
+    },
+  ];
 
-  const isPhOptimal =
-    hasPh && (sensors.ph as number) >= 6.5 && (sensors.ph as number) <= 7.5;
-  const isTempOptimal =
-    hasWaterTemp &&
-    (sensors.waterTemperature as number) >= 22 &&
-    (sensors.waterTemperature as number) <= 27;
-  const isTdsOptimal =
-    hasTds && (sensors.tds as number) >= 400 && (sensors.tds as number) <= 800;
+  const liveSensorCount = sensorRows.filter((row) => row.live).length;
 
   return (
     <div className="space-y-6">
@@ -45,118 +100,57 @@ export default function AnalyticsPage() {
         <TimeSeriesChart history={history} sensors={sensors} />
       </RevealOnView>
 
-      {/* Lower Scientific & Audit Deck */}
+      {/* Lower Sensor Statistics & 6-Sensor Threshold Checklist */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         <div className="lg:col-span-7">
           <ScientificInsightsGrid />
         </div>
 
         <div className="lg:col-span-5 space-y-4">
-          {/* Water Chemistry Balance Card */}
+          {/* 6 Physical ESP32 Sensors Checklist Card */}
           <div className="rounded-[24px] bg-white border border-[#E5E7EB] p-5 shadow-xs">
             <div className="flex items-center justify-between pb-3 border-b border-[#F3F4F6]">
               <h3 className="text-sm font-bold text-[#111827]">
-                Neraca Kimiawi Air (ECAD)
+                Status 6 Sensor Fisik ESP32
               </h3>
               <span
                 className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                  !hasAnyWaterSensor
+                  liveSensorCount === 0
                     ? "bg-[#F3F4F6] text-[#6B7280]"
-                    : (!hasPh || isPhOptimal) &&
-                      (!hasTds || isTdsOptimal) &&
-                      (!hasWaterTemp || isTempOptimal)
-                    ? "bg-[#DCFCE7] text-[#166534]"
-                    : "bg-[#FEF3C7] text-[#B45309]"
+                    : "bg-[#DCFCE7] text-[#166534]"
                 }`}
               >
-                {!hasAnyWaterSensor
-                  ? "Offline"
-                  : (!hasPh || isPhOptimal) &&
-                    (!hasTds || isTdsOptimal) &&
-                    (!hasWaterTemp || isTempOptimal)
-                  ? "Stabil"
-                  : "Pantau"}
+                {liveSensorCount === 0 ? "Offline" : `${liveSensorCount}/6 Live`}
               </span>
             </div>
 
             <div className="divide-y divide-[#F3F4F6] text-xs">
-              <div className="py-3 flex items-center justify-between gap-2">
-                <div>
-                  <span className="font-semibold text-[#111827] block">
-                    pH Buffer Index
-                  </span>
-                  <span className="text-[11px] text-[#6B7280] num-tabular">
-                    Terukur: {formattedPH} pH
+              {sensorRows.map((row) => (
+                <div
+                  key={row.label}
+                  className="py-2.5 first:pt-3 last:pb-0 flex items-center justify-between gap-2"
+                >
+                  <div className="min-w-0">
+                    <span className="font-semibold text-[#111827] block truncate">
+                      {row.label}
+                    </span>
+                    <span className="text-[11px] text-[#6B7280] num-tabular">
+                      {row.measured} &bull; {row.ideal}
+                    </span>
+                  </div>
+                  <span
+                    className={`font-semibold shrink-0 ${
+                      !row.live
+                        ? "text-[#6B7280]"
+                        : row.ok
+                        ? "text-[#166534]"
+                        : "text-[#B45309]"
+                    }`}
+                  >
+                    {!row.live ? "Offline" : row.ok ? "Normal" : row.warnLabel}
                   </span>
                 </div>
-                <span
-                  className={`font-semibold ${
-                    !hasPh
-                      ? "text-[#6B7280]"
-                      : isPhOptimal
-                      ? "text-[#166534]"
-                      : "text-[#B45309]"
-                  }`}
-                >
-                  {!hasPh
-                    ? "Sensor Offline"
-                    : isPhOptimal
-                    ? "Optimal (6.5–7.5)"
-                    : "Buffer Check"}
-                </span>
-              </div>
-
-              <div className="py-3 flex items-center justify-between gap-2">
-                <div>
-                  <span className="font-semibold text-[#111827] block">
-                    TDS Nutrisi Terlarut
-                  </span>
-                  <span className="text-[11px] text-[#6B7280] num-tabular">
-                    Kepekatan: {formattedTDS} ppm
-                  </span>
-                </div>
-                <span
-                  className={`font-semibold ${
-                    !hasTds
-                      ? "text-[#6B7280]"
-                      : isTdsOptimal
-                      ? "text-[#166534]"
-                      : "text-[#B45309]"
-                  }`}
-                >
-                  {!hasTds
-                    ? "Sensor Offline"
-                    : isTdsOptimal
-                    ? "Ideal (400–800)"
-                    : "Atur Pakan"}
-                </span>
-              </div>
-
-              <div className="pt-3 flex items-center justify-between gap-2">
-                <div>
-                  <span className="font-semibold text-[#111827] block">
-                    Suhu Air Kolam (DS18B20)
-                  </span>
-                  <span className="text-[11px] text-[#6B7280] num-tabular">
-                    Temperatur: {formattedTemp} °C
-                  </span>
-                </div>
-                <span
-                  className={`font-semibold ${
-                    !hasWaterTemp
-                      ? "text-[#6B7280]"
-                      : isTempOptimal
-                      ? "text-[#166534]"
-                      : "text-[#B45309]"
-                  }`}
-                >
-                  {!hasWaterTemp
-                    ? "Sensor Offline"
-                    : isTempOptimal
-                    ? "Optimal (22–27°C)"
-                    : "Pantau Suhu"}
-                </span>
-              </div>
+              ))}
             </div>
           </div>
 
@@ -183,7 +177,7 @@ export default function AnalyticsPage() {
               </div>
 
               <p className="text-xs text-white/80 leading-relaxed">
-                Data telemetri disinkronkan kontinu dari ESP32 menuju backend ElysiaJS dan disimpan ke buffer SQLite deret waktu.
+                Telemetri 6 sensor dikirim dari {systemMeta.edgeNode} via HTTPS ke backend ElysiaJS dan disimpan pada buffer SQLite ({history.length} sampel aktif).
               </p>
 
               <div className="pt-1 flex items-center justify-between text-xs">
