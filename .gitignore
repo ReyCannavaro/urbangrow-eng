@@ -16,3 +16,6 @@ services/backend/data/*.sqlite-shm
 
 # ESP32 local Wi-Fi / server credentials (keep out of git)
 firmware/esp32_urbangrow/secrets.h
+
+*.apk
+
