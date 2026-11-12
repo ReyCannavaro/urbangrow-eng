@@ -423,7 +423,7 @@ export const app = new Elysia()
     alerts: simulator.evaluateAlerts(),
   }))
 
-  // 4. Actuator toggling (waterPump/pump, aerator, growLight, feeder, dosingPump)
+  // 4. Actuator toggling (waterPump/pump, aerator, growLight, feeder)
   .post(
     "/api/actuators/:id/toggle",
     ({ params: { id }, set }) => {

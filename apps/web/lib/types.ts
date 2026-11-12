@@ -29,7 +29,7 @@ export interface ActuatorState {
   id: string;
   name: string;
   code: string;
-  type?: "pump" | "aerator" | "light" | "feeder" | "dosing" | string;
+  type?: "pump" | "aerator" | "light" | "feeder" | string;
   isOn: boolean;
   mode?: "auto" | "manual";
   powerWatts: number;
