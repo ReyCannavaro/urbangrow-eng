@@ -490,9 +490,9 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
               [id]: { ...prev[id], isOn: false, installed: false, hardwareStatus: "development" },
             };
           });
-          const devMsg = `Aktuator '${actName}' masih dalam tahap pengembangan (perangkat keras belum terpasang pada modul ESP32). Saklar otomatis kembali ke posisi OFF.`;
+          const devMsg = `Perangkat keras '${actName}' belum terpasang fisik pada modul ESP32. Saklar otomatis kembali ke posisi OFF.`;
           setLastActuatorError(devMsg);
-          showActuatorToast(devMsg, "warning");
+          showActuatorToast(devMsg, "warning", "Tahap Pengembangan");
         }, 700);
 
         return {
@@ -513,9 +513,9 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
             };
           });
           const offlineMsg =
-            "Pompa Sirkulasi 12V tidak dapat menyala: Modul ESP32 sedang offline / tidak terhubung ke jaringan Wi-Fi. Saklar otomatis kembali OFF.";
+            "Node ESP32 sedang offline / tidak terhubung ke Wi-Fi. Saklar ditahan OFF demi proteksi perangkat.";
           setLastActuatorError(offlineMsg);
-          showActuatorToast(offlineMsg, "error");
+          showActuatorToast(offlineMsg, "error", "Node Hardware Offline");
         }, 700);
 
         return { ok: false, error: "Modul ESP32 sedang offline." };
@@ -536,7 +536,7 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
           });
         }
         setLastActuatorError(errMsg);
-        showActuatorToast(errMsg, "error");
+        showActuatorToast(errMsg, "error", "Interlock Keamanan Aktif");
         return { ok: false, error: errMsg };
       }
 
@@ -556,12 +556,13 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
 
       clearActuatorError();
       showActuatorToast(
-        `Pompa Sirkulasi 12V berhasil ${optimisticNext ? "dinyalakan" : "dimatikan"} via ESP32 (GPIO 14 Active-LOW).`,
-        "success"
+        `Sinyal kontrol relay GPIO 14 Active-LOW berhasil dikirim ke ${systemMeta.edgeNode}.`,
+        "success",
+        `Pompa Sirkulasi 12V ${optimisticNext ? "Dinyalakan" : "Dimatikan"}`
       );
       return { ok: true };
     },
-    [actuators, systemMeta.edgeOnline, showActuatorToast, clearActuatorError]
+    [actuators, systemMeta.edgeOnline, systemMeta.edgeNode, showActuatorToast, clearActuatorError]
   );
 
   const toggleActuator = useCallback(
@@ -600,8 +601,9 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
   const dispenseFeed = useCallback(async () => {
     setFeedActive(true);
     showActuatorToast(
-      "Modul servo Auto-Feeder masih dalam tahap pengembangan (perangkat keras belum terpasang pada ESP32).",
-      "warning"
+      "Modul servo Auto-Feeder belum terpasang fisik pada ESP32. Perintah pakan dijalankan secara simulasi.",
+      "warning",
+      "Auto-Feeder (Simulasi)"
     );
     await fetchFromBackend("/api/feed/dispense", { method: "POST" }, 3000);
     setTimeout(() => setFeedActive(false), 2200);
