@@ -161,22 +161,6 @@ export function PumpDiagnosticsCard({
           </button>
         </div>
       </div>
-
-      {/* Spesifikasi Operasional Pompa (Minimalist Hardware Spec) */}
-      <div className="pt-2 border-t border-[#F3F4F6] flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#6B7280]">
-        <div className="flex items-center gap-3">
-          <span>
-            Daya: <strong className="text-[#374151] font-mono">12V DC (45W)</strong>
-          </span>
-          <span className="text-[#D1D5DB]">&bull;</span>
-          <span>
-            Pinout: <strong className="text-[#374151] font-mono">GPIO 14 (Active-LOW)</strong>
-          </span>
-        </div>
-        <span className="text-[10px] text-[#9CA3AF] font-mono">
-          DRY-RUN INTERLOCK ACTIVE
-        </span>
-      </div>
     </div>
   );
 }
