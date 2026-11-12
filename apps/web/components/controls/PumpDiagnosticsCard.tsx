@@ -112,7 +112,7 @@ export function PumpDiagnosticsCard({
       <div
         className={`p-4 rounded-2xl border transition-all ${
           statusType === "active"
-            ? "bg-[#DCFCE7]/40 border-[#165B39]/20 text-[#166534]"
+            ? "bg-[#F0FDF4] border-emerald-200/80 text-[#166534]"
             : statusType === "offline"
             ? "bg-rose-50/80 border-rose-200 text-rose-800"
             : statusType === "blocked"
