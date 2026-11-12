@@ -424,29 +424,50 @@ function FormattedMarkdownMessage({ text }: { text: string }) {
       continue;
     }
 
-    // 4. Headings
-    if (trimmed.startsWith("### ")) {
-      nodes.push(
-        <h4
-          key={`h3-${i}`}
-          className="text-[13.5px] font-bold text-[#165B39] pt-2 tracking-tight"
-        >
-          {renderInlineMarkdown(trimmed.slice(4))}
-        </h4>
-      );
-      i += 1;
-      continue;
-    }
-    if (trimmed.startsWith("## ") || trimmed.startsWith("# ")) {
-      const sliceLen = trimmed.startsWith("## ") ? 3 : 2;
-      nodes.push(
-        <h3
-          key={`h2-${i}`}
-          className="text-[14.5px] font-bold text-[#111827] pt-2 tracking-tight"
-        >
-          {renderInlineMarkdown(trimmed.slice(sliceLen))}
-        </h3>
-      );
+    // 4. Headings (Support H1 through H6: #, ##, ###, ####, #####, ######)
+    const headingMatch = trimmed.match(/^(#{1,6})\s*(.+)$/);
+    if (headingMatch && !/^#[0-9a-fA-F]{3,8}$/.test(trimmed)) {
+      const level = headingMatch[1].length;
+      const headingContent = headingMatch[2].replace(/\s+#+$/, "").trim();
+
+      if (level === 1) {
+        nodes.push(
+          <h2
+            key={`h1-${i}`}
+            className="text-[15.5px] font-bold text-[#111827] pt-2.5 pb-0.5 tracking-tight border-b border-[#F3F4F6]"
+          >
+            {renderInlineMarkdown(headingContent)}
+          </h2>
+        );
+      } else if (level === 2) {
+        nodes.push(
+          <h3
+            key={`h2-${i}`}
+            className="text-[14.5px] font-bold text-[#111827] pt-2 pb-0.5 tracking-tight"
+          >
+            {renderInlineMarkdown(headingContent)}
+          </h3>
+        );
+      } else if (level === 3) {
+        nodes.push(
+          <h4
+            key={`h3-${i}`}
+            className="text-[13.5px] font-bold text-[#165B39] pt-2 pb-0.5 tracking-tight"
+          >
+            {renderInlineMarkdown(headingContent)}
+          </h4>
+        );
+      } else {
+        // H4, H5, H6 (misal: #### 🌟 Skor Kesiapan)
+        nodes.push(
+          <h5
+            key={`h4-${i}`}
+            className="text-[13px] font-bold text-[#1F2937] pt-1.5 pb-0.5 tracking-tight"
+          >
+            {renderInlineMarkdown(headingContent)}
+          </h5>
+        );
+      }
       i += 1;
       continue;
     }
@@ -507,12 +528,15 @@ function FormattedMarkdownMessage({ text }: { text: string }) {
       continue;
     }
 
-    // 9. Standard Paragraph
-    nodes.push(
-      <p key={`p-${i}`} className="text-[13px] text-[#1F2937] leading-relaxed">
-        {renderInlineMarkdown(trimmed)}
-      </p>
-    );
+    // 9. Standard Paragraph (Fail-safe: bersihkan sisa simbol pagar agar tidak bocor ke UI)
+    const cleanParagraph = trimmed.replace(/^#{1,6}\s*/, "").trim();
+    if (cleanParagraph) {
+      nodes.push(
+        <p key={`p-${i}`} className="text-[13px] text-[#1F2937] leading-relaxed">
+          {renderInlineMarkdown(cleanParagraph)}
+        </p>
+      );
+    }
     i += 1;
   }
 
