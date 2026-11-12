@@ -5,7 +5,6 @@ import {
   Waves,
   CheckCircle2,
   XCircle,
-  Cpu,
   ShieldAlert,
   Info,
   Wrench,
@@ -163,78 +162,20 @@ export function PumpDiagnosticsCard({
         </div>
       </div>
 
-      {/* Matriks Kesiapan Perangkat Keras (Hardware Matrix) */}
-      <div className="space-y-2 pt-1">
-        <h4 className="text-xs font-bold text-[#111827] flex items-center gap-1.5">
-          <Cpu className="h-3.5 w-3.5 text-[#165B39]" />
-          <span>Matriks Kesiapan Hardware Aktuator (ESP32)</span>
-        </h4>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-          <div className="p-2.5 rounded-xl border border-emerald-200/80 bg-emerald-50/50 flex items-center justify-between gap-2">
-            <div>
-              <span className="font-bold text-emerald-900 block">
-                Pompa Sirkulasi 12V
-              </span>
-              <span className="text-emerald-700 text-[10px]">
-                Kanal RELAY-01 &bull; GPIO 14 Active-LOW
-              </span>
-            </div>
-            <span className="px-2 py-0.5 rounded-md font-semibold text-[9.5px] bg-emerald-100 text-emerald-800 shrink-0">
-              Terpasang Fisik
-            </span>
-          </div>
-
-          <div className="p-2.5 rounded-xl border border-amber-200/60 bg-amber-50/30 flex items-center justify-between gap-2">
-            <div>
-              <span className="font-bold text-amber-900 block">
-                Aerator Oksigen Nila
-              </span>
-              <span className="text-amber-700 text-[10px]">
-                Hardware modul relay belum dipasang
-              </span>
-            </div>
-            <span className="px-2 py-0.5 rounded-md font-medium text-[9.5px] bg-amber-100 text-amber-800 shrink-0">
-              Tahap Pengembangan
-            </span>
-          </div>
-
-          <div className="p-2.5 rounded-xl border border-amber-200/60 bg-amber-50/30 flex items-center justify-between gap-2">
-            <div>
-              <span className="font-bold text-amber-900 block">
-                Grow Light Fotosintesis
-              </span>
-              <span className="text-amber-700 text-[10px]">
-                Hardware modul driver LED belum dipasang
-              </span>
-            </div>
-            <span className="px-2 py-0.5 rounded-md font-medium text-[9.5px] bg-amber-100 text-amber-800 shrink-0">
-              Tahap Pengembangan
-            </span>
-          </div>
-
-          <div className="p-2.5 rounded-xl border border-amber-200/60 bg-amber-50/30 flex items-center justify-between gap-2">
-            <div>
-              <span className="font-bold text-amber-900 block">
-                Auto-Feeder &amp; Dosing
-              </span>
-              <span className="text-amber-700 text-[10px]">
-                Hardware servo &amp; pompa peristaltik belum ada
-              </span>
-            </div>
-            <span className="px-2 py-0.5 rounded-md font-medium text-[9.5px] bg-amber-100 text-amber-800 shrink-0">
-              Tahap Pengembangan
-            </span>
-          </div>
+      {/* Spesifikasi Operasional Pompa (Minimalist Hardware Spec) */}
+      <div className="pt-2 border-t border-[#F3F4F6] flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#6B7280]">
+        <div className="flex items-center gap-3">
+          <span>
+            Daya: <strong className="text-[#374151] font-mono">12V DC (45W)</strong>
+          </span>
+          <span className="text-[#D1D5DB]">&bull;</span>
+          <span>
+            Pinout: <strong className="text-[#374151] font-mono">GPIO 14 (Active-LOW)</strong>
+          </span>
         </div>
-
-        <p className="text-[10.5px] text-[#6B7280] leading-relaxed pt-1">
-          <strong>Catatan Dinamis:</strong> Saklar aktuator yang berada dalam
-          tahap pengembangan tetap dapat dinyalakan untuk menguji komunikasi ke
-          alat. Alat ESP32 akan merespons penolakan hardware, dan saklar
-          otomatis kembali ke posisi <strong>OFF</strong> disertai notifikasi
-          penjelasan.
-        </p>
+        <span className="text-[10px] text-[#9CA3AF] font-mono">
+          DRY-RUN INTERLOCK ACTIVE
+        </span>
       </div>
     </div>
   );
