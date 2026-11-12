@@ -1,7 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/config/api_config.dart';
 import '../../../telemetry/presentation/telemetry_notifier.dart';
 
 class AgriBotScreen extends ConsumerStatefulWidget {
@@ -21,13 +24,13 @@ class _AgriBotScreenState extends ConsumerState<AgriBotScreen> {
       'isUser': false,
       'time': '10:00',
       'text':
-          'Halo! Saya AgriBot AI, asisten agronomi dan kesehatan akuaponik UrbanGrow Anda. Seluruh sensor 4-Level dalam kondisi optimal saat ini. Ada yang bisa saya bantu analisa?',
+          'Halo! Saya AgriBot AI, asisten agronomi dan kesehatan akuaponik UrbanGrow Anda. Seluruh sensor kaskade 4-level dalam kondisi optimal saat ini. Ada yang bisa saya bantu analisa?',
     },
     {
       'isUser': false,
       'time': '10:01',
       'text':
-          '💡 Ringkasan Pagi: Pakcoy L4 memasuki H+18 dengan laju fotosintesis tinggi. Bakteri biofilter di L2 aktif mengonversi 96.4% amonia menjadi nitrat ramah tanaman.',
+          'Ringkasan Pagi: Pakcoy L4 memasuki fase vegetatif dengan laju fotosintesis tinggi. Bakteri biofilter aktif mengonversi 96.4% amonia menjadi nitrat ramah tanaman.',
     },
   ];
 
@@ -36,6 +39,7 @@ class _AgriBotScreenState extends ConsumerState<AgriBotScreen> {
     '🐟 Analisa Kebugaran Ikan Nila L3',
     '🧪 Solusi Menjaga Kestabilan pH',
     '⚡ Optimasi Siklus Aerasi & Daya',
+    '📸 Diagnosa Kesehatan Daun & Sisik',
   ];
 
   @override
@@ -45,15 +49,25 @@ class _AgriBotScreenState extends ConsumerState<AgriBotScreen> {
     super.dispose();
   }
 
-  void _sendMessage(String query) {
+  String _cleanMarkdown(String text) {
+    return text
+        .replaceAll(RegExp(r'^[ \t]*#{1,6}\s*', multiLine: true), '')
+        .replaceAll(RegExp(r'\*\*'), '')
+        .replaceAll(RegExp(r'\n{3,}'), '\n\n')
+        .trim();
+  }
+
+  Future<void> _sendMessage(String query) async {
     if (query.trim().isEmpty) return;
 
     HapticFeedback.lightImpact();
+    final userText = query.trim();
+
     setState(() {
       _messages.add({
         'isUser': true,
         'time': 'Baru saja',
-        'text': query.trim(),
+        'text': userText,
       });
       _isTyping = true;
     });
@@ -61,43 +75,76 @@ class _AgriBotScreenState extends ConsumerState<AgriBotScreen> {
     _scrollToBottom();
 
     final telemetry = ref.read(telemetryNotifierProvider);
+    String reply = '';
 
-    // Context-aware AI response based on live telemetry
-    Future.delayed(const Duration(milliseconds: 900), () {
-      if (!mounted) return;
+    // Attempt backend AI request first
+    try {
+      final res = await http
+          .post(
+            Uri.parse(ApiConfig.chat),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'message': userText,
+              'history': _messages
+                  .take(6)
+                  .map((m) => {
+                        'role': (m['isUser'] as bool) ? 'user' : 'model',
+                        'parts': [{'text': m['text']}],
+                      })
+                  .toList(),
+            }),
+          )
+          .timeout(const Duration(seconds: 6));
 
-      String reply = '';
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        final rawReply = data['reply'] as String? ?? '';
+        if (rawReply.isNotEmpty) {
+          reply = _cleanMarkdown(rawReply);
+        }
+      }
+    } catch (_) {
+      // Fallback to local telemetry-aware context
+    }
+
+    // Fallback if network fails or reply is empty
+    if (reply.isEmpty) {
       final ph = telemetry.sensors.ph;
       final temp = telemetry.sensors.waterTemperature;
       final doVal = telemetry.sensors.dissolvedOxygen;
 
-      if (query.contains('Panen') || query.contains('Pakcoy')) {
+      if (userText.contains('Panen') || userText.contains('Pakcoy')) {
         reply =
-            'Berdasarkan data spektrum LED fotosintesis dan serapan TDS (${telemetry.sensors.tds} ppm), daun Pakcoy di Level 4 tumbuh sangat subur. Estimasi panen optimal adalah 10 hari lagi saat bobot daun mencapai ~150g per netpot.';
-      } else if (query.contains('Nila') || query.contains('Ikan')) {
+            'Berdasarkan data spektrum LED fotosintesis dan serapan TDS (${telemetry.sensors.tds} ppm), daun Pakcoy di Level 4 tumbuh sangat subur. Estimasi panen optimal adalah 7 hari lagi saat akumulasi termal GDD mencapai 450 °C·Hari (~155g per pot).';
+      } else if (userText.contains('Nila') || userText.contains('Ikan')) {
         reply =
-            'Ikan Nila di Level 3 sangat aktif! Dengan DO saat ini ${doVal.toStringAsFixed(2)} mg/L (target > 5.0 mg/L) dan suhu ${temp.toStringAsFixed(1)}°C, metabolisme pakan berada pada level prima. FCR tercatat efisien di 1.15.';
-      } else if (query.contains('pH')) {
+            'Ikan Nila Merah di Kolam Sekat 1 sangat aktif! Dengan DO saat ini ${doVal.toStringAsFixed(2)} mg/L (target > 5.0 mg/L) dan suhu ${temp.toStringAsFixed(1)}°C, metabolisme pakan berada pada level prima. FCR tercatat efisien di 1.15.';
+      } else if (userText.contains('pH')) {
         reply =
-            'Nilai pH air saat ini adalah ${ph.toStringAsFixed(2)}. Nilai ini ideal untuk sistem kombinasi ikan & sayuran (rentang 6.5 - 7.5). Belum diperlukan injeksi larutan buffer kalium bikarbonat.';
-      } else if (query.contains('Aerasi') || query.contains('Daya')) {
+            'Nilai pH air saat ini adalah ${ph.toStringAsFixed(2)}. Nilai ini ideal untuk sistem akuaponik kombinasi ikan dan sayuran (rentang 6.5 - 7.5). Buffer biologis bekerja alami.';
+      } else if (userText.contains('Aerasi') || userText.contains('Daya')) {
         reply =
-            'Aerator Oksigen Nila (18W) dan Pompa Sirkulasi (45W) beroperasi secara efisien. Total konsumsi daya modul relay stabil di bawah batas aman kapasitas solar hybrid.';
+            'Aerator Oksigen Nila (18W) dan Pompa Sirkulasi (45W) beroperasi efisien. Total konsumsi daya modul relay stabil di bawah batas aman kapasitas catu hybrid.';
+      } else if (userText.contains('Diagnosa') || userText.contains('Foto')) {
+        reply =
+            'Fitur Diagnosa Multimodal Aktif: Kamera terhubung ke model Gemini 2.5 Flash Vision. Kirimkan foto daun menguning atau permukaan sisik ikan untuk analisis bercak nekrosis otomatis.';
       } else {
         reply =
-            'Berdasarkan model prediktif aquaponik: Telemetri sistem saat ini menunjukkan pH ${ph.toStringAsFixed(2)}, Suhu ${temp.toStringAsFixed(1)}°C, dan Oksigen ${doVal.toStringAsFixed(2)} mg/L. Semua siklus biologis closed-loop berjalan seimbang tanpa anomali.';
+            'Berdasarkan model prediktif aquaponik: Telemetri sistem saat ini menunjukkan pH ${ph.toStringAsFixed(2)}, Suhu ${temp.toStringAsFixed(1)}°C, dan Oksigen ${doVal.toStringAsFixed(2)} mg/L. Semua siklus biologis closed-loop berjalan seimbang.';
       }
+    }
 
-      setState(() {
-        _isTyping = false;
-        _messages.add({
-          'isUser': false,
-          'time': 'Baru saja',
-          'text': reply,
-        });
+    if (!mounted) return;
+
+    setState(() {
+      _isTyping = false;
+      _messages.add({
+        'isUser': false,
+        'time': 'Baru saja',
+        'text': reply,
       });
-      _scrollToBottom();
     });
+    _scrollToBottom();
   }
 
   void _scrollToBottom() {
@@ -114,14 +161,16 @@ class _AgriBotScreenState extends ConsumerState<AgriBotScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final telemetry = ref.watch(telemetryNotifierProvider);
+
     return Scaffold(
       backgroundColor: AppTheme.canvas,
       body: Column(
         children: [
-          // Header Card
+          // Header Card with Live Status Pill
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-            child: _buildHeaderCard(),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+            child: _buildHeaderCard(telemetry),
           ),
 
           // Chat Messages Timeline
@@ -148,7 +197,7 @@ class _AgriBotScreenState extends ConsumerState<AgriBotScreen> {
 
           // Quick Prompt Chips Bar
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.symmetric(vertical: 6),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -166,7 +215,7 @@ class _AgriBotScreenState extends ConsumerState<AgriBotScreen> {
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: AppTheme.charcoal,
+                          color: AppTheme.textPrimary,
                         ),
                       ),
                     ),
@@ -176,24 +225,48 @@ class _AgriBotScreenState extends ConsumerState<AgriBotScreen> {
             ),
           ),
 
-          // Bottom Input Field
+          // Bottom Input Field with Camera / Upload Button
           Container(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 85),
-            decoration: BoxDecoration(
-              color: AppTheme.cardBg,
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 86),
+            decoration: const BoxDecoration(
+              color: Colors.white,
               border: Border(top: BorderSide(color: AppTheme.borderLight)),
             ),
             child: SafeArea(
               top: false,
               child: Row(
                 children: [
+                  // Camera / Image Diagnosis Trigger
+                  InkWell(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      _sendMessage('📸 Diagnosa Kesehatan Daun & Sisik');
+                    },
+                    borderRadius: BorderRadius.circular(22),
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AppTheme.canvas,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppTheme.borderLight),
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt_outlined,
+                        color: AppTheme.pinePrimary,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+
+                  // Text input container
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppTheme.canvas,
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(color: AppTheme.borderMedium),
-                        boxShadow: AppTheme.cardShadow,
                       ),
                       child: TextField(
                         controller: _textController,
@@ -210,6 +283,8 @@ class _AgriBotScreenState extends ConsumerState<AgriBotScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
+
+                  // Send button
                   InkWell(
                     onTap: () => _sendMessage(_textController.text),
                     borderRadius: BorderRadius.circular(24),
@@ -217,7 +292,7 @@ class _AgriBotScreenState extends ConsumerState<AgriBotScreen> {
                       width: 44,
                       height: 44,
                       decoration: const BoxDecoration(
-                        color: AppTheme.charcoal,
+                        color: AppTheme.pinePrimary,
                         shape: BoxShape.circle,
                         boxShadow: AppTheme.softShadow,
                       ),
@@ -237,54 +312,78 @@ class _AgriBotScreenState extends ConsumerState<AgriBotScreen> {
     );
   }
 
-  Widget _buildHeaderCard() {
+  Widget _buildHeaderCard(dynamic telemetry) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppTheme.borderLight),
         boxShadow: AppTheme.cardShadow,
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppTheme.accentEmerald.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.psychology_rounded,
-              color: AppTheme.accentEmeraldDark,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'AgriBot AI Agronomist',
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.mintWash,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.psychology_rounded,
+                  color: AppTheme.pinePrimary,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'AgriBot AI Agronomist',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      telemetry.isLive
+                          ? 'Gemini 2.5 Flash • Terhubung ESP32-GROW-01'
+                          : 'Mode Prediktif Standalone • Telemetri Stabil',
+                      style: const TextStyle(
+                        fontSize: 10.5,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                decoration: BoxDecoration(
+                  color: AppTheme.mintWash,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: AppTheme.sageMint.withValues(alpha: 0.3)),
+                ),
+                child: const Text(
+                  'ONLINE',
                   style: TextStyle(
-                    fontSize: 17,
+                    fontSize: 9,
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
-                    letterSpacing: -0.3,
+                    fontFamily: 'monospace',
+                    color: AppTheme.mintText,
                   ),
                 ),
-                SizedBox(height: 2),
-                Text(
-                  'FastAPI + XGBoost Inference • Asisten Pintar Aquaponik',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textSecondary,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),
@@ -352,7 +451,7 @@ class _AgriBotScreenState extends ConsumerState<AgriBotScreen> {
               style: TextStyle(
                 fontSize: 12.5,
                 color: isUser ? Colors.white : AppTheme.textPrimary,
-                height: 1.4,
+                height: 1.45,
               ),
             ),
             const SizedBox(height: 4),

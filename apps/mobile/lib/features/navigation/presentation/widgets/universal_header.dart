@@ -17,63 +17,61 @@ class UniversalHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: const BoxDecoration(
+        color: Colors.white,
         border: Border(
-          bottom: BorderSide(color: AppTheme.borderLight),
+          bottom: BorderSide(color: AppTheme.borderLight, width: 1.0),
         ),
       ),
       child: SafeArea(
         bottom: false,
         child: Row(
           children: [
-            // Brand Logo Pill (Pine Botanical Donezo Style)
+            // Official UrbanGrow Wordmark Pill
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: AppTheme.surface,
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(999),
                 border: Border.all(color: AppTheme.borderLight),
                 boxShadow: AppTheme.cardShadow,
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 9,
-                    height: 9,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppTheme.pinePrimary,
+              child: Image.asset(
+                'assets/images/urbangrow-logo.png',
+                height: 26,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.eco_rounded, size: 16, color: AppTheme.pinePrimary),
+                    SizedBox(width: 6),
+                    Text(
+                      'UrbanGrow',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.3,
+                        color: AppTheme.textPrimary,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'UrbanGrow',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.3,
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
 
             const Spacer(),
 
-            // Backend Connectivity Pill (Human-Friendly Donezo Style)
+            // Hardware Connectivity Status Pill (Clear Live vs Offline)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5.5),
               decoration: BoxDecoration(
-                color: isLive ? AppTheme.mintWash : AppTheme.surface,
+                color: isLive ? AppTheme.mintWash : const Color(0xFFFEF3C7),
                 borderRadius: BorderRadius.circular(999),
                 border: Border.all(
                   color: isLive
                       ? AppTheme.statusOptimal.withValues(alpha: 0.25)
-                      : AppTheme.borderLight,
+                      : const Color(0xFFFDE68A),
                 ),
                 boxShadow: AppTheme.cardShadow,
               ),
@@ -81,15 +79,15 @@ class UniversalHeader extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 6.5,
-                    height: 6.5,
+                    width: 7,
+                    height: 7,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: isLive ? AppTheme.statusOptimal : AppTheme.statusWarning,
+                      color: isLive ? AppTheme.statusOptimal : const Color(0xFFD97706),
                       boxShadow: [
                         BoxShadow(
-                          color: (isLive ? AppTheme.statusOptimal : AppTheme.statusWarning)
-                              .withValues(alpha: 0.4),
+                          color: (isLive ? AppTheme.statusOptimal : const Color(0xFFD97706))
+                              .withValues(alpha: 0.35),
                           blurRadius: 4,
                           spreadRadius: 1,
                         ),
@@ -98,11 +96,12 @@ class UniversalHeader extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    isLive ? 'Tersinkron' : 'Menghubungkan...',
+                    isLive ? 'ESP32 Live' : 'Node Offline',
                     style: TextStyle(
                       fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                      color: isLive ? AppTheme.mintText : AppTheme.statusWarning,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'monospace',
+                      color: isLive ? AppTheme.mintText : const Color(0xFFB45309),
                     ),
                   ),
                 ],
@@ -123,10 +122,10 @@ class UniversalHeader extends StatelessWidget {
               },
               borderRadius: BorderRadius.circular(999),
               child: Container(
-                width: 36,
-                height: 36,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
-                  color: AppTheme.surface,
+                  color: Colors.white,
                   shape: BoxShape.circle,
                   border: Border.all(color: AppTheme.borderLight),
                   boxShadow: AppTheme.cardShadow,
@@ -136,21 +135,21 @@ class UniversalHeader extends StatelessWidget {
                   children: [
                     const Icon(
                       Icons.notifications_none_rounded,
-                      size: 19,
+                      size: 20,
                       color: AppTheme.textPrimary,
                     ),
                     Positioned(
                       top: 8,
                       right: 8,
                       child: Container(
-                        width: 7,
-                        height: 7,
+                        width: 7.5,
+                        height: 7.5,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: activeAnomaly != 'none'
                               ? AppTheme.statusAlert
                               : AppTheme.sageMint,
-                          border: Border.all(color: Colors.white, width: 1.2),
+                          border: Border.all(color: Colors.white, width: 1.5),
                         ),
                       ),
                     ),

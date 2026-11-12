@@ -103,6 +103,7 @@ Setiap agen beroperasi secara otonom namun terkoordinasi melalui topologi event-
 - 🐟 **Fish Welfare & Ethology Guide**: [FISH_WELFARE_GUIDE.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/docs/FISH_WELFARE_GUIDE.md)
 - 🎨 **Master Design System & UI Specification**: [DESIGN.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/docs/DESIGN.md)
 - ⚡ **Actuator Latency & Delay Optimization Runbook**: [ACTUATOR_LATENCY_OPTIMIZATION.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/docs/ACTUATOR_LATENCY_OPTIMIZATION.md)
+- 📱 **Mobile App (Flutter) Overhaul & Dev Blueprint**: [MOBILE-DEV.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/MOBILE-DEV.md)
 
 ---
 

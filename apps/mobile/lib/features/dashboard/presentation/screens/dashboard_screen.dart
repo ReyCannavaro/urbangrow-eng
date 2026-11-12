@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../telemetry/models/telemetry_model.dart';
 import '../../../telemetry/presentation/telemetry_notifier.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -74,6 +75,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             children: [
               // 1. Welcome Header (Donezo Console Headline)
               _buildGreetingHeader(),
+
+              // Offline Hardware Notice (Matching Web Dashboard)
+              if (!telemetry.isLive) ...[
+                const SizedBox(height: 12),
+                _buildOfflineNoticeBanner(notifier),
+              ],
 
               const SizedBox(height: 16),
 
@@ -181,9 +188,97 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   // =========================================================================
+  // OFFLINE HARDWARE NOTICE BANNER (ECAD Fallback)
+  // =========================================================================
+  Widget _buildOfflineNoticeBanner(TelemetryNotifier notifier) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF3C7),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFFDE68A)),
+        boxShadow: AppTheme.cardShadow,
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.sensors_off_rounded,
+              color: Color(0xFFB45309),
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  'Node ESP32 Sedang Standby / Offline',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFB45309),
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Menampilkan telemetri simulasi tersimpan. Pastikan modul ESP32 aktif & terhubung Wi-Fi.',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    color: Color(0xFF92400E),
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          InkWell(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              notifier.fetchLatest();
+            },
+            borderRadius: BorderRadius.circular(999),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: const Color(0xFFFDE68A)),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.refresh_rounded, size: 13, color: Color(0xFFB45309)),
+                  SizedBox(width: 3),
+                  Text(
+                    'Coba Lagi',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFB45309),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =========================================================================
   // 2. DONEZO 2X2 BENTO METRIC GRID
   // =========================================================================
-  Widget _buildBentoMetricGrid(dynamic telemetry, int wqiScore) {
+  Widget _buildBentoMetricGrid(TelemetrySnapshot telemetry, int wqiScore) {
     return Column(
       children: [
         Row(
@@ -569,8 +664,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   // =========================================================================
   // 4. REMINDERS & AUTOMATION CARD (Donezo Row 2, Card 2)
   // =========================================================================
-  Widget _buildRemindersCard(dynamic telemetry, dynamic notifier) {
-    final isFeeding = telemetry.feedActive;
+  Widget _buildRemindersCard(TelemetrySnapshot telemetry, TelemetryNotifier notifier) {
+    final isFeeding = telemetry.isFeedDispensing;
 
     return Container(
       width: double.infinity,
@@ -661,8 +756,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   // 5. RELAY ACTUATORS CARD (Donezo Bento with Sliding Toggles)
   // =========================================================================
   Widget _buildRelayActuatorsCard(
-    dynamic telemetry,
-    dynamic notifier,
+    TelemetrySnapshot telemetry,
+    TelemetryNotifier notifier,
     int activeCount,
     int totalCount,
   ) {
@@ -748,7 +843,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             ),
                           ),
                           Text(
-                            '${act.powerWatts}W • ${act.voltage}',
+                            '${act.powerWatts}W • 12V DC',
                             style: const TextStyle(
                               fontSize: 9.5,
                               fontFamily: 'monospace',

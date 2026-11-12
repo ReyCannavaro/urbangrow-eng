@@ -29,6 +29,7 @@ import {
 import { sendAgriBotChat } from "@/lib/aiApi";
 import { useTelemetry } from "@/lib/telemetryContext";
 import { DynamicChartRenderer } from "./DynamicChartRenderer";
+import { CameraModal } from "./CameraModal";
 
 let chatMessageSeq = 1;
 function nextChatId(prefix: string): string {
@@ -570,9 +571,15 @@ export function ChatWindow() {
   >({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [isCameraOpen, setIsCameraOpen] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const handleCameraCapture = (attachment: AgriBotImageAttachment) => {
+    setPendingImages((prev) => [...prev, attachment].slice(0, MAX_IMAGES_PER_TURN));
+    setUploadError(null);
+  };
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const dragCounterRef = useRef<number>(0);
 
@@ -900,7 +907,7 @@ export function ChatWindow() {
                       disabled={isTyping}
                       onClick={() => {
                         if (item.isPhotoTip) {
-                          fileInputRef.current?.click();
+                          setIsCameraOpen(true);
                         } else {
                           void handleSend(item.prompt);
                         }
@@ -1195,12 +1202,23 @@ export function ChatWindow() {
                 <button
                   type="button"
                   disabled={isTyping || pendingImages.length >= MAX_IMAGES_PER_TURN}
+                  onClick={() => setIsCameraOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] hover:border-[#165B39] hover:text-[#165B39] disabled:opacity-45 text-xs font-medium text-[#4B5563] transition-colors cursor-pointer disabled:cursor-default"
+                  title="Buka kamera browser untuk memfoto langsung tanaman atau ikan"
+                >
+                  <Camera className="h-4 w-4 shrink-0 text-[#165B39]" />
+                  <span>Ambil Foto</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={isTyping || pendingImages.length >= MAX_IMAGES_PER_TURN}
                   onClick={() => fileInputRef.current?.click()}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] hover:border-[#D1D5DB] disabled:opacity-45 text-xs font-medium text-[#4B5563] transition-colors cursor-pointer disabled:cursor-default"
                   title="Unggah foto daun tanaman atau ikan (PNG/JPG/WEBP, bisa juga drag & drop atau Ctrl+V)"
                 >
                   <ImagePlus className="h-4 w-4 shrink-0" />
-                  <span>Unggah Foto</span>
+                  <span>Unggah File</span>
                 </button>
               </div>
 
@@ -1223,6 +1241,13 @@ export function ChatWindow() {
           </p>
         </div>
       </div>
+
+      {/* Live Camera Viewfinder Modal */}
+      <CameraModal
+        isOpen={isCameraOpen}
+        onClose={() => setIsCameraOpen(false)}
+        onCapture={handleCameraCapture}
+      />
 
       {/* Full-Resolution Image Preview Lightbox Portal */}
       {lightboxUrl &&

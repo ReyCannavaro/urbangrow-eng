@@ -11,6 +11,8 @@ class ApiConfig {
   static String toggleActuator(String id) => '$baseUrl/api/actuators/$id/toggle';
   static String get anomaly => '$baseUrl/api/simulation/anomaly';
   static String get aiPredict => '$baseUrl/api/ai/predict';
+  static String get aiPredictions => '$baseUrl/api/ai/predictions';
   static String get aiClimateScore => '$baseUrl/api/ai/climate-score';
+  static String get chat => '$baseUrl/api/ai/chat';
 }
 
