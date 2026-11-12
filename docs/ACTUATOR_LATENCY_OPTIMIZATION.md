@@ -245,3 +245,4 @@ Gunakan stopwatch atau serial timestamp untuk mengukur efektivitas reduksi delay
 ## 📌 Kesimpulan & Rekomendasi
 - Untuk **pameran/presentasi saat ini**: Pertahankan konfigurasi saat ini karena sistem sudah stabil dan teruji bebas regresi.
 - Untuk **fase pengembangan berikutnya**: Cukup terapkan **Opsi 1** (1 baris di firmware) untuk perbaikan instan, atau **Opsi 3** jika ingin membawa UrbanGrow ke standar telemetri IIoT (*Industrial IoT*).
+
