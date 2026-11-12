@@ -90,30 +90,47 @@ class AppTheme {
 
 ---
 
-## 🏛️ 4. Arsitektur Navigasi & Struktur Layar (The 6-Screen Architecture)
+## 🏛️ 4. Arsitektur Navigasi & Struktur Layar (5-Menu Ergonomic Bottom Dock)
 
-Untuk mempertahankan keterbacaan yang nyaman di layar smartphone tanpa membuat bottom navigation bar terlalu sesak, arsitektur navigasi mobile dirancang dengan pola **Top Header Brand + 5 Bottom Tabs + 1 Quick Insight Action**:
+Untuk mempertahankan keterbacaan yang nyaman di smartphone tanpa membuat bottom navigation bar terlalu sesak, seluruh 7 kapabilitas web diintegrasikan ke dalam arsitektur **Top Header Brand + 5-Menu Floating Bottom Dock (dengan AgriBot AI sebagai Center Highlighted Button)**:
 
 ```
-+-------------------------------------------------------------------------+
-| UNIVERSAL HEADER: [Official Logo Image]  •  [Live Pill: ESP32-GROW-01]  • [Bell: 2] |
-+-------------------------------------------------------------------------+
-|                                                                         |
-| ACTIVE VIEW CONTENT AREA (IndexedStack / Nested Navigator):             |
-|                                                                         |
-|  1. DashboardScreen      --> Ringkasan WQI, 2x2 Bento Metrik, Status IoT |
-|  2. EcosystemScreen      --> 4-Level Menara Vertikal Kaskade            |
-|  3. ControlsScreen       --> 4 Relay Saklar Taktil & Quick Dispenser    |
-|  4. AnalyticsScreen      --> Multi-Trace Fluktuasi Sensor 60-Sampel     |
-|  5. AiInsightsScreen     --> Model GDD & ADG Panen, Climate Score (BARU)|
-|  6. AgriBotScreen        --> Chat AI Agronomist Multimodal Gemini       |
-|                                                                         |
-+-------------------------------------------------------------------------+
-| FLOATING PILL DOCK (Bottom Nav):                                        |
-| [ 🏠 Dashboard ] [ 🏗️ Menara ] [ ⚡ Kontrol ] [ 📈 Analitik ] [ 🧠 AI ] |
-| *(AgriBot dapat diakses via tab ke-5 atau floating action pill)*       |
-+-------------------------------------------------------------------------+
++-----------------------------------------------------------------------------------------+
+| UNIVERSAL TOP HEADER:                                                                   |
+| [🌿 Logo UrbanGrow Resmi]             [🟢 ESP32-GROW-01 Live]        [ 🔔 Bell Badge: 2 ]|
++-----------------------------------------------------------------------------------------+
+|                                                                                         |
+| AREA KONTEN AKTIF (IndexedStack State-Preserving Navigator):                            |
+|                                                                                         |
+|  Tab 1 (Index 0): DashboardScreen    --> WQI Hero Card, 2x2 Bento Sensor, Status IoT    |
+|  Tab 2 (Index 1): ControlsScreen     --> 4 Relay Saklar Taktil, Quick Feed, Kill Switch |
+|  Tab 3 (Index 2): AgriBotScreen      --> AI Agronomist Chat, Multimodal Foto Daun/Ikan  |
+|  Tab 4 (Index 3): AnalyticsAiScreen  --> Dual-View: [1. Fluktuasi Sensor | 2. Prediksi] |
+|  Tab 5 (Index 4): EcosystemScreen    --> Visualisasi Menara Vertikal 4-Level Kaskade    |
+|                                                                                         |
++-----------------------------------------------------------------------------------------+
+| FLOATING BOTTOM DOCK:                                                                   |
+|                                                                                         |
+|       [ 🏠 ]            [ ⚡ ]             ( 🤖 )             [ 📈 ]            [ 🏗️ ]   |
+|     Dashboard          Kontrol            AgriBot           Wawasan           Menara    |
+|     (Monitor)          (Relay)          (Center AI)       (Analitik+AI)      (Kaskade)  |
++-----------------------------------------------------------------------------------------+
 ```
+
+### 4.1. Matriks 5 Slot Bottom Navigation Dock
+
+| No | Slot Posisi | Nama Menu | Icon State (Normal / Active) | Karakteristik & Konten Layar |
+|:---:|---|---|---|---|
+| **1** | **Slot 1 (Paling Kiri)** | **Dashboard** | `grid_view_outlined` / `grid_view_rounded` | Ringkasan ekosistem utama: Inverted Hero WQI (`#165B39`), 2x2 Bento metrik sensor real-time, status hardware strip. |
+| **2** | **Slot 2** | **Kontrol** | `toggle_off_outlined` / `toggle_on_rounded` | Saklar taktil fisik 4 relay optocoupler (Pompa, Aerator, Grow Light, Feeder), Quick Feed Dispenser, & Emergency Stop. |
+| **3** | **Slot 3 (Center Highlighted)** | **AgriBot AI** | `psychology_rounded` / `smart_toy_rounded` | **Tombol Aksi Utama**: Lingkaran hijau mengambang (`#165B39`, diameter 56px) dengan efek *pine glow* halus. Membuka obrolan cerdas Gemini & analisis visual instan. |
+| **4** | **Slot 4** | **Analitik & AI** *(Wawasan)* | `trending_up_rounded` | **Segmented Dual-View**: Menggabungkan grafik time-series fluktuasi sensor 60 sampel dengan model prediksi panen GDD & bobot ikan ADG. |
+| **5** | **Slot 5 (Paling Kanan)** | **Menara** *(Kaskade)* | `layers_outlined` / `layers_rounded` | **Ikon Fisik Inovasi**: Visualisasi 4-level menara vertikal (Pakcoy L4, Kangkung L3, Biofilter L2, Kolam Ikan L1) & siklus nitrogen. |
+
+### 4.2. Penempatan Notifikasi Sistem (`/alerts`)
+- **Lokasi**: Ditaruh di **Universal Top Header** (Pojok Kanan Atas) berupa icon lonceng (*Bell Icon*).
+- **Badge Counter**: Menampilkan indikator angka merah jika terdapat peringatan anomali aktif (`alerts.length > 0`).
+- **Mekanisme Tampilan**: Saat lonceng di-tap, aplikasi membuka **Bottom Sheet Modal** (`AlertsModalSheet`) yang elegan, sehingga operator dapat meninjau dan menyelesaikan insiden tanpa meninggalkan layar yang sedang aktif.
 
 ---
 
@@ -134,7 +151,7 @@ Untuk mempertahankan keterbacaan yang nyaman di layar smartphone tanpa membuat b
 - **Inverted Hero Card (Kualitas Air WQI)**:
   - Tinggi: `150px`, Latar belakang hijau penuh `#165B39`, teks putih.
   - Angka display WQI: `85%` tabular font.
-  - Tombol aksi lingkaran putih di kanan atas (`h-8 w-8`) dengan panah 45° yang mengarah ke tab Analitik.
+  - Tombol aksi lingkaran putih di kanan atas (`h-8 w-8`) dengan panah 45° yang mengarah ke tab Wawasan (Analitik).
 - **2x2 Bento Grid Metrik Sensor**:
   - 4 Kartu putih (`Suhu Air Kolam`, `pH Air Kolam`, `Suhu Udara Luar`, `Cahaya Ambien LDR`).
   - Radius sudut `24px`, padding `16px`.
@@ -146,18 +163,7 @@ Untuk mempertahankan keterbacaan yang nyaman di layar smartphone tanpa membuat b
 
 ---
 
-### 5.3. Layar 2: Menara Kaskade (`ecosystem_screen.dart`)
-- **Visualisasi Arsitektur 4-Level Kaskade Vertikal**:
-  - **Level 4 (Paling Atas)**: Talang Vertikal Pakcoy (Fase Vegetatif, Hidroton, TDS 580 ppm).
-  - **Level 3**: Talang Vertikal Kangkung (Biofilter Sekunder, DO > 5.0 mg/L).
-  - **Level 2**: Modul Biofilter Nitrifikasi (Bakteri *Nitrosomonas* & *Nitrobacter* mengubah amonia menjadi nitrat).
-  - **Level 1 (Paling Bawah)**: Kolam Utama Ikan Nila & Ikan Lele (Suhu 24–27°C).
-- **Diagram Aliran Tertutup Siklus Nitrogen (Closed-Loop Nitrogen Flow)**:
-  - Ilustrasi diagram kartu yang menjelaskan konversi biologis alami tanpa pupuk kimia sintetis.
-
----
-
-### 5.4. Layar 3: Kontrol Relay Aktuator (`controls_screen.dart`)
+### 5.3. Layar 2: Kontrol Relay Aktuator (`controls_screen.dart`)
 - **Power Consumption Meter Hero**:
   - Modul pemantau beban listrik: Total Watt saat ini (misal: `45 W`) dan estimasi konsumsi harian (`kWh`).
 - **4 Kartu Relay Aktuator Presisi (Dilarang Memuat Pompa Dosing!)**:
@@ -183,31 +189,9 @@ Untuk mempertahankan keterbacaan yang nyaman di layar smartphone tanpa membuat b
 
 ---
 
-### 5.5. Layar 4: Analitik IoT (`analytics_screen.dart`)
-- **Pill Selector Kanal**:
-  - Opsi filter cepat: `Semua Kanal`, `pH Air`, `Suhu Air`, `Suhu Udara`, `Cahaya LDR`.
-- **Kurva Fluktuasi Telemetri (Sliding Window 60-Sampel)**:
-  - Grafik garis multi-trace dengan kurva bezier halus (`strokeWidth: 2.2`).
-  - Garis batas threshold aman biologis (garis putus-putus tipis).
-- **Ringkasan Statistik 4 Sensor Fisik**:
-  - Tabel grid min, max, rata-rata, dan status stabilitas parameter.
-
----
-
-### 5.6. Layar 5: Prediksi AI & Adaptasi Iklim (`ai_insights_screen.dart`) — *FITUR BARU!*
-- **Climate Adaptation Score (CAS) Card**:
-  - Pengukur skor ketahanan iklim (0–100) berbasis fluktuasi cuaca ekstrem Sidoarjo.
-- **Model GDD (Growing Degree Days) Panen Tanaman**:
-  - **Pakcoy (Level 4)**: Progres vegetatif (%), akumulasi derajat hari, estimasi sisa hari menuju panen (Target: 30 hari).
-  - **Kangkung (Level 3)**: Progres vegetatif (%), estimasi panen cepat (Target: 21 hari).
-- **Model ADG (Average Daily Gain) Bobot Ikan**:
-  - Pertumbuhan biomassa ikan Nila & Lele: Estimasi bobot rata-rata gram/ekor, rasio konversi pakan (FCR).
-- **Banner Status Kalibrasi**:
-  - Keterangan bahwa model terkalibrasi secara dinamis oleh 4 sensor fisik ESP32 live.
-
----
-
-### 5.7. Layar 6: AgriBot AI Agronomist (`agribot_screen.dart`)
+### 5.4. Layar 3 (Center Highlighted): AgriBot AI Agronomist (`agribot_screen.dart`)
+- **Center Floating Action Button**:
+  - Tombol lingkaran mengambang berdiameter **56px**, latar hijau botani `#165B39`, terangkat sedikit di atas dock navigasi.
 - **Header Chat**:
   - Indikator model AI (`gemini-2.5-flash`), latensi inferensi, dan tombol reset sesi.
 - **Live Context Pill**:
@@ -221,6 +205,45 @@ Untuk mempertahankan keterbacaan yang nyaman di layar smartphone tanpa membuat b
   - Kapsul pill horizontal: *"Evaluasi Kesiapan Proyek"*, *"Cek Parameter Air"*, *"Jadwal Panen Pakcoy"*.
 - **Upload / Kamera Foto Diagnostik**:
   - Tombol icon kamera/gambar untuk mengirimkan foto daun menguning atau sisik ikan guna dianalisis oleh model multimodal Gemini.
+
+---
+
+### 5.5. Layar 4: Wawasan (Analitik IoT & Prediksi AI) (`analytics_ai_screen.dart`)
+Layar ini menggabungkan dua kapabilitas analitik utama web menggunakan **Segmented Pill Switcher** di bagian atas:
+
+```
++-------------------------------------------------------------------------+
+|     [ 📊 Kurva Fluktuasi Sensor ]      [ 🧠 Prediksi Panen & CAS ]      |
++-------------------------------------------------------------------------+
+```
+
+#### Sub-View A: Kurva Fluktuasi Sensor (Analitik IoT)
+- **Pill Selector Kanal**: `Semua Kanal`, `pH Air`, `Suhu Air`, `Suhu Udara`, `Cahaya LDR`.
+- **Grafik Garis Multi-Trace (Sliding Window 60-Sampel)**:
+  - Kurva bezier halus (`strokeWidth: 2.2`), garis batas threshold aman biologis.
+- **Ringkasan Statistik**: Min, max, rata-rata, dan status stabilitas parameter.
+
+#### Sub-View B: Prediksi AI & Adaptasi Iklim (AI Insights)
+- **Climate Adaptation Score (CAS) Card**:
+  - Pengukur skor ketahanan iklim (0–100) berbasis fluktuasi cuaca ekstrim Sidoarjo.
+- **Model GDD (Growing Degree Days) Panen Tanaman**:
+  - **Pakcoy (Level 4)**: Progres vegetatif (%), akumulasi derajat hari, estimasi sisa hari menuju panen (Target: 30 hari).
+  - **Kangkung (Level 3)**: Progres vegetatif (%), estimasi panen cepat (Target: 21 hari).
+- **Model ADG (Average Daily Gain) Bobot Ikan**:
+  - Pertumbuhan biomassa ikan Nila & Lele: Estimasi bobot rata-rata gram/ekor, rasio konversi pakan (FCR).
+- **Banner Status Kalibrasi**:
+  - Keterangan bahwa model terkalibrasi secara dinamis oleh 4 sensor fisik ESP32 live.
+
+---
+
+### 5.6. Layar 5: Menara Kaskade (`ecosystem_screen.dart`)
+- **Visualisasi Arsitektur 4-Level Kaskade Vertikal**:
+  - **Level 4 (Paling Atas)**: Talang Vertikal Pakcoy (Fase Vegetatif, Hidroton, TDS 580 ppm).
+  - **Level 3**: Talang Vertikal Kangkung (Biofilter Sekunder, DO > 5.0 mg/L).
+  - **Level 2**: Modul Biofilter Nitrifikasi (Bakteri *Nitrosomonas* & *Nitrobacter* mengubah amonia menjadi nitrat).
+  - **Level 1 (Paling Bawah)**: Kolam Utama Ikan Nila & Ikan Lele (Suhu 24–27°C).
+- **Diagram Aliran Tertutup Siklus Nitrogen (Closed-Loop Nitrogen Flow)**:
+  - Ilustrasi diagram kartu yang menjelaskan konversi biologis alami tanpa pupuk kimia sintetis.
 
 ---
 
