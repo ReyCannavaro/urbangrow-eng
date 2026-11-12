@@ -27,6 +27,7 @@ interface ActuatorActionResult {
 }
 
 export interface ActuatorToast {
+  title?: string;
   message: string;
   type: "warning" | "error" | "success" | "info";
   timestamp: number;
@@ -50,7 +51,11 @@ interface TelemetryContextType {
   clearActuatorError: () => void;
   actuatorToast: ActuatorToast | null;
   clearActuatorToast: () => void;
-  showActuatorToast: (message: string, type?: "warning" | "error" | "success" | "info") => void;
+  showActuatorToast: (
+    message: string,
+    type?: "warning" | "error" | "success" | "info",
+    title?: string
+  ) => void;
 }
 
 const ALL_NULL_SENSORS: SensorData = {
@@ -179,9 +184,13 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const showActuatorToast = useCallback(
-    (message: string, type: "warning" | "error" | "success" | "info" = "warning") => {
+    (
+      message: string,
+      type: "warning" | "error" | "success" | "info" = "warning",
+      title?: string
+    ) => {
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-      setActuatorToast({ message, type, timestamp: Date.now() });
+      setActuatorToast({ message, type, title, timestamp: Date.now() });
       toastTimerRef.current = setTimeout(() => {
         setActuatorToast(null);
       }, 5000);
