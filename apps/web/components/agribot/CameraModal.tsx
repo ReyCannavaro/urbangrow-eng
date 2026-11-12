@@ -24,6 +24,7 @@ export function CameraModal({ isOpen, onClose, onCapture }: CameraModalProps) {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [capturedDataUrl, setCapturedDataUrl] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
+  const [cameraReloadKey, setCameraReloadKey] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isFlashing, setIsFlashing] = useState<boolean>(false);
@@ -40,76 +41,77 @@ export function CameraModal({ isOpen, onClose, onCapture }: CameraModalProps) {
     }
   }, [stream]);
 
-  // Request camera stream based on selected facingMode
-  const startCamera = useCallback(async (mode: "environment" | "user") => {
-    setIsLoading(true);
-    setError(null);
-    setCapturedDataUrl(null);
-
-    // Stop existing stream if any
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-      setStream(null);
-    }
-
-    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
-      setError(
-        "Browser Anda tidak mendukung akses kamera langsung (WebRTC). Gunakan opsi aplikasi kamera bawaan."
-      );
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const newStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: mode },
-          width: { ideal: 1920, max: 2560 },
-          height: { ideal: 1080, max: 1440 },
-        },
-        audio: false,
-      });
-
-      setStream(newStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = newStream;
-        await videoRef.current.play().catch(() => {});
-      }
-      setIsLoading(false);
-    } catch (err) {
-      setIsLoading(false);
-      if (err instanceof DOMException && err.name === "NotAllowedError") {
-        setError(
-          "Izin kamera ditolak oleh browser. Silakan izinkan akses kamera di pengaturan browser, atau gunakan kamera bawaan."
-        );
-      } else if (err instanceof DOMException && err.name === "NotFoundError") {
-        setError("Perangkat kamera tidak ditemukan pada sistem ini.");
-      } else {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Tidak dapat mengakses kamera. Pastikan kamera tidak sedang dipakai aplikasi lain."
-        );
-      }
-    }
-  }, [stream]);
-
-  // Initialize camera when modal opens
+  // Asynchronous camera initialization via effect (no synchronous setState in body)
   useEffect(() => {
-    if (isOpen) {
-      void startCamera(facingMode);
-    } else {
-      stopTracks();
-      setCapturedDataUrl(null);
-      setError(null);
+    if (!isOpen) return;
+
+    let isMounted = true;
+    let activeStream: MediaStream | null = null;
+
+    async function initCamera() {
+      try {
+        if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+          if (isMounted) {
+            setError(
+              "Browser Anda tidak mendukung akses kamera langsung (WebRTC). Gunakan opsi aplikasi kamera bawaan."
+            );
+            setIsLoading(false);
+          }
+          return;
+        }
+
+        const newStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: facingMode },
+            width: { ideal: 1920, max: 2560 },
+            height: { ideal: 1080, max: 1440 },
+          },
+          audio: false,
+        });
+
+        if (!isMounted) {
+          newStream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
+        activeStream = newStream;
+        setStream(newStream);
+        setIsLoading(false);
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = newStream;
+          await videoRef.current.play().catch(() => {});
+        }
+      } catch (err) {
+        if (!isMounted) return;
+        setIsLoading(false);
+        if (err instanceof DOMException && err.name === "NotAllowedError") {
+          setError(
+            "Izin kamera ditolak oleh browser. Silakan izinkan akses kamera di pengaturan browser, atau gunakan kamera bawaan."
+          );
+        } else if (err instanceof DOMException && err.name === "NotFoundError") {
+          setError("Perangkat kamera tidak ditemukan pada sistem ini.");
+        } else {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Tidak dapat mengakses kamera. Pastikan kamera tidak sedang dipakai aplikasi lain."
+          );
+        }
+      }
     }
+
+    void initCamera();
 
     return () => {
-      stopTracks();
+      isMounted = false;
+      if (activeStream) {
+        activeStream.getTracks().forEach((track) => track.stop());
+      }
     };
-  }, [isOpen, facingMode, startCamera, stopTracks]);
+  }, [isOpen, facingMode, cameraReloadKey]);
 
-  // Attach stream to video element whenever video element or stream updates
+  // Attach stream to video element when stream updates
   useEffect(() => {
     if (videoRef.current && stream && !capturedDataUrl) {
       videoRef.current.srcObject = stream;
@@ -121,12 +123,13 @@ export function CameraModal({ isOpen, onClose, onCapture }: CameraModalProps) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen) {
+        stopTracks();
         onClose();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, stopTracks]);
 
   // Shutter action: capture current frame from video to canvas
   const handleShutter = () => {
@@ -175,15 +178,26 @@ export function CameraModal({ isOpen, onClose, onCapture }: CameraModalProps) {
         videoRef.current.play().catch(() => {});
       }
     } else {
-      void startCamera(facingMode);
+      setIsLoading(true);
+      setError(null);
+      setCameraReloadKey((k) => k + 1);
     }
   };
 
   // Flip camera (environment <-> user)
   const handleToggleFacingMode = () => {
-    const nextMode = facingMode === "environment" ? "user" : "environment";
-    setFacingMode(nextMode);
-    void startCamera(nextMode);
+    setIsLoading(true);
+    setError(null);
+    setCapturedDataUrl(null);
+    setFacingMode((prev) => (prev === "environment" ? "user" : "environment"));
+  };
+
+  // Retry camera when error occurred
+  const handleRetry = () => {
+    setIsLoading(true);
+    setError(null);
+    setCapturedDataUrl(null);
+    setCameraReloadKey((k) => k + 1);
   };
 
   // Confirm photo: convert to AgriBotImageAttachment and pass to parent
@@ -346,7 +360,7 @@ export function CameraModal({ isOpen, onClose, onCapture }: CameraModalProps) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => void startCamera(facingMode)}
+                  onClick={handleRetry}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 text-white text-xs font-medium border border-white/15 transition cursor-pointer"
                 >
                   <RefreshCw className="h-3.5 w-3.5" />
@@ -483,4 +497,3 @@ export function CameraModal({ isOpen, onClose, onCapture }: CameraModalProps) {
     document.body
   );
 }
-
