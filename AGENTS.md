@@ -102,6 +102,7 @@ Setiap agen beroperasi secara otonom namun terkoordinasi melalui topologi event-
 - 🌿 **Plant Nutrient Deficiency Guide**: [PLANT_NUTRIENT_DEFICIENCY_GUIDE.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/docs/PLANT_NUTRIENT_DEFICIENCY_GUIDE.md)
 - 🐟 **Fish Welfare & Ethology Guide**: [FISH_WELFARE_GUIDE.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/docs/FISH_WELFARE_GUIDE.md)
 - 🎨 **Master Design System & UI Specification**: [DESIGN.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/docs/DESIGN.md)
+- ⚡ **Actuator Latency & Delay Optimization Runbook**: [ACTUATOR_LATENCY_OPTIMIZATION.md](file:///c:/Users/Rey%20Cannavaro/urbangrow-workspace/docs/ACTUATOR_LATENCY_OPTIMIZATION.md)
 
 ---
 
