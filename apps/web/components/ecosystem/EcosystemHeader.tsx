@@ -19,7 +19,7 @@ export function EcosystemHeader() {
           Menara Kaskade 4-Tingkat
         </h1>
         <p className="text-xs text-[#6B7280] mt-1 max-w-2xl">
-          Aliran gravitasi tertutup: Pompa 12V ke Level 4 (Pakcoy) &rarr; Level 3 (Nila) &rarr; Level 2 (Kangkung) &rarr; Level 1 (Lele).
+          Aliran sirkulasi tertutup: Pompa 12V dari Kolam Ikan &rarr; Pakcoy &rarr; Kangkung &rarr; turun kembali ke Kolam Ikan.
         </p>
       </div>
 
@@ -46,7 +46,7 @@ export function EcosystemHeader() {
             {!edgeOnline
               ? "ESP32 Offline"
               : isPumpOn
-              ? "Resirkulasi 1.8 L/min"
+              ? "Pompa Sirkulasi ON"
               : "Sirkulasi Terhenti"}
           </span>
         </span>

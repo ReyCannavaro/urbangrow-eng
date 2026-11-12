@@ -17,11 +17,11 @@ export function RelaySwitchCard({
   const getActuatorRole = () => {
     switch (actuator.type) {
       case "pump":
-        return "Sirkulasi Kaskade (L1 → L4)";
+        return "Sirkulasi Kolam → Pakcoy";
       case "aerator":
-        return "Aerasi Oksigen Nila (L3)";
+        return "Aerasi Oksigen Kolam Nila";
       case "light":
-        return "Fotoperiode Tanaman (L4)";
+        return "Fotoperiode Pakcoy & Kangkung";
       case "feeder":
         return "Dispenser Pelet (Pulse 3s)";
       case "dosing":
