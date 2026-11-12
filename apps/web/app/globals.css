@@ -216,6 +216,15 @@ body {
   animation: ugChartRevealX 780ms cubic-bezier(0.22, 1, 0.36, 1) 120ms both;
 }
 
+/* Toast auto-dismiss progress animation */
+@keyframes toastShrink {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+.animate-toast-shrink {
+  animation: toastShrink 5000ms linear forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ug-enter,
   .ug-chart-reveal {

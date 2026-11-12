@@ -20,16 +20,23 @@ export function AnomalyAlertBanner({ anomaly }: Props) {
   return (
     <div className="space-y-2.5">
       {lastActuatorError && (
-        <div className="flex items-center justify-between gap-3 rounded-[20px] border border-rose-200 bg-rose-50 px-5 py-3 text-xs text-rose-800 shadow-2xs">
-          <div className="flex items-center gap-2.5">
-            <AlertOctagon className="h-4 w-4 text-rose-600 shrink-0" />
-            <span>
-              <strong>Safety Interlock Aktuator:</strong> {lastActuatorError}
-            </span>
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-rose-200/80 bg-rose-50/70 px-4 py-3 text-xs text-[#111827] shadow-2xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="h-7 w-7 rounded-lg bg-rose-100 flex items-center justify-center shrink-0 text-rose-700">
+              <AlertOctagon className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <span className="font-bold text-rose-900 block leading-tight">
+                Interlock Keamanan Aktuator
+              </span>
+              <span className="text-[11.5px] text-[#4B5563] leading-relaxed">
+                {lastActuatorError}
+              </span>
+            </div>
           </div>
           <button
             onClick={clearActuatorError}
-            className="h-6 w-6 rounded-full hover:bg-rose-100 flex items-center justify-center text-rose-600 cursor-pointer"
+            className="h-6 w-6 rounded-lg hover:bg-rose-100 flex items-center justify-center text-[#9CA3AF] hover:text-[#111827] transition-colors cursor-pointer shrink-0"
             aria-label="Tutup peringatan"
           >
             <X className="h-3.5 w-3.5" />

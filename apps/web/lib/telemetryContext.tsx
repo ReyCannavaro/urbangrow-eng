@@ -27,6 +27,7 @@ interface ActuatorActionResult {
 }
 
 export interface ActuatorToast {
+  title?: string;
   message: string;
   type: "warning" | "error" | "success" | "info";
   timestamp: number;
@@ -50,7 +51,11 @@ interface TelemetryContextType {
   clearActuatorError: () => void;
   actuatorToast: ActuatorToast | null;
   clearActuatorToast: () => void;
-  showActuatorToast: (message: string, type?: "warning" | "error" | "success" | "info") => void;
+  showActuatorToast: (
+    message: string,
+    type?: "warning" | "error" | "success" | "info",
+    title?: string
+  ) => void;
 }
 
 const ALL_NULL_SENSORS: SensorData = {
@@ -179,9 +184,13 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const showActuatorToast = useCallback(
-    (message: string, type: "warning" | "error" | "success" | "info" = "warning") => {
+    (
+      message: string,
+      type: "warning" | "error" | "success" | "info" = "warning",
+      title?: string
+    ) => {
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-      setActuatorToast({ message, type, timestamp: Date.now() });
+      setActuatorToast({ message, type, title, timestamp: Date.now() });
       toastTimerRef.current = setTimeout(() => {
         setActuatorToast(null);
       }, 5000);
@@ -481,9 +490,9 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
               [id]: { ...prev[id], isOn: false, installed: false, hardwareStatus: "development" },
             };
           });
-          const devMsg = `Aktuator '${actName}' masih dalam tahap pengembangan (perangkat keras belum terpasang pada modul ESP32). Saklar otomatis kembali ke posisi OFF.`;
+          const devMsg = `Perangkat keras '${actName}' belum terpasang fisik pada modul ESP32. Saklar otomatis kembali ke posisi OFF.`;
           setLastActuatorError(devMsg);
-          showActuatorToast(devMsg, "warning");
+          showActuatorToast(devMsg, "warning", "Tahap Pengembangan");
         }, 700);
 
         return {
@@ -504,9 +513,9 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
             };
           });
           const offlineMsg =
-            "Pompa Sirkulasi 12V tidak dapat menyala: Modul ESP32 sedang offline / tidak terhubung ke jaringan Wi-Fi. Saklar otomatis kembali OFF.";
+            "Node ESP32 sedang offline / tidak terhubung ke Wi-Fi. Saklar ditahan OFF demi proteksi perangkat.";
           setLastActuatorError(offlineMsg);
-          showActuatorToast(offlineMsg, "error");
+          showActuatorToast(offlineMsg, "error", "Node Hardware Offline");
         }, 700);
 
         return { ok: false, error: "Modul ESP32 sedang offline." };
@@ -527,7 +536,7 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
           });
         }
         setLastActuatorError(errMsg);
-        showActuatorToast(errMsg, "error");
+        showActuatorToast(errMsg, "error", "Interlock Keamanan Aktif");
         return { ok: false, error: errMsg };
       }
 
@@ -547,12 +556,13 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
 
       clearActuatorError();
       showActuatorToast(
-        `Pompa Sirkulasi 12V berhasil ${optimisticNext ? "dinyalakan" : "dimatikan"} via ESP32 (GPIO 14 Active-LOW).`,
-        "success"
+        `Sinyal kontrol relay GPIO 14 Active-LOW berhasil dikirim ke ${systemMeta.edgeNode}.`,
+        "success",
+        `Pompa Sirkulasi 12V ${optimisticNext ? "Dinyalakan" : "Dimatikan"}`
       );
       return { ok: true };
     },
-    [actuators, systemMeta.edgeOnline, showActuatorToast, clearActuatorError]
+    [actuators, systemMeta.edgeOnline, systemMeta.edgeNode, showActuatorToast, clearActuatorError]
   );
 
   const toggleActuator = useCallback(
@@ -591,8 +601,9 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
   const dispenseFeed = useCallback(async () => {
     setFeedActive(true);
     showActuatorToast(
-      "Modul servo Auto-Feeder masih dalam tahap pengembangan (perangkat keras belum terpasang pada ESP32).",
-      "warning"
+      "Modul servo Auto-Feeder belum terpasang fisik pada ESP32. Perintah pakan dijalankan secara simulasi.",
+      "warning",
+      "Auto-Feeder (Simulasi)"
     );
     await fetchFromBackend("/api/feed/dispense", { method: "POST" }, 3000);
     setTimeout(() => setFeedActive(false), 2200);

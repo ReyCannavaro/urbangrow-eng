@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertOctagon, ArrowUpRight, CheckCircle2, X } from "lucide-react";
+import { AlertOctagon, ArrowUpRight, X } from "lucide-react";
 import { useTelemetry } from "@/lib/telemetryContext";
 import { ControlsHeader } from "@/components/controls/ControlsHeader";
 import { RelaySwitchCard } from "@/components/controls/RelaySwitchCard";
@@ -63,17 +63,24 @@ export default function ControlsPage() {
       />
 
       {lastActuatorError && (
-        <div className="flex items-center justify-between gap-3 rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800 shadow-xs">
-          <div className="flex items-center gap-2">
-            <AlertOctagon className="h-4 w-4 text-rose-600 shrink-0" />
-            <span>
-              <strong>Safety Interlock:</strong> {lastActuatorError}
-            </span>
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-rose-200/80 bg-rose-50/70 px-4 py-3 text-xs text-[#111827] shadow-2xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="h-7 w-7 rounded-lg bg-rose-100 flex items-center justify-center shrink-0 text-rose-700">
+              <AlertOctagon className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <span className="font-bold text-rose-900 block leading-tight">
+                Interlock Keamanan Aktuator
+              </span>
+              <span className="text-[11.5px] text-[#4B5563] leading-relaxed">
+                {lastActuatorError}
+              </span>
+            </div>
           </div>
           <button
             type="button"
             onClick={clearActuatorError}
-            className="h-6 w-6 rounded-full hover:bg-rose-100 flex items-center justify-center text-rose-600 cursor-pointer"
+            className="h-6 w-6 rounded-lg hover:bg-rose-100 flex items-center justify-center text-[#9CA3AF] hover:text-[#111827] transition-colors cursor-pointer shrink-0"
             aria-label="Tutup peringatan"
           >
             <X className="h-3.5 w-3.5" />
@@ -81,24 +88,58 @@ export default function ControlsPage() {
         </div>
       )}
 
-      {/* Slim Single-Line Connectivity Strip */}
-      <div
-        className={`flex items-center gap-2.5 rounded-[18px] border px-4 py-2.5 text-xs ${
-          systemMeta.edgeOnline
-            ? "border-[#165B39]/20 bg-[#DCFCE7]/40 text-[#166534]"
-            : "border-[#E5E7EB] bg-white text-[#4B5563]"
-        }`}
-      >
-        {systemMeta.edgeOnline ? (
-          <CheckCircle2 className="h-4 w-4 text-[#165B39] shrink-0" />
-        ) : (
-          <span className="h-2 w-2 rounded-full bg-[#9CA3AF] shrink-0" />
-        )}
-        <span>
-          {systemMeta.edgeOnline
-            ? `${systemMeta.edgeNode} terhubung — perintah relay aktif via HTTPS (${systemMeta.liveSensorCount}/4 sensor fisik live).`
-            : `Maaf, alat sedang offline — saklar otomatis kembali OFF karena node ${systemMeta.edgeNode} belum terhubung.`}
-        </span>
+      {/* Hardware Telemetry & Edge Protocol Strip (Studio Minimalist) */}
+      <div className="rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-all">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          {/* Left: Live Node Identity & Protocol */}
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-2 shrink-0">
+              {systemMeta.edgeOnline ? (
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#165B39]"></span>
+                </span>
+              ) : (
+                <span className="h-2 w-2 rounded-full bg-[#9CA3AF]" />
+              )}
+              <span className="font-mono text-xs font-semibold text-[#111827]">
+                {systemMeta.edgeNode}
+              </span>
+            </div>
+
+            <span className="hidden sm:inline-block h-3.5 w-px bg-[#E5E7EB]" />
+
+            <div className="text-[11.5px] text-[#4B5563] truncate">
+              {systemMeta.edgeOnline ? (
+                <span>
+                  Gateway REST API <span className="text-[#9CA3AF]">&bull;</span> Perintah relay tersinkronisasi via HTTPS
+                </span>
+              ) : (
+                <span className="text-amber-800 font-medium">
+                  Modul hardware belum terhubung &bull; Saklar otomatis kembali OFF demi proteksi perangkat
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Right: Technical Badges */}
+          <div className="flex items-center gap-2 shrink-0 text-[11px]">
+            <span
+              className={`px-2.5 py-0.5 rounded-lg font-mono font-medium border ${
+                systemMeta.edgeOnline
+                  ? "bg-[#F0FDF4] border-emerald-200 text-[#166534]"
+                  : "bg-[#F9FAFB] border-[#E5E7EB] text-[#6B7280]"
+              }`}
+            >
+              {systemMeta.edgeOnline
+                ? `${systemMeta.liveSensorCount}/4 SENSOR LIVE`
+                : "OFFLINE"}
+            </span>
+            <span className="px-2.5 py-0.5 rounded-lg bg-[#F9FAFB] border border-[#E5E7EB] text-[#4B5563] font-mono">
+              ACTIVE-LOW
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Main Switchboard + Right Panels */}
