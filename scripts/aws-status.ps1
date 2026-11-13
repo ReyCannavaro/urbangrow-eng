@@ -1,4 +1,4 @@
-﻿# UrbanGrow AWS EC2 Production Status Checker & Remote Terminal
+# UrbanGrow AWS EC2 Production Status Checker & Remote Terminal
 param(
     [switch]$Logs,
     [switch]$Ssh,
