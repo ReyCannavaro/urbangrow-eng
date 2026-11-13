@@ -1392,7 +1392,7 @@ export class AgriBotEngine {
 
     const hasImages = Array.isArray(req.images) && req.images.length > 0;
     const category = this.detectCategory(req.message || "diagnosis gambar");
-    const configuredModel = (process.env.GEMINI_MODEL || "gemini-3.5-flash-lite").trim();
+    const configuredModel = (process.env.GEMINI_MODEL || "gemini-2.0-flash").trim();
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!this.isValidGeminiKey(apiKey)) {
@@ -1408,13 +1408,13 @@ export class AgriBotEngine {
       };
     }
 
-    // Prioritize fast responsive flash-lite models for real-time multimodal chat UX
+    // Prioritize official Google Gemini models for fast multimodal chat & reasoning
     const rawCandidates = [
-      configuredModel === "gemini-2.5-flash" ? "gemini-3.5-flash-lite" : configuredModel,
-      "gemini-3.5-flash-lite",
-      "gemini-3.1-flash-lite",
-      "gemini-3.8-flash",
-      "gemini-flash-latest",
+      configuredModel,
+      "gemini-2.0-flash",
+      "gemini-1.5-flash",
+      "gemini-1.5-flash-8b",
+      "gemini-1.5-pro",
     ];
     const modelCandidates = Array.from(new Set(rawCandidates)).slice(0, 4);
 
@@ -1570,7 +1570,8 @@ KELUARKAN RESPONSE HARUS BERUPA JSON VALID DENGAN STRUKTUR:
         });
 
         if (!response.ok) {
-          console.warn(`[GEMINI-CHAT] Model ${candidateModel} returned ${response.status}; trying next candidate.`);
+          const errDetail = await response.text().catch(() => "");
+          console.warn(`[GEMINI-CHAT] Model ${candidateModel} returned ${response.status}: ${errDetail}; trying next candidate.`);
           continue;
         }
 
