@@ -1392,7 +1392,7 @@ export class AgriBotEngine {
 
     const hasImages = Array.isArray(req.images) && req.images.length > 0;
     const category = this.detectCategory(req.message || "diagnosis gambar");
-    const configuredModel = (process.env.GEMINI_MODEL || "gemini-2.0-flash").trim();
+    const configuredModel = (process.env.GEMINI_MODEL || "gemini-3.5-flash-lite").trim();
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!this.isValidGeminiKey(apiKey)) {
@@ -1408,15 +1408,16 @@ export class AgriBotEngine {
       };
     }
 
-    // Prioritize official Google Gemini models for fast multimodal chat & reasoning
+    // Prioritize fast responsive flash-lite models for real-time multimodal chat UX
     const rawCandidates = [
       configuredModel,
-      "gemini-2.0-flash",
-      "gemini-1.5-flash",
-      "gemini-1.5-flash-8b",
-      "gemini-1.5-pro",
+      "gemini-3.5-flash-lite",
+      "gemini-flash-lite-latest",
+      "gemini-3.1-flash-lite",
+      "gemini-3.8-flash",
+      "gemini-flash-latest",
     ];
-    const modelCandidates = Array.from(new Set(rawCandidates)).slice(0, 4);
+    const modelCandidates = Array.from(new Set(rawCandidates)).slice(0, 5);
 
     const wibNow = new Date().toLocaleString("id-ID", {
       timeZone: "Asia/Jakarta",
