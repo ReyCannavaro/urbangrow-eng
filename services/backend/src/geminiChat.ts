@@ -1029,6 +1029,106 @@ export class AgriBotEngine {
     return trimmed.length >= 20;
   }
 
+  public static unescapeJsonString(str: string): string {
+    return str
+      .replace(/\\"/g, '"')
+      .replace(/\\n/g, "\n")
+      .replace(/\\r/g, "\r")
+      .replace(/\\t/g, "\t")
+      .replace(/\\\\/g, "\\");
+  }
+
+  public static extractCleanResponse(
+    rawText: string,
+    defaultCategory: AgriBotChatResponse["category"] = "general"
+  ): {
+    reply: string;
+    category: AgriBotChatResponse["category"];
+    charts: AgriBotChartSpec[];
+  } {
+    if (!rawText || typeof rawText !== "string") {
+      return { reply: "", category: defaultCategory, charts: [] };
+    }
+
+    let text = rawText.trim();
+    if (text.startsWith("```")) {
+      text = text
+        .replace(/^```(?:json)?\s*/i, "")
+        .replace(/\s*```$/i, "")
+        .trim();
+    }
+
+    let parsedReply = text;
+    let parsedCategory = defaultCategory;
+    let parsedCharts: AgriBotChartSpec[] = [];
+
+    // 1. Try strict JSON parse first
+    if (text.startsWith("{") && text.endsWith("}")) {
+      try {
+        const obj = JSON.parse(text);
+        if (typeof obj.reply === "string" && obj.reply.trim()) {
+          parsedReply = obj.reply.trim();
+        }
+        if (
+          obj.category === "diagnosis" ||
+          obj.category === "prediction" ||
+          obj.category === "advisory" ||
+          obj.category === "general"
+        ) {
+          parsedCategory = obj.category;
+        }
+        if (Array.isArray(obj.charts)) {
+          parsedCharts = sanitizeChartSpecs(obj.charts);
+        }
+        return { reply: parsedReply, category: parsedCategory, charts: parsedCharts };
+      } catch {
+        // Fallback to resilient extraction if JSON.parse threw
+      }
+    }
+
+    // 2. Resilient regex extraction of "reply"
+    if (text.includes('"reply"')) {
+      const replyRegex = /"reply"\s*:\s*"([\s\S]*?)(?:",\s*"(?:category|charts|suggestedActions)"|"\s*}[\s\S]*$)/;
+      const match = text.match(replyRegex);
+      if (match && match[1]) {
+        parsedReply = AgriBotEngine.unescapeJsonString(match[1]);
+      } else {
+        const prefixMatch = text.match(/^{\s*"reply"\s*:\s*"/);
+        if (prefixMatch) {
+          let stripped = text.slice(prefixMatch[0].length);
+          stripped = stripped
+            .replace(/",\s*"(?:category|charts|suggestedActions)"[\s\S]*$/, "")
+            .replace(/"\s*}\s*$/, "")
+            .replace(/"\s*$/, "");
+          parsedReply = AgriBotEngine.unescapeJsonString(stripped);
+        }
+      }
+    }
+
+    // 3. Resilient chart extraction
+    if (text.includes('"charts"')) {
+      const chartsMatch = text.match(/"charts"\s*:\s*(\[[\s\S]*?\])(?:\s*,\s*"(?:category|reply)"|\s*}[\s\S]*$)/);
+      if (chartsMatch && chartsMatch[1]) {
+        try {
+          const rawCharts = JSON.parse(chartsMatch[1]);
+          if (Array.isArray(rawCharts)) {
+            parsedCharts = sanitizeChartSpecs(rawCharts);
+          }
+        } catch {}
+      }
+    }
+
+    // 4. Resilient category extraction
+    if (text.includes('"category"')) {
+      const catMatch = text.match(/"category"\s*:\s*"(diagnosis|prediction|advisory|general)"/);
+      if (catMatch && catMatch[1]) {
+        parsedCategory = catMatch[1] as any;
+      }
+    }
+
+    return { reply: parsedReply, category: parsedCategory, charts: parsedCharts };
+  }
+
   private static detectCategory(message: string): AgriBotChatResponse["category"] {
     const q = message.toLowerCase();
     if (
@@ -1393,9 +1493,13 @@ export class AgriBotEngine {
     const hasImages = Array.isArray(req.images) && req.images.length > 0;
     const category = this.detectCategory(req.message || "diagnosis gambar");
     const configuredModel = (process.env.GEMINI_MODEL || "gemini-3.5-flash-lite").trim();
-    const apiKey = process.env.GEMINI_API_KEY;
+    const rawApiKeyConfig = process.env.GEMINI_API_KEY || "";
+    const apiKeys = rawApiKeyConfig
+      .split(",")
+      .map((k) => k.trim())
+      .filter((k) => this.isValidGeminiKey(k));
 
-    if (!this.isValidGeminiKey(apiKey)) {
+    if (apiKeys.length === 0) {
       return {
         success: true,
         reply: this.buildFallbackReply(req.message, diagnostics, hasImages),
@@ -1493,6 +1597,7 @@ ATURAN KETAT:
   - Untuk \`radar\` atau \`radial\`, normalisasikan skor ke skala \`0-100\` (\`unit: "%"\`) agar sumbu terbaca seimbang.
 - Jika user tidak meminta grafik atau visualisasi data, isi \`"charts": []\`.
 - Jawab dalam **Bahasa Indonesia yang rapi, terstruktur (pakai heading markdown \`###\`, poin, bold, tabel markdown bila membantu), hangat, dan berbasis sains akuaponik**.
+- **PENTING UNTUK JSON VALID**: Jangan pernah menuliskan tanda petik ganda mentah (\`"\`) di dalam teks string \`"reply"\`. Jika ingin mengutip kata/istilah (misalnya: 'offline', 'pH', 'relay'), WAJIB gunakan tanda petik tunggal (\`'\`) atau escape (\`\\"\`) agar format JSON tetap valid dan tidak corrupt!
 
 DATA KONTEKS EKOSISTEM SAAT INI:
 ${JSON.stringify(telemetryContextForAi, null, 2)}
@@ -1549,85 +1654,64 @@ KELUARKAN RESPONSE HARUS BERUPA JSON VALID DENGAN STRUKTUR:
       { role: "user", parts: userParts },
     ];
 
-    for (const candidateModel of modelCandidates) {
-      try {
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(candidateModel)}:generateContent`;
-        const response = await fetch(endpoint, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": apiKey.trim(),
-          },
-          body: JSON.stringify({
-            system_instruction: { parts: [{ text: systemInstruction }] },
-            contents,
-            generationConfig: {
-              temperature: 0.35,
-              maxOutputTokens: 3200,
-              responseMimeType: "application/json",
-            },
-          }),
-          signal: AbortSignal.timeout(25000),
-        });
-
-        if (!response.ok) {
-          const errDetail = await response.text().catch(() => "");
-          console.warn(`[GEMINI-CHAT] Model ${candidateModel} returned ${response.status}: ${errDetail}; trying next candidate.`);
-          continue;
-        }
-
-        const json = (await response.json()) as {
-          candidates?: Array<{
-            content?: { parts?: Array<{ text?: string }> };
-          }>;
-        };
-
-        const rawText = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-        if (!rawText) {
-          continue;
-        }
-
-        let parsedReply = rawText;
-        let parsedCategory = category;
-        let parsedCharts: AgriBotChartSpec[] = [];
-
+    for (const activeApiKey of apiKeys) {
+      for (const candidateModel of modelCandidates) {
         try {
-          const cleanedJson = rawText
-            .replace(/^```json\s*/i, "")
-            .replace(/^```\s*/i, "")
-            .replace(/```$/i, "")
-            .trim();
-          const obj = JSON.parse(cleanedJson);
-          if (typeof obj.reply === "string" && obj.reply.trim()) {
-            parsedReply = obj.reply.trim();
-          }
-          if (
-            obj.category === "diagnosis" ||
-            obj.category === "prediction" ||
-            obj.category === "advisory" ||
-            obj.category === "general"
-          ) {
-            parsedCategory = obj.category;
-          }
-          if (Array.isArray(obj.charts)) {
-            parsedCharts = sanitizeChartSpecs(obj.charts);
-          }
-        } catch {
-          // Gemini returned markdown directly; keep rawText cleanly
-        }
+          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(candidateModel)}:generateContent`;
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-goog-api-key": activeApiKey,
+            },
+            body: JSON.stringify({
+              system_instruction: { parts: [{ text: systemInstruction }] },
+              contents,
+              generationConfig: {
+                temperature: 0.35,
+                maxOutputTokens: 3200,
+                responseMimeType: "application/json",
+              },
+            }),
+            signal: AbortSignal.timeout(25000),
+          });
 
-        return {
-          success: true,
-          reply: parsedReply,
-          provider: "gemini",
-          model: candidateModel,
-          category: parsedCategory,
-          diagnostics,
-          suggestedActions: diagnostics.suggestedActions,
-          charts: parsedCharts,
-        };
-      } catch (err: any) {
-        console.warn(`[GEMINI-CHAT] Model ${candidateModel} failed: ${err?.message || "Unknown error"}`);
+          if (!response.ok) {
+            const errDetail = await response.text().catch(() => "");
+            console.warn(`[GEMINI-CHAT] Model ${candidateModel} (key: ...${activeApiKey.slice(-6)}) returned ${response.status}: ${errDetail}`);
+            if (response.status === 429 || response.status === 403) {
+              // Rate limit or quota exhausted on this key, break to try next key in pool
+              break;
+            }
+            continue;
+          }
+
+          const json = (await response.json()) as {
+            candidates?: Array<{
+              content?: { parts?: Array<{ text?: string }> };
+            }>;
+          };
+
+          const rawText = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+          if (!rawText) {
+            continue;
+          }
+
+          const extracted = AgriBotEngine.extractCleanResponse(rawText, category);
+
+          return {
+            success: true,
+            reply: extracted.reply,
+            provider: "gemini",
+            model: candidateModel,
+            category: extracted.category || category,
+            diagnostics,
+            suggestedActions: diagnostics.suggestedActions,
+            charts: extracted.charts,
+          };
+        } catch (err: any) {
+          console.warn(`[GEMINI-CHAT] Model ${candidateModel} failed: ${err?.message || "Unknown error"}`);
+        }
       }
     }
 
