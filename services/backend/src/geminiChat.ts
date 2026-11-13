@@ -1410,13 +1410,14 @@ export class AgriBotEngine {
 
     // Prioritize fast responsive flash-lite models for real-time multimodal chat UX
     const rawCandidates = [
-      configuredModel === "gemini-2.5-flash" ? "gemini-3.5-flash-lite" : configuredModel,
+      configuredModel,
       "gemini-3.5-flash-lite",
+      "gemini-flash-lite-latest",
       "gemini-3.1-flash-lite",
       "gemini-3.8-flash",
       "gemini-flash-latest",
     ];
-    const modelCandidates = Array.from(new Set(rawCandidates)).slice(0, 4);
+    const modelCandidates = Array.from(new Set(rawCandidates)).slice(0, 5);
 
     const wibNow = new Date().toLocaleString("id-ID", {
       timeZone: "Asia/Jakarta",
@@ -1570,7 +1571,8 @@ KELUARKAN RESPONSE HARUS BERUPA JSON VALID DENGAN STRUKTUR:
         });
 
         if (!response.ok) {
-          console.warn(`[GEMINI-CHAT] Model ${candidateModel} returned ${response.status}; trying next candidate.`);
+          const errDetail = await response.text().catch(() => "");
+          console.warn(`[GEMINI-CHAT] Model ${candidateModel} returned ${response.status}: ${errDetail}; trying next candidate.`);
           continue;
         }
 

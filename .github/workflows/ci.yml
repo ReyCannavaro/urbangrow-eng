@@ -116,8 +116,11 @@ jobs:
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_USER: ${{ secrets.EC2_USER }}
+          SECRET_GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "${EC2_USER}@${EC2_HOST}" bash -s <<'REMOTE_SCRIPT'
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "${EC2_USER}@${EC2_HOST}" \
+            SECRET_GEMINI_API_KEY="${SECRET_GEMINI_API_KEY}" \
+            bash -s <<'REMOTE_SCRIPT'
           set -euo pipefail
 
           REPO_DIR="/home/ubuntu/urbangrow-eng"
@@ -136,6 +139,22 @@ jobs:
           if [[ -f "${ENV_BAK}" ]]; then
             mv -f "${ENV_BAK}" "${BACKEND_DIR}/.env"
             chmod 600 "${BACKEND_DIR}/.env"
+          elif [[ -f "${BACKEND_DIR}/.env.example" ]]; then
+            cp "${BACKEND_DIR}/.env.example" "${BACKEND_DIR}/.env"
+            chmod 600 "${BACKEND_DIR}/.env"
+          fi
+
+          if [[ -n "${SECRET_GEMINI_API_KEY:-}" ]]; then
+            if grep -q "^GEMINI_API_KEY=" "${BACKEND_DIR}/.env"; then
+              sed -i "s|^GEMINI_API_KEY=.*|GEMINI_API_KEY=${SECRET_GEMINI_API_KEY}|" "${BACKEND_DIR}/.env"
+            else
+              echo "GEMINI_API_KEY=${SECRET_GEMINI_API_KEY}" >> "${BACKEND_DIR}/.env"
+            fi
+            if grep -q "^GEMINI_MODEL=" "${BACKEND_DIR}/.env"; then
+              sed -i "s|^GEMINI_MODEL=.*|GEMINI_MODEL=gemini-3.5-flash-lite|" "${BACKEND_DIR}/.env"
+            else
+              echo "GEMINI_MODEL=gemini-3.5-flash-lite" >> "${BACKEND_DIR}/.env"
+            fi
           fi
 
           cd "${BACKEND_DIR}"
