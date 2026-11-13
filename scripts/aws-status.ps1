@@ -32,8 +32,32 @@ if ($Logs) {
 if ($PullDb) {
     $target = "services\backend\data\urbangrow-production.sqlite"
     Write-Host "[DB] Mengunduh database SQLite terbaru dari AWS EC2..." -ForegroundColor Yellow
+
+    # Cek apakah file sedang dikunci oleh DBeaver
+    if (Test-Path $target) {
+        $fileLocked = $false
+        try {
+            $stream = [System.IO.File]::Open($target, [System.IO.FileMode]::Open, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)
+            $stream.Close()
+        } catch {
+            $fileLocked = $true
+        }
+
+        if ($fileLocked) {
+            Write-Host "`n[PERINGATAN] File database sedang dibuka/dikunci oleh DBeaver!" -ForegroundColor Red
+            Write-Host "Solusi: Di DBeaver, klik kanan koneksi database -> pilih 'Disconnect' (atau tutup tab tabel yang sedang terbuka)." -ForegroundColor Yellow
+            Write-Host "Setelah itu, jalankan kembali perintah ini:`n  powershell .\scripts\aws-status.ps1 -PullDb`n" -ForegroundColor Cyan
+            exit 1
+        }
+    }
+
     scp -i $KEY_PATH -o StrictHostKeyChecking=no "${EC2_USER}@${EC2_HOST}:/home/ubuntu/urbangrow-eng/services/backend/data/urbangrow.sqlite" $target
-    Write-Host "[OK] Database berhasil diunduh ke $target!" -ForegroundColor Green
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "[OK] Database berhasil diunduh ke $target!" -ForegroundColor Green
+        Write-Host "Silakan buka kembali atau refresh (F5) di DBeaver." -ForegroundColor Cyan
+    } else {
+        Write-Host "[GAGAL] scp gagal mengunduh database." -ForegroundColor Red
+    }
     exit
 }
 
