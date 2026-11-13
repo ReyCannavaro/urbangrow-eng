@@ -14,6 +14,56 @@ import {
 
 const COHORT_STORAGE_KEY = "urbangrow_prediction_cohort_v1";
 
+export function unescapeJsonString(str: string): string {
+  return str
+    .replace(/\\"/g, '"')
+    .replace(/\\n/g, "\n")
+    .replace(/\\r/g, "\r")
+    .replace(/\\t/g, "\t")
+    .replace(/\\\\/g, "\\");
+}
+
+export function extractCleanReply(raw: string): string {
+  if (!raw || typeof raw !== "string") return "";
+  let text = raw.trim();
+
+  if (text.startsWith("```")) {
+    text = text
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```$/i, "")
+      .trim();
+  }
+
+  if (text.startsWith("{") && text.includes('"reply"')) {
+    try {
+      const parsed = JSON.parse(text);
+      if (typeof parsed.reply === "string" && parsed.reply.trim()) {
+        return parsed.reply.trim();
+      }
+    } catch {
+      // Fallback below
+    }
+
+    const replyRegex = /"reply"\s*:\s*"([\s\S]*?)(?:",\s*"(?:category|charts|suggestedActions)"|"\s*}[\s\S]*$)/;
+    const match = text.match(replyRegex);
+    if (match && match[1]) {
+      return unescapeJsonString(match[1]);
+    }
+
+    const prefixMatch = text.match(/^{\s*"reply"\s*:\s*"/);
+    if (prefixMatch) {
+      let stripped = text.slice(prefixMatch[0].length);
+      stripped = stripped
+        .replace(/",\s*"(?:category|charts|suggestedActions)"[\s\S]*$/, "")
+        .replace(/"\s*}\s*$/, "")
+        .replace(/"\s*$/, "");
+      return unescapeJsonString(stripped);
+    }
+  }
+
+  return text;
+}
+
 function offsetDaysIso(days: number): string {
   const d = new Date(Date.now() + days * 86400000);
   return d.toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
@@ -500,6 +550,7 @@ export async function sendAgriBotChat(payload: {
   if (res.ok && res.data && res.data.reply) {
     return {
       ...res.data,
+      reply: extractCleanReply(res.data.reply),
       charts: Array.isArray(res.data.charts) ? res.data.charts : [],
       latencyMs,
     };

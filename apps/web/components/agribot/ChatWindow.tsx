@@ -26,7 +26,7 @@ import {
   AgriBotChartSpec,
   AgriBotImageAttachment,
 } from "@/lib/types";
-import { sendAgriBotChat } from "@/lib/aiApi";
+import { sendAgriBotChat, extractCleanReply } from "@/lib/aiApi";
 import { useTelemetry } from "@/lib/telemetryContext";
 import { DynamicChartRenderer } from "./DynamicChartRenderer";
 import { CameraModal } from "./CameraModal";
@@ -335,7 +335,8 @@ function isSeparatorRow(line: string): boolean {
 }
 
 function FormattedMarkdownMessage({ text }: { text: string }) {
-  const lines = text.split(/\r?\n/);
+  const cleanText = extractCleanReply(text);
+  const lines = cleanText.split(/\r?\n/);
   const nodes: React.ReactNode[] = [];
   let i = 0;
 
